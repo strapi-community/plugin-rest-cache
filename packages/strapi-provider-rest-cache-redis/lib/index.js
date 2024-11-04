@@ -23,6 +23,10 @@ function waitForRedis(client) {
       );
     };
 
+    if (client.status === "ready") {
+       return onReady();
+    }
+
     client.once("ready", onReady);
     client.once("error", onError);
   });

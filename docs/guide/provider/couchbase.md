@@ -44,7 +44,3 @@ module.exports = {
   },
 };
 ```
-
-::: warning
-Ensure `redis` plugin configuration come before `strapi-plugin-rest-cache`
-:::
