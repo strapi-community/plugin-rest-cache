@@ -49,7 +49,6 @@ jobs:
 
   e2e_memory:
     runs-on: ubuntu-latest
-    needs: [linters]
 
     steps:
       - uses: actions/checkout@v2
@@ -81,7 +80,6 @@ jobs:
 
   e2e_redis:
     runs-on: ubuntu-latest
-    needs: [linters]
 
     services:
       redis:

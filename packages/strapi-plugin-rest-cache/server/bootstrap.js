@@ -1,17 +1,9 @@
 'use strict';
 
-/**
- * @typedef {import('@strapi/strapi').Strapi} Strapi
- */
 const chalk = require('chalk');
-const debug = require('debug');
-
-const { CacheProvider } = require('./types');
-const { resolveUserStrategy } = require('./utils/config/resolveUserStrategy');
-const { createRouter } = require('./utils/middlewares/createRouter');
 
 const permissionsActions = require('./permissions-actions');
-
+const { CacheProvider } = require('./types');
 const createProvider = async (providerConfig, { strapi }) => {
   const providerName = providerConfig.name.toLowerCase();
   let provider;
@@ -53,22 +45,9 @@ const createProvider = async (providerConfig, { strapi }) => {
  * @param {{ strapi: Strapi }} strapi
  */
 async function bootstrap({ strapi }) {
-  // resolve user configuration, check for missing or invalid options
+  // resolve user configuration, check for missing or invalid optinos
   const pluginOption = strapi.config.get('plugin.rest-cache');
   const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
-
-  if (pluginOption.strategy.debug === true) {
-    debug.enable('strapi:strapi-plugin-rest-cache');
-  }
-
-  const strategy = resolveUserStrategy(strapi, pluginOption.strategy);
-  strapi.config.set('plugin.rest-cache', {
-    ...pluginOption,
-    strategy,
-  });
-
-  debug('strapi:strapi-plugin-rest-cache')('[STRATEGY]: %O', strategy);
-
   // watch for changes in any roles -> clear all cache
   // need to be done before lifecycles are registered
   if (strapi.plugin('users-permissions')) {
@@ -79,30 +58,20 @@ async function bootstrap({ strapi }) {
       },
     });
   }
-
-  // register cache provider
-  const provider = await createProvider(pluginOption.provider, { strapi });
-  strapi.plugin('rest-cache').service('cacheStore').init(provider);
-
   // boostrap plugin permissions
   await strapi.admin.services.permission.actionProvider.registerMany(
     permissionsActions.actions
   );
 
-  // boostrap cache middlewares
-  const router = createRouter(strapi, strategy);
-  strapi.server.router.use(router.routes());
+  // register cache provider
+  const provider = await createProvider(pluginOption.provider, { strapi });
+  cacheStore.init(provider);
 
   strapi.log.info(
     `Using REST Cache plugin with provider "${chalk.cyan(
       pluginOption.provider.name
     )}"`
   );
-
-  if (strategy.resetOnStartup) {
-    strapi.log.warn('Reset cache on startup is enabled');
-    await strapi.plugin('rest-cache').service('cacheStore').reset();
-  }
 }
 
 module.exports = {
