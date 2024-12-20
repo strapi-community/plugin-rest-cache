@@ -23,7 +23,7 @@ function createCacheStoreService({ strapi }) {
   let provider;
   let initialized = false;
 
-  const pluginConfig = strapi.config.get('plugin.rest-cache');
+  const pluginConfig = strapi.config.get("plugin::rest-cache");
   const { getTimeout } = pluginConfig.provider;
   const { keysPrefix } = pluginConfig.strategy;
   const keysPrefixRe = keysPrefix ? new RegExp(`^${keysPrefix}`) : null;
@@ -201,7 +201,7 @@ function createCacheStoreService({ strapi }) {
      * @param {boolean=} wildcard
      */
     async clearByUid(uid, params = {}, wildcard = false) {
-      const { strategy } = strapi.config.get('plugin.rest-cache');
+      const { strategy } = strapi.config.get("plugin::rest-cache");
 
       const cacheConfigService = strapi
         .plugin('rest-cache')

@@ -1,16 +1,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useIntl } from 'react-intl';
-import { Status } from '@strapi/design-system/Status';
-import { Typography } from '@strapi/design-system/Typography';
-import { Box } from '@strapi/design-system/Box';
+import { Status } from '@strapi/design-system';
+import { Typography } from '@strapi/design-system';
+import { Box } from '@strapi/design-system';
 
 import { useCacheStrategy } from '../../hooks';
 
 function EntityCacheInformation({ contentType }) {
   const { strategy } = useCacheStrategy();
   const { formatMessage } = useIntl();
-
   if (
     !strategy?.contentTypes?.find(
       (config) => config.contentType === contentType
@@ -20,7 +19,7 @@ function EntityCacheInformation({ contentType }) {
   }
 
   return (
-    <Box paddingTop={2}>
+    <Box width={"100%"} paddingTop={2}>
       <Status variant="neutral">
         <Typography>
           {formatMessage({

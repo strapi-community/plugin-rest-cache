@@ -56,11 +56,10 @@
     "cache-manager": "^3.6.0"
   },
   "devDependencies": {
-    "@strapi/strapi": "^4.11.7",
     "strapi-plugin-rest-cache": "^4.2.9"
   },
   "peerDependencies": {
-    "@strapi/strapi": "^4.0.0",
+    "@strapi/strapi": "^5.0.0",
     "strapi-plugin-rest-cache": "^4.0.0"
   },
   "engines": {

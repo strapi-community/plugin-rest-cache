@@ -128,9 +128,8 @@ function resolveUserStrategy(strapi, userOptions) {
 
     // get strapi api prefix
     const apiPrefix = strapi.config.get('api.rest.prefix');
-
     for (const routes of Object.values(
-      strapi.api[contentType.info.singularName].routes
+      strapi.apis[contentType.info.singularName].routes
     )) {
       for (const route of routes.routes) {
         // @TODO remove path and method and use the one

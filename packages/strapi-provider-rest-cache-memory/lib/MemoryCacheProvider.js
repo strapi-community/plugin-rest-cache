@@ -2,7 +2,7 @@
 
 /* eslint-disable class-methods-use-this */
 const cacheManager = require("cache-manager");
-const { CacheProvider } = require("strapi-plugin-rest-cache/server/types");
+const { CacheProvider } = require("../../strapi-plugin-rest-cache/server/src/types");
 
 class MemoryCacheProvider extends CacheProvider {
   constructor(options) {

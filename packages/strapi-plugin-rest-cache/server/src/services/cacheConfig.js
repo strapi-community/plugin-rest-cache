@@ -22,7 +22,7 @@ function createCacheConfigService({ strapi }) {
      * @return {string[]}
      */
     getUids() {
-      const { strategy } = strapi.config.get('plugin.rest-cache');
+      const { strategy } = strapi.config.get("plugin::rest-cache");
       return strategy.contentTypes.map((cacheConf) => cacheConf.contentType);
     },
 
@@ -58,7 +58,7 @@ function createCacheConfigService({ strapi }) {
      * @return {CacheContentTypeConfig | undefined}
      */
     get(uid) {
-      const { strategy } = strapi.config.get('plugin.rest-cache');
+      const { strategy } = strapi.config.get("plugin::rest-cache");
       return strategy.contentTypes.find(
         (cacheConf) => cacheConf.contentType === uid
       );

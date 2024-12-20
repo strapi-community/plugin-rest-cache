@@ -1,10 +1,10 @@
 'use strict';
 
 const chalk = require('chalk');
-
+const { createRequire } = require("module");
 const permissionsActions = require('./permissions-actions');
 const { CacheProvider } = require('./types');
-const createProvider = async (providerConfig, { strapi }) => {
+const  createProvider = async (providerConfig, { strapi }) => {
   const providerName = providerConfig.name.toLowerCase();
   let provider;
 
@@ -18,11 +18,13 @@ const createProvider = async (providerConfig, { strapi }) => {
       throw error;
     }
   }
-
+  console.log(modulePath)
   try {
     // eslint-disable-next-line
-    provider = require(modulePath);
+    const requireProvider = createRequire(import.meta.url);
+    provider = requireProvider(modulePath)
   } catch (err) {
+    console.log(err)
     throw new Error(
       `Could not load REST Cache provider "${providerName}". You may need to install a provider plugin "yarn add strapi-provider-rest-cache-${providerName}".`
     );
@@ -31,12 +33,12 @@ const createProvider = async (providerConfig, { strapi }) => {
   const providerInstance = await provider.init(providerConfig.options, {
     strapi,
   });
-
-  if (!(providerInstance instanceof CacheProvider)) {
+  // TODO make this work somehow?
+  /*if (!(providerInstance instanceof CacheProvider)) {
     throw new Error(
       `Could not load REST Cache provider "${providerName}". The package "strapi-provider-rest-cache-${providerName}" does not export a CacheProvider instance.`
     );
-  }
+  }*/
 
   return Object.freeze(providerInstance);
 };
@@ -46,7 +48,7 @@ const createProvider = async (providerConfig, { strapi }) => {
  */
 async function bootstrap({ strapi }) {
   // resolve user configuration, check for missing or invalid optinos
-  const pluginOption = strapi.config.get('plugin.rest-cache');
+  const pluginOption = strapi.config.get("plugin::rest-cache");
   const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
   // watch for changes in any roles -> clear all cache
   // need to be done before lifecycles are registered

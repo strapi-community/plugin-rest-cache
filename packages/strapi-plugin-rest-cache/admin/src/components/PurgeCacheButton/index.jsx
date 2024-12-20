@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useIntl } from 'react-intl';
-import { Button } from '@strapi/design-system/Button';
-import Refresh from '@strapi/icons/Refresh';
-import { ConfirmDialog, useNotification, request } from '@strapi/helper-plugin';
+import { Button, Dialog } from '@strapi/design-system';
+import { ArrowsCounterClockwise } from '@strapi/icons';
+import { useNotification, useFetchClient } from '@strapi/strapi/admin';
 import PropTypes from 'prop-types';
 
 import pluginId from '../../pluginId';
 import { useCacheStrategy } from '../../hooks';
 
-function PurgeCacheButton({ contentType, params, wildcard }) {
+function PurgeCacheButton({ contentType, params, wildcard = undefined, fullWidth = false, size = "S" }) {
   const { strategy } = useCacheStrategy();
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -30,19 +30,16 @@ function PurgeCacheButton({ contentType, params, wildcard }) {
   const toggleConfirmModal = () =>
     setShowConfirmModal((prevState) => !prevState);
 
+  const { post } = useFetchClient()
   const handleConfirmDelete = async () => {
     try {
       // Show the loading state
       setIsModalConfirmButtonLoading(true);
 
-      await request(`/${pluginId}/purge`, {
-        method: 'POST',
-        signal,
-        body: {
-          contentType,
-          params,
-          wildcard,
-        },
+      await post(`/${pluginId}/purge`, {
+        contentType,
+        params,
+        wildcard,
       });
 
       toggleNotification({
@@ -74,7 +71,6 @@ function PurgeCacheButton({ contentType, params, wildcard }) {
       }
     }
   };
-
   if (
     !strategy?.contentTypes?.find(
       (config) => config.contentType === contentType
@@ -84,39 +80,49 @@ function PurgeCacheButton({ contentType, params, wildcard }) {
   }
 
   return (
-    <>
-      <Button
+    <Dialog.Root open={showConfirmModal}>
+      <Dialog.Trigger>
+        <Button
         onClick={toggleConfirmModal}
-        size="S"
-        startIcon={<Refresh />}
-        variant="danger"
-      >
-        {formatMessage({
-          id: 'cache.purge.delete-entry',
-          defaultMessage: 'Purge REST Cache',
-        })}
-      </Button>
-      <ConfirmDialog
-        isConfirmButtonLoading={isModalConfirmButtonLoading}
-        isOpen={showConfirmModal}
-        onConfirm={handleConfirmDelete}
-        onToggleDialog={toggleConfirmModal}
-        title={{
+          size={size}
+          fullWidth={fullWidth}
+          startIcon={<ArrowsCounterClockwise />}
+          variant="danger"
+        >
+          {formatMessage({
+            id: 'cache.purge.delete-entry',
+            defaultMessage: 'Purge REST Cache',
+          })}
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Header>{formatMessage({
           id: 'cache.purge.confirm-modal-title',
           defaultMessage: 'Confirm purging REST Cache?',
-        }}
-        bodyText={{
+        })}</Dialog.Header>
+        <Dialog.Body icon={<ArrowsCounterClockwise />}>{formatMessage({
           id: 'cache.purge.confirm-modal-body',
           defaultMessage:
             'Are you sure you want to purge REST Cache for this entry?',
-        }}
-        iconRightButton={<Refresh />}
-        rightButtonText={{
+        })}</Dialog.Body>
+
+        <Dialog.Footer>
+          <Dialog.Cancel>
+            <Button fullWidth variant="tertiary" onClick={toggleConfirmModal}>
+              Cancel
+            </Button>
+          </Dialog.Cancel>
+          <Dialog.Action>
+            <Button fullWidth variant="danger-light" onClick={handleConfirmDelete}>
+            {formatMessage({
           id: 'cache.purge.confirm-modal-confirm',
           defaultMessage: 'Purge REST Cache',
-        }}
-      />
-    </>
+        })}
+            </Button>
+          </Dialog.Action>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
 
@@ -124,10 +130,8 @@ PurgeCacheButton.propTypes = {
   contentType: PropTypes.string.isRequired,
   params: PropTypes.object,
   wildcard: PropTypes.bool,
-};
-PurgeCacheButton.defaultProps = {
-  params: {},
-  wildcard: undefined,
+  fullWidth: PropTypes.bool,
+  size: PropTypes.string
 };
 
 export default PurgeCacheButton;

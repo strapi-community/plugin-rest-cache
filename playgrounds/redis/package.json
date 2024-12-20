@@ -12,13 +12,19 @@
     "test:e2e": "jest --detectOpenHandles --forceExit"
   },
   "dependencies": {
-    "@strapi/plugin-i18n": "4.11.7",
-    "@strapi/plugin-users-permissions": "4.11.7",
-    "@strapi/strapi": "4.11.7",
-    "better-sqlite3": "8.0.1",
-    "strapi-plugin-redis": "^1.0.1",
+    
+    "@strapi/plugin-users-permissions": "5.6.0",
+    "@strapi/strapi": "5.6.0",
+    "@strapi-community/plugin-redis": "^2.0.0",
     "strapi-plugin-rest-cache": "^4.2.9",
-    "strapi-provider-rest-cache-redis": "^4.2.9"
+    "strapi-provider-rest-cache-redis": "^4.2.9",
+    "better-sqlite3": "9.4.3",
+    "fs-extra": "^10.0.0",
+    "mime-types": "^2.1.27",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
   },
   "devDependencies": {
     "jest": "^27.5.1",

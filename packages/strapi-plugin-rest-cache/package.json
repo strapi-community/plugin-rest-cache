@@ -17,13 +17,6 @@
     "http",
     "lru"
   ],
-  "files": [
-    "admin/**/*.js",
-    "admin/**/*.json",
-    "server/**/*.js",
-    "strapi-admin.js",
-    "strapi-server.js"
-  ],
   "author": {
     "name": "Strapi Community",
     "url": "https://github.com/strapi-community/"
@@ -52,39 +45,55 @@
     "url": "https://github.com/strapi-community/strapi-plugin-rest-cache/issues"
   },
   "homepage": "https://strapi-community.github.io/strapi-plugin-rest-cache/",
+  "type": "commonjs",
+  "exports": {
+    "./package.json": "./package.json",
+    "./strapi-admin": {
+      "source": "./admin/src/index.js",
+      "import": "./dist/admin/index.mjs",
+      "require": "./dist/admin/index.js",
+      "default": "./dist/admin/index.js"
+    },
+    "./strapi-server": {
+      "source": "./server/src/index.js",
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "lint": "run-s eslint:server:fix prettier:fix",
-    "eslint:server": "eslint ./server",
-    "eslint:server:fix": "eslint ./server --fix",
-    "prettier": "prettier --check ./{admin,server}/**/*",
-    "prettier:fix": "prettier --write ./{admin,server}/**/*",
-    "test": "run-s test:*",
-    "test:lint": "run-s eslint:server prettier"
+    "build": "strapi-plugin build",
+    "verify": "strapi-plugin verify",
+    "watch": "strapi-plugin watch",
+    "watch:link": "strapi-plugin watch:link"
   },
   "dependencies": {
-    "@koa/router": "^10.1.1",
-    "chalk": "^4.1.2",
-    "debug": "^4.3.4",
-    "lodash": "^4.17.21",
-    "path": "^0.12.7",
-    "strapi-provider-rest-cache-memory": "^4.2.9"
+    "@strapi/design-system": "^2.0.0-rc.14",
+    "@strapi/icons": "^2.0.0-rc.14",
+    "react-intl": "^7.0.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "styled-components": "^6.1.13"
   },
   "devDependencies": {
-    "@strapi/strapi": "^4.11.7",
-    "koa": "^2.11.0",
-    "npm-run-all": "^4.1.5",
-    "react": "^17.0.2",
-    "react-intl": "^5.24.7",
-    "react-redux": "^7.2.2",
-    "redux": "^4.0.5",
-    "styled-components": "^5.2.3"
+    "@strapi/sdk-plugin": "^5.2.8",
+    "@strapi/strapi": "5.6.0",
+    "prettier": "^3.4.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.2",
+    "styled-components": "^6.1.13"
   },
   "peerDependencies": {
-    "@strapi/strapi": "^4.0.5"
-  },
-  "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
-  },
-  "gitHead": "80f7c4b1c3915484e282597292cd1f5c749cbe8f"
+    "@strapi/sdk-plugin": "^5.2.8",
+    "@strapi/strapi": "^5.6.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "styled-components": "^6.1.13"
+  }
 }

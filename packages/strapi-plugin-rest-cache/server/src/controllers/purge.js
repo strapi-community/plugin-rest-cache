@@ -15,6 +15,7 @@ function createPurgeController({ strapi }) {
      */
     async index(ctx) {
       const { contentType, params, wildcard } = ctx.request.body;
+      console.log(ctx.request.body)
 
       if (!contentType) {
         ctx.badRequest('contentType is required');

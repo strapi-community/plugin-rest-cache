@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef } from 'react';
-import { request, useNotification } from '@strapi/helper-plugin';
+import { useNotification, useFetchClient  } from '@strapi/strapi/admin';
 import init from './init';
 import pluginId from '../../pluginId';
 import reducer, { initialState } from './reducer';
@@ -15,7 +15,7 @@ const useCacheStrategy = (shouldFetchData = true) => {
   const isMounted = useRef(true);
   const abortController = new AbortController();
   const { signal } = abortController;
-
+  const { get } = useFetchClient()
   useEffect(() => {
     if (shouldFetchData) {
       fetchCacheStrategy();
@@ -34,11 +34,10 @@ const useCacheStrategy = (shouldFetchData = true) => {
         type: 'GET_DATA',
       });
 
-      const { strategy } = await request(`/${pluginId}/config/strategy`, {
-        method: 'GET',
+      const {data} = await get(`/${pluginId}/config/strategy`, {
         signal,
       });
-
+      const strategy = data.strategy
       dispatch({
         type: 'GET_DATA_SUCCEEDED',
         data: strategy,

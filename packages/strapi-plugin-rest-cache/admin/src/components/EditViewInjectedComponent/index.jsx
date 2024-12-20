@@ -1,5 +1,6 @@
 import React from 'react';
-import { useCMEditViewDataManager, useRBAC } from '@strapi/helper-plugin';
+import { useRBAC } from '@strapi/strapi/admin';
+import { unstable_useContentManagerContext as useContentManagerContext } from '@strapi/strapi/admin';
 import cachePermissions from '../../permissions';
 import PurgeCacheButton from '../PurgeCacheButton';
 
@@ -10,15 +11,14 @@ function EditViewInjectedComponent() {
     slug,
     isCreatingEntry,
     hasDraftAndPublish,
-    initialData,
+    form,
     isSingleType,
-  } = useCMEditViewDataManager();
-
+  } = useContentManagerContext();
+  const { initialValues } = form; 
   if (isCreatingEntry) {
     return null;
   }
-
-  if (hasDraftAndPublish && initialData.publishedAt === null) {
+  if (hasDraftAndPublish && initialValues.publishedAt === null) {
     return null;
   }
 
@@ -29,8 +29,10 @@ function EditViewInjectedComponent() {
   return (
     <PurgeCacheButton
       contentType={slug}
-      params={isSingleType ? {} : initialData}
+      params={isSingleType ? {} : initialValues}
       wildcard={isSingleType}
+      size="M" 
+      fullWidth={true}
     />
   );
 }

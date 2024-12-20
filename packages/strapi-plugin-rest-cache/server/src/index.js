@@ -7,6 +7,7 @@ const { controllers } = require('./controllers');
 const { middlewares } = require('./middlewares');
 const { routes } = require('./routes');
 const { register } = require('./register')
+const { types } = require('./types')
 
 module.exports = {
   bootstrap,

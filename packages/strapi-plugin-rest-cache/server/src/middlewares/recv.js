@@ -24,7 +24,7 @@ function createRecv(options, { strapi }) {
     );
   }
   const store = strapi.plugin('rest-cache').service('cacheStore');
-  const { strategy } = strapi.config.get('plugin.rest-cache');
+  const { strategy } = strapi.config.get("plugin::rest-cache");
   const { cacheRouteConfig } = options;
   const { hitpass, maxAge, keys } = cacheRouteConfig;
   const { enableEtag = false, enableXCacheHeaders = false } = strategy;

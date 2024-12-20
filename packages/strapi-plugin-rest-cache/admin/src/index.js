@@ -1,4 +1,3 @@
-import { prefixPluginTranslations } from '@strapi/helper-plugin';
 import pluginPkg from '../../package.json';
 import pluginId from './pluginId';
 
@@ -8,6 +7,19 @@ import EditViewInjectedComponent from './components/EditViewInjectedComponent';
 import ListViewInjectedComponent from './components/ListViewInjectedComponent';
 
 const { name } = pluginPkg.strapi;
+
+const prefixPluginTranslations = (
+  trad,
+  pluginId
+) => {
+  if (!pluginId) {
+    throw new TypeError("pluginId can't be empty");
+  }
+  return Object.keys(trad).reduce((acc, current) => {
+    acc[`${pluginId}.${current}`] = trad[current];
+    return acc;
+  }, {});
+};
 
 export default {
   register(app) {
@@ -19,15 +31,15 @@ export default {
     });
   },
   bootstrap(app) {
-    app.injectContentManagerComponent('editView', 'informations', {
+    app.getPlugin('content-manager').injectComponent('editView', 'right-links', {
       name: 'EditViewInfoInjectedComponent',
       Component: EditViewInfoInjectedComponent,
     });
-    app.injectContentManagerComponent('editView', 'right-links', {
+    app.getPlugin('content-manager').injectComponent('editView', 'right-links', {
       name: 'EditViewInjectedComponent',
       Component: EditViewInjectedComponent,
     });
-    app.injectContentManagerComponent('listView', 'actions', {
+    app.getPlugin('content-manager').injectComponent('listView', 'actions', {
       name: 'ListViewInjectedComponent',
       Component: ListViewInjectedComponent,
     });
