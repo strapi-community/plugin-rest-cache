@@ -2,10 +2,9 @@ import pluginPkg from '../../package.json';
 import pluginId from './pluginId';
 
 import Initializer from './components/Initializer';
-import EditViewInfoInjectedComponent from './components/EditViewInfoInjectedComponent';
-import EditViewInjectedComponent from './components/EditViewInjectedComponent';
 import ListViewInjectedComponent from './components/ListViewInjectedComponent';
-
+import PurgeDocumentAction from './components/PurgeDocumentAction';
+import EditViewInfoDocumentPanel from './components/EditViewInfoDocumentPanel';
 const { name } = pluginPkg.strapi;
 
 const prefixPluginTranslations = (
@@ -31,14 +30,9 @@ export default {
     });
   },
   bootstrap(app) {
-    app.getPlugin('content-manager').injectComponent('editView', 'right-links', {
-      name: 'EditViewInfoInjectedComponent',
-      Component: EditViewInfoInjectedComponent,
-    });
-    app.getPlugin('content-manager').injectComponent('editView', 'right-links', {
-      name: 'EditViewInjectedComponent',
-      Component: EditViewInjectedComponent,
-    });
+    app.getPlugin('content-manager').apis.addDocumentAction([PurgeDocumentAction])
+    app.getPlugin('content-manager').apis.addEditViewSidePanel([EditViewInfoDocumentPanel])
+
     app.getPlugin('content-manager').injectComponent('listView', 'actions', {
       name: 'ListViewInjectedComponent',
       Component: ListViewInjectedComponent,
