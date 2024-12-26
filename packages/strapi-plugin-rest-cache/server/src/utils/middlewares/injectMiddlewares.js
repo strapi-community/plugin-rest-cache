@@ -21,7 +21,6 @@ function injectMiddleware(route, pluginUUid, config = {}) {
   if (typeof route.config === 'undefined') {
     route.config = {};
   }
-  route['rest-cache-config'] = config;
   if (typeof route.config.middlewares === 'undefined') {
     route.config.middlewares = [
       {
@@ -30,10 +29,21 @@ function injectMiddleware(route, pluginUUid, config = {}) {
       },
     ];
   } else {
-    route.config.middlewares.push({
+    const index = route.config.middlewares.findIndex((middleware) => {
+      return middleware === pluginUUid || typeof middleware === 'object' && middleware.name === pluginUUid
+    })
+
+    if(index === -1){
+      route.config.middlewares.push({
+        name: pluginUUid,
+        config: config,
+      });
+      return
+    }
+    route.config.middlewares[index] = {
       name: pluginUUid,
       config: config,
-    });
+    }
   }
 }
 
