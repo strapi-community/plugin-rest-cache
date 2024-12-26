@@ -11,7 +11,6 @@ function ListViewInjectedComponent() {
     params: { slug },
   } = useMatch ('/content-manager/:kind/:slug?');
   const { allowedActions } = useRBAC(cachePermissions);
-  console.log(allowedActions)
   if (!allowedActions.canReadStrategy || !allowedActions.canPurge) {
     return null;
   }

@@ -28,13 +28,11 @@ const  createProvider = async (providerConfig, { strapi }) => {
       throw error;
     }
   }
-  console.log(modulePath)
   try {
     // eslint-disable-next-line
     const requireProvider = createRequire(import.meta.url);
     provider = requireProvider(modulePath)
   } catch (err) {
-    console.log(err)
     throw new Error(
       `Could not load REST Cache provider "${providerName}". You may need to install a provider plugin "yarn add strapi-provider-rest-cache-${providerName}".`
     );
@@ -43,7 +41,7 @@ const  createProvider = async (providerConfig, { strapi }) => {
   const providerInstance = await provider.init(providerConfig.options, {
     strapi,
   });
-  
+
   if (!looksLikeInstanceof(providerInstance,CacheProvider)) {
     throw new Error(
       `Could not load REST Cache provider "${providerName}". The package "strapi-provider-rest-cache-${providerName}" does not export a CacheProvider instance.`
