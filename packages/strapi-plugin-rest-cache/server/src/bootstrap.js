@@ -1,5 +1,15 @@
 'use strict';
 
+
+ const looksLikeInstanceof =(value, target) => {
+  let current = value?.constructor
+  do {
+    if (current?.name === target.name) return true
+    current = Object.getPrototypeOf(current)
+  } while (current?.name)
+  return false
+}
+
 const chalk = require('chalk');
 const { createRequire } = require("module");
 const permissionsActions = require('./permissions-actions');
@@ -33,12 +43,12 @@ const  createProvider = async (providerConfig, { strapi }) => {
   const providerInstance = await provider.init(providerConfig.options, {
     strapi,
   });
-  // TODO make this work somehow?
-  /*if (!(providerInstance instanceof CacheProvider)) {
+  
+  if (!looksLikeInstanceof(providerInstance,CacheProvider)) {
     throw new Error(
       `Could not load REST Cache provider "${providerName}". The package "strapi-provider-rest-cache-${providerName}" does not export a CacheProvider instance.`
     );
-  }*/
+  }
 
   return Object.freeze(providerInstance);
 };
