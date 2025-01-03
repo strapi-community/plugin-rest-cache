@@ -2,14 +2,14 @@
 
 /**
  * @typedef {import('@strapi/strapi').Strapi} Strapi
- * @typedef {import('../types').CacheProvider} CacheProvider
+ * @typedef {import('../src/types').CacheProvider} CacheProvider
  */
 const chalk = require('chalk');
 const debug = require('debug')('strapi:strapi-plugin-rest-cache');
 
-const { serialize } = require('../utils/store/serialize');
-const { deserialize } = require('../utils/store/deserialize');
-const { withTimeout } = require('../utils/store/withTimeout');
+const { serialize } = require('../src/utils/store/serialize');
+const { deserialize } = require('../src/utils/store/deserialize');
+const { withTimeout } = require('../src/utils/store/withTimeout');
 
 // @todo: use cache provider instead of hard-coded LRU
 
@@ -23,7 +23,7 @@ function createCacheStoreService({ strapi }) {
   let provider;
   let initialized = false;
 
-  const pluginConfig = strapi.config.get("plugin::rest-cache");
+  const pluginConfig = strapi.config.get('plugin::rest-cache');
   const { getTimeout } = pluginConfig.provider;
   const { keysPrefix } = pluginConfig.strategy;
   const keysPrefixRe = keysPrefix ? new RegExp(`^${keysPrefix}`) : null;
@@ -56,9 +56,7 @@ function createCacheStoreService({ strapi }) {
         getTimeout
       ).catch((error) => {
         if (error?.message === 'timeout') {
-          strapi.log.error(
-            `REST Cache provider timed-out after ${getTimeout}ms.`
-          );
+          strapi.log.error(`REST Cache provider timed-out after ${getTimeout}ms.`);
         } else {
           strapi.log.error(`REST Cache provider errored:`);
           strapi.log.error(error);
@@ -156,9 +154,7 @@ function createCacheStoreService({ strapi }) {
       }
 
       try {
-        return this.keys().then((keys) =>
-          Promise.all(keys.map((key) => this.del(key)))
-        );
+        return this.keys().then((keys) => Promise.all(keys.map((key) => this.del(key))));
       } catch (error) {
         strapi.log.error(`REST Cache provider errored:`);
         strapi.log.error(error);
@@ -184,8 +180,7 @@ function createCacheStoreService({ strapi }) {
       /**
        * @param {string} key
        */
-      const shouldDel = (key) =>
-        regExps.find((r) => r.test(key.replace(keysPrefix, '')));
+      const shouldDel = (key) => regExps.find((r) => r.test(key.replace(keysPrefix, '')));
 
       /**
        * @param {string} key
@@ -201,33 +196,23 @@ function createCacheStoreService({ strapi }) {
      * @param {boolean=} wildcard
      */
     async clearByUid(uid, params = {}, wildcard = false) {
-      const { strategy } = strapi.config.get("plugin::rest-cache");
+      const { strategy } = strapi.config.get('plugin::rest-cache');
 
-      const cacheConfigService = strapi
-        .plugin('rest-cache')
-        .service('cacheConfig');
+      const cacheConfigService = strapi.plugin('rest-cache').service('cacheConfig');
 
       const cacheConf = cacheConfigService.get(uid);
 
       if (!cacheConf) {
-        throw new Error(
-          `Unable to clear cache: no configuration found for contentType "${uid}"`
-        );
+        throw new Error(`Unable to clear cache: no configuration found for contentType "${uid}"`);
       }
 
-      const regExps = cacheConfigService.getCacheKeysRegexp(
-        uid,
-        params,
-        wildcard
-      );
+      const regExps = cacheConfigService.getCacheKeysRegexp(uid, params, wildcard);
 
       if (strategy.clearRelatedCache) {
         for (const relatedUid of cacheConf.relatedContentTypeUid) {
           if (cacheConfigService.isCached(relatedUid)) {
             // clear all cache because we can't predict uri params
-            regExps.push(
-              ...cacheConfigService.getCacheKeysRegexp(relatedUid, {}, true)
-            );
+            regExps.push(...cacheConfigService.getCacheKeysRegexp(relatedUid, {}, true));
           }
         }
       }

@@ -1,12 +1,13 @@
 {
-  "name": "strapi-plugin-rest-cache",
-  "version": "4.2.9",
+  "name": "@strapi-community/plugin-rest-cache",
+  "version": "5.0.0-beta.0",
   "description": "Speed-up HTTP requests with LRU cache",
   "license": "MIT",
   "strapi": {
     "displayName": "REST Cache",
     "name": "rest-cache",
     "description": "Speed-up HTTP requests with LRU cache",
+    "required": false,
     "kind": "plugin"
   },
   "keywords": [
@@ -34,17 +35,26 @@
     {
       "name": "Davide Pellegatta",
       "email": "davide.pellegatta@gmail.com"
+    },
+    {
+      "name": "Derrick Mehaffy",
+      "email": "derrickmehaffy@gmail.com",
+      "url": "https://github.com/derrickmehaffy"
+    },
+    {
+      "name": "Boegie19",
+      "url": "https://github.com/Boegie19"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/strapi-community/strapi-plugin-rest-cache.git",
-    "directory": "packages/strapi-plugin-rest-cache"
+    "url": "git+https://github.com/strapi-community/plugin-rest-cache.git",
+    "directory": "packages/plugin-rest-cache"
   },
   "bugs": {
-    "url": "https://github.com/strapi-community/strapi-plugin-rest-cache/issues"
+    "url": "https://github.com/strapi-community/plugin-rest-cache/issues"
   },
-  "homepage": "https://strapi-community.github.io/strapi-plugin-rest-cache/",
+  "homepage": "https://strapi-community.github.io/plugin-rest-cache/",
   "type": "commonjs",
   "exports": {
     "./package.json": "./package.json",
@@ -71,29 +81,29 @@
     "watch:link": "strapi-plugin watch:link"
   },
   "dependencies": {
-    "@strapi/design-system": "^2.0.0-rc.14",
-    "@strapi/icons": "^2.0.0-rc.14",
-    "react-intl": "^7.0.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2",
-    "styled-components": "^6.1.13"
+    "@strapi/design-system": "2.0.0-rc.14",
+    "@strapi/icons": "2.0.0-rc.14",
+    "react-intl": "6.6.2",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
   },
   "devDependencies": {
-    "@strapi/sdk-plugin": "^5.2.8",
+    "@strapi/sdk-plugin": "5.2.8",
     "@strapi/strapi": "5.6.0",
     "prettier": "^3.4.2",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.0.2",
-    "styled-components": "^6.1.13"
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
   },
   "peerDependencies": {
-    "@strapi/sdk-plugin": "^5.2.8",
+    "@strapi/sdk-plugin": "5.2.8",
     "@strapi/strapi": "^5.6.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
-    "styled-components": "^6.1.13"
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
   }
 }

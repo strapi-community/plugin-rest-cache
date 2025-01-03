@@ -1,12 +1,13 @@
 {
-  "name": "strapi-provider-rest-cache-redis",
-  "version": "4.2.9",
+  "name": "@strapi-community/provider-rest-cache-redis",
+  "version": "5.0.0-beta.0",
   "description": "Speed-up HTTP requests with LRU cache",
   "license": "MIT",
   "strapi": {
     "displayName": "REST Cache (redis)",
-    "name": "strapi-provider-rest-cache-redis",
+    "name": "provider-rest-cache-redis",
     "description": "Redis provider for REST Cache plugin",
+    "required": false,
     "kind": "plugin"
   },
   "keywords": [
@@ -28,17 +29,31 @@
     {
       "name": "Patrick R",
       "url": "https://github.com/patrixr/"
+    },
+    {
+      "name": "Davide Pellegatta",
+      "email": "davide.pellegatta@gmail.com"
+    },
+    {
+      "name": "Derrick Mehaffy",
+      "email": "derrickmehaffy@gmail.com",
+      "url": "https://github.com/derrickmehaffy"
+    },
+    {
+      "name": "Boegie19",
+      "url": "https://github.com/Boegie19"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/strapi-community/strapi-plugin-rest-cache.git",
-    "directory": "packages/strapi-provider-rest-cache-redis"
+    "url": "git+https://github.com/strapi-community/plugin-rest-cache.git",
+    "directory": "packages/plugin-rest-cache"
   },
   "bugs": {
-    "url": "https://github.com/strapi-community/strapi-plugin-rest-cache/issues"
+    "url": "https://github.com/strapi-community/plugin-rest-cache/issues"
   },
-  "homepage": "https://strapi-community.github.io/strapi-plugin-rest-cache/",
+  "homepage": "https://strapi-community.github.io/plugin-rest-cache/",
+  "type": "commonjs",
   "main": "lib/index.js",
   "files": [
     "lib/**/*.js"
@@ -53,20 +68,15 @@
     "test:lint": "run-s eslint prettier"
   },
   "dependencies": {
-    "cache-manager": "^3.6.0",
+    "cache-manager": "^6.3.2",
     "cache-manager-ioredis": "^2.1.0"
   },
   "devDependencies": {
     "@strapi-community/plugin-redis": "^2.0.0",
-    "strapi-plugin-rest-cache": "^4.2.9"
+    "@strapi-community/plugin-rest-cache": "5.0.0-beta.0"
   },
   "peerDependencies": {
     "@strapi/strapi": "^5.0.0",
-    "strapi-plugin-rest-cache": "^4.0.0"
-  },
-  "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
-  },
-  "gitHead": "80f7c4b1c3915484e282597292cd1f5c749cbe8f"
+    "@strapi-community/plugin-rest-cache": "5.0.0-beta.0"
+  }
 }

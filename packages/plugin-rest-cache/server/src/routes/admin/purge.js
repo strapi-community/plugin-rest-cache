@@ -1,6 +1,6 @@
 'use strict';
 
-const pluginId = require('../../pluginId');
+const pluginId = require('../../src/pluginId');
 
 module.exports = [
   {
