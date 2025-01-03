@@ -2,14 +2,14 @@
 
 /**
  * @typedef {import('@strapi/strapi').Strapi} Strapi
- * @typedef {import('../src/types').CacheProvider} CacheProvider
+ * @typedef {import('./types').CacheProvider} CacheProvider
  */
 const chalk = require('chalk');
 const debug = require('debug')('strapi:strapi-plugin-rest-cache');
 
-const { serialize } = require('../src/utils/store/serialize');
-const { deserialize } = require('../src/utils/store/deserialize');
-const { withTimeout } = require('../src/utils/store/withTimeout');
+const { serialize } = require('../utils/store/serialize');
+const { deserialize } = require('../utils/store/deserialize');
+const { withTimeout } = require('../utils/store/withTimeout');
 
 // @todo: use cache provider instead of hard-coded LRU
 

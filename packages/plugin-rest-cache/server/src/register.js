@@ -13,7 +13,7 @@ const { injectMiddlewares } = require('./utils/middlewares/injectMiddlewares');
  */
 async function register({ strapi }) {
   // resolve user configuration, check for missing or invalid optinos
-  const pluginOption = strapi.config.get("plugin::rest-cache");
+  const pluginOption = strapi.config.get('plugin::rest-cache');
   const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
 
   if (pluginOption.strategy.debug === true) {
@@ -21,7 +21,7 @@ async function register({ strapi }) {
   }
 
   const strategy = resolveUserStrategy(strapi, pluginOption.strategy);
-  strapi.config.set("plugin::rest-cache", {
+  strapi.config.set('plugin::rest-cache', {
     ...pluginOption,
     strategy,
   });

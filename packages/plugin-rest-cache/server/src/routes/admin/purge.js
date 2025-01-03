@@ -1,6 +1,8 @@
 'use strict';
 
-const pluginId = require('../../src/pluginId');
+//TODO: Fix this broken require with rollup
+//const pluginId = require('../../pluginId');
+const pluginId = 'rest-cache';
 
 module.exports = [
   {
