@@ -112,7 +112,7 @@ function getRelatedModelsUid(strapi, uid) {
 
       if (attr.type !== 'component') continue;
       if (!attr.component) continue;
-      if (!relatedComponents.includes(attr.component)) continue;
+      if (relatedComponents.includes(attr.component)) continue;
       if (relatedModels[modelKey]) continue;
 
       relatedModels[modelKey] = models[modelKey];
