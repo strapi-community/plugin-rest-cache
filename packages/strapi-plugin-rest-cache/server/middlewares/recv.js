@@ -34,7 +34,7 @@ function createRecv(options, { strapi }) {
     const cacheKey = generateCacheKey(ctx, keys);
 
     // hitpass check
-    const lookup = shouldLookup(ctx, hitpass);
+    const lookup = await shouldLookup(ctx, hitpass);
 
     // keep track of the etag
     let etagCached = null;

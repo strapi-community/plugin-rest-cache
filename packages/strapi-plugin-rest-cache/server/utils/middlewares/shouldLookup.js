@@ -1,6 +1,6 @@
 'use strict';
 
-function shouldLookup(
+async function shouldLookup(
   ctx,
   hitpass // @todo: function or boolean => can be optimized
 ) {
@@ -11,7 +11,7 @@ function shouldLookup(
   }
 
   if (type === 'function') {
-    return !hitpass(ctx);
+    return !(await hitpass(ctx));
   }
 
   return false;
