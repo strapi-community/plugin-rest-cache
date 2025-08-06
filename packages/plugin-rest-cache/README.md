@@ -4,11 +4,11 @@
 <p style="margin-top: 0;">Speed-up HTTP requests with LRU cache.</p>
 	
 <p>
-  <a href="https://www.npmjs.org/package/strapi-plugin-rest-cache">
-    <img src="https://img.shields.io/npm/v/strapi-plugin-rest-cache/latest.svg" alt="NPM Version" />
+  <a href="https://www.npmjs.org/package/@strapi-community/plugin-rest-cache">
+    <img src="https://img.shields.io/npm/v/@strapi-community/plugin-rest-cache/latest.svg" alt="NPM Version" />
   </a>
-  <a href="https://www.npmjs.org/package/strapi-plugin-rest-cache">
-    <img src="https://img.shields.io/npm/dm/strapi-plugin-rest-cache" alt="Monthly download on NPM" />
+  <a href="https://www.npmjs.org/package/@strapi-community/plugin-rest-cache">
+    <img src="https://img.shields.io/npm/dm/@strapi-community/plugin-rest-cache" alt="Monthly download on NPM" />
   </a>
 </p>
 </div>
@@ -45,7 +45,7 @@ Supported Strapi Versions:
 
 ## 🚚 Getting Started
 
-[Read the Docs to Learn More.](https://strapi-community.github.io/strapi-plugin-rest-cache/)
+[Read the Docs to Learn More.](https://strapi-community.github.io/plugin-rest-cache/)
 
 ## Contributing
 

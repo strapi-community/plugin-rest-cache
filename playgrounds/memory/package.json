@@ -20,8 +20,8 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
-    "strapi-plugin-rest-cache": "^4.2.9",
-    "strapi-provider-rest-cache-memory": "^4.2.9",
+    "@strapi-community/plugin-rest-cache": "5.0.0-beta.0",
+    "@strapi-community/provider-rest-cache-memory": "5.0.0-beta.0",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {

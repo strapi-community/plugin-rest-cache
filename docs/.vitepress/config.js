@@ -11,10 +11,10 @@ export default defineConfig({
   lastUpdated: true,
   themeConfig: {
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/strapi-community/strapi-plugin-rest-cache' },
+      { icon: 'github', link: 'https://github.com/strapi-community/plugin-rest-cache' },
     ],
     editLink: {
-      pattern: 'https://github.com/strapi-community/strapi-plugin-rest-cache/edit/main/docs/:path',
+      pattern: 'https://github.com/strapi-community/plugin-rest-cache/edit/main/docs/:path',
       text: 'Edit this page on GitHub'
     },
     logo: {
@@ -35,7 +35,7 @@ export default defineConfig({
         items: [
           {
             text: 'Changelog',
-            link: 'https://github.com/strapi-community/strapi-plugin-rest-cache/blob/main/CHANGELOG.md'
+            link: 'https://github.com/strapi-community/plugin-rest-cache/blob/main/CHANGELOG.md'
           },
           {
             text: 'Strapi Community',
