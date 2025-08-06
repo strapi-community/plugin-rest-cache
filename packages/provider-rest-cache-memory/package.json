@@ -71,10 +71,10 @@
     "cache-manager": "^3.6.0"
   },
   "devDependencies": {
-    "@strapi-community/plugin-rest-cache": "5.0.0-beta.0"
+    "@strapi-community/plugin-rest-cache": "^5.0.0-beta.0"
   },
   "peerDependencies": {
     "@strapi/strapi": "^5.0.0",
-    "@strapi-community/plugin-rest-cache": "5.0.0-beta.0"
+    "@strapi-community/plugin-rest-cache": "^5.0.0-beta.0"
   }
 }
