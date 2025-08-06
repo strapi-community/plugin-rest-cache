@@ -69,15 +69,21 @@
       "import": "./dist/server/index.mjs",
       "require": "./dist/server/index.js",
       "default": "./dist/server/index.js"
+    },
+    "./types": {
+      "source": "./server/types/src/index.js",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "strapi-plugin build",
+    "build": "pack-up build",
     "verify": "strapi-plugin verify",
-    "watch": "strapi-plugin watch",
+    "watch": "pack-up watch",
     "watch:link": "strapi-plugin watch:link"
   },
   "dependencies": {
