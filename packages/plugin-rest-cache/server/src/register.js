@@ -3,15 +3,15 @@
 /**
  * @typedef {import('@strapi/strapi').Strapi} Strapi
  */
-const debug = require('debug');
+import debug from 'debug';
 
-const { resolveUserStrategy } = require('./utils/config/resolveUserStrategy');
-const { injectMiddlewares } = require('./utils/middlewares/injectMiddlewares');
+import { resolveUserStrategy } from './utils/config/resolveUserStrategy';
+import { injectMiddlewares } from './utils/middlewares/injectMiddlewares';
 
 /**
  * @param {{ strapi: Strapi }} strapi
  */
-async function register({ strapi }) {
+export default async function register({ strapi }) {
   // resolve user configuration, check for missing or invalid optinos
   const pluginOption = strapi.config.get('plugin::rest-cache');
   const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
@@ -36,7 +36,3 @@ async function register({ strapi }) {
     await cacheStore.reset();
   }
 }
-
-module.exports = {
-  register,
-};

@@ -11,7 +11,7 @@
  * @param {string} uid The contentType used to find related caches to purge
  * @return {string[]} Array of related models uid
  */
-function getRelatedModelsUid(strapi, uid) {
+export const getRelatedModelsUid = function (strapi, uid) {
   if (!uid) {
     return [];
   }
@@ -74,5 +74,3 @@ function getRelatedModelsUid(strapi, uid) {
     }
   }
 }
-
-module.exports = { getRelatedModelsUid };

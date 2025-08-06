@@ -9,10 +9,10 @@ const looksLikeInstanceof = (value, target) => {
   return false;
 };
 
-const chalk = require('chalk');
-const { createRequire } = require('module');
-const permissionsActions = require('./permissions-actions');
-const { CacheProvider } = require('./types');
+import chalk from 'chalk';
+import { createRequire } from 'module';
+import permissionsActions from './permissions-actions';
+import { CacheProvider } from './types';
 const createProvider = async (providerConfig, { strapi }) => {
   const providerName = providerConfig.name.toLowerCase();
   let provider;
@@ -53,7 +53,7 @@ const createProvider = async (providerConfig, { strapi }) => {
 /**
  * @param {{ strapi: Strapi }} strapi
  */
-async function bootstrap({ strapi }) {
+export default async function bootstrap({ strapi }) {
   // resolve user configuration, check for missing or invalid optinos
   const pluginOption = strapi.config.get('plugin::rest-cache');
   const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
@@ -78,7 +78,3 @@ async function bootstrap({ strapi }) {
     `Using REST Cache plugin with provider "${chalk.cyan(pluginOption.provider.name)}"`
   );
 }
-
-module.exports = {
-  bootstrap,
-};

@@ -1,6 +1,6 @@
 'use strict';
 
-class CacheKeysConfig {
+export class CacheKeysConfig {
   /**
    * @type {string[]}
    */
@@ -19,5 +19,3 @@ class CacheKeysConfig {
     this.useHeaders.sort();
   }
 }
-
-module.exports = { CacheKeysConfig };

@@ -1,9 +1,9 @@
 'use strict';
 
-const configRoutes = require('./config');
-const purgeRoutes = require('./purge');
+import configRoutes from './config';
+import purgeRoutes from './purge';
 
-module.exports = {
+export default {
   type: 'admin',
   routes: [...configRoutes, ...purgeRoutes],
 };

@@ -3,9 +3,9 @@
 /**
  * @typedef {import('./CacheContentTypeConfig').CacheContentTypeConfig} CacheContentTypeConfig
  */
-const { CacheKeysConfig } = require('./CacheKeysConfig');
+import { CacheKeysConfig } from './CacheKeysConfig';
 
-class CachePluginStrategy {
+export class CachePluginStrategy {
   debug = false;
 
   enableEtag = false;
@@ -58,5 +58,3 @@ class CachePluginStrategy {
     this.keys = keys;
   }
 }
-
-module.exports = { CachePluginStrategy };

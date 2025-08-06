@@ -1,10 +1,8 @@
 'use strict';
 
-//TODO: Fix this broken require with rollup
-//const pluginId = require('../../pluginId');
-const pluginId = 'rest-cache';
+import pluginId from '../../pluginId';
 
-module.exports = [
+export default [
   {
     method: 'GET',
     path: '/config/strategy',

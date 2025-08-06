@@ -1,6 +1,6 @@
 'use strict';
 
-function generateQueryParamsKey(
+export const generateQueryParamsKey = function (
   ctx,
   useQueryParams = true // @todo: array or boolean => can be optimized
 ) {
@@ -29,5 +29,3 @@ function generateQueryParamsKey(
     ) // query strings are key sensitive
     .join(',');
 }
-
-module.exports = { generateQueryParamsKey };

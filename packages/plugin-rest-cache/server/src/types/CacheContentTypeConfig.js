@@ -5,9 +5,9 @@
  * @typedef {import('koa').Context} Context
  * @typedef {(ctx: Context) => boolean} CachePluginHitpass
  */
-const { CacheKeysConfig } = require('./CacheKeysConfig');
+import { CacheKeysConfig } from './CacheKeysConfig';
 
-class CacheContentTypeConfig {
+export class CacheContentTypeConfig {
   singleType = false;
 
   injectDefaultRoutes = true;
@@ -68,5 +68,3 @@ class CacheContentTypeConfig {
     this.plugin = plugin;
   }
 }
-
-module.exports = { CacheContentTypeConfig };

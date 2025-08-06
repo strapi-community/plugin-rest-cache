@@ -1,11 +1,9 @@
 'use strict';
 
-const { createCacheConfigService: cacheConfig } = require('./cacheConfig');
-const { createCacheStoreService: cacheStore } = require('./cacheStore');
+import cacheConfig from './cacheConfig';
+import cacheStore from './cacheStore';
 
-const services = {
+export default {
   cacheConfig,
   cacheStore,
 };
-
-module.exports = { services };

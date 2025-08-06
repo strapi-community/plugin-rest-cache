@@ -1,6 +1,7 @@
 'use strict';
 
-// eslint-disable-next-line import/extensions
-const packageJson = require('../../package.json');
+import pluginPkg from '../../package.json';
 
-module.exports = packageJson.strapi.name;
+const pluginId = pluginPkg.strapi.name;
+
+export default pluginId;

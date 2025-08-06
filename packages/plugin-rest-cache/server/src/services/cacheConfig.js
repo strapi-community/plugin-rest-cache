@@ -4,13 +4,13 @@
  * @typedef {import('@strapi/strapi').Strapi} Strapi
  */
 
-const { getRouteRegExp } = require('../utils/config/getRouteRegExp');
+import { getRouteRegExp } from '../utils/config/getRouteRegExp';
 
 /**
  * @param {{ strapi: Strapi }} strapi
  */
 
-function createCacheConfigService({ strapi }) {
+export default function createCacheConfigService({ strapi }) {
   return {
     /**
      * Get all uid of cached contentTypes
@@ -117,5 +117,3 @@ function createCacheConfigService({ strapi }) {
     },
   };
 }
-
-module.exports = { createCacheConfigService };

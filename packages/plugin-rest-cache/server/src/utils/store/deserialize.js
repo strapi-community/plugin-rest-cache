@@ -4,11 +4,9 @@
  * @param {string} str
  * @return {any}
  */
-function deserialize(str) {
+export const deserialize = function (str) {
   if (!str) {
     return null;
   }
   return JSON.parse(str).data;
 }
-
-module.exports = { deserialize };

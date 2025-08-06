@@ -1,15 +1,11 @@
 'use strict';
 
-const { createRecv: recv } = require('./recv');
-const { createPurge: purge } = require('./purge');
-const { createPurgeAdmin: purgeAdmin } = require('./purgeAdmin');
+import recv from './recv';
+import purge from './purge';
+import purgeAdmin from './purgeAdmin';
 
-const middlewares = {
+export default {
   recv,
   purge,
   purgeAdmin,
-};
-
-module.exports = {
-  middlewares,
 };

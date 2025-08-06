@@ -8,7 +8,7 @@
  * @param {number} ms
  * @return {Promise<never>}
  */
-function withTimeout(callback, ms) {
+export const withTimeout = function (callback, ms) {
   let timeout;
 
   return Promise.race([
@@ -23,7 +23,3 @@ function withTimeout(callback, ms) {
     }),
   ]);
 }
-
-module.exports = {
-  withTimeout,
-};

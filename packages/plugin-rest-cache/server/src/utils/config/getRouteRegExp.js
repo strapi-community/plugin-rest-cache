@@ -13,7 +13,7 @@
  * @param {boolean=} wildcard
  * @return {RegExp[]}
  */
-function getRouteRegExp(route, params, wildcard = false) {
+export const getRouteRegExp = function (route, params, wildcard = false) {
   // route not contains any params -> clear
   if (!route.paramNames || !route.paramNames.length) {
     return [new RegExp(`^${route.path}\\?`)];
@@ -52,5 +52,3 @@ function getRouteRegExp(route, params, wildcard = false) {
 
   return regExps;
 }
-
-module.exports = { getRouteRegExp };

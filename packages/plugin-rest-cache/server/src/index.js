@@ -1,15 +1,14 @@
 'use strict';
 
-const { bootstrap } = require('./bootstrap');
-const { services } = require('./services');
-const { config } = require('./config');
-const { controllers } = require('./controllers');
-const { middlewares } = require('./middlewares');
-const { routes } = require('./routes');
-const { register } = require('./register');
-const { types } = require('./types');
+import bootstrap from './bootstrap';
+import services from './services';
+import config from './config';
+import controllers from './controllers';
+import middlewares from './middlewares';
+import routes from './routes';
+import register from './register';
 
-module.exports = {
+export default {
   bootstrap,
   register,
   config,

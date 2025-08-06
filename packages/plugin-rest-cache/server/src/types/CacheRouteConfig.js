@@ -3,9 +3,9 @@
 /**
  * @typedef {(ctx: Context) => boolean} CachePluginHitpass
  */
-const { CacheKeysConfig } = require('./CacheKeysConfig');
+import { CacheKeysConfig } from './CacheKeysConfig';
 
-class CacheRouteConfig {
+export class CacheRouteConfig {
   maxAge = 3600000;
 
   /**
@@ -50,7 +50,3 @@ class CacheRouteConfig {
     this.keys = keys;
   }
 }
-
-module.exports = {
-  CacheRouteConfig,
-};

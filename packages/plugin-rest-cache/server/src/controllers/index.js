@@ -1,13 +1,9 @@
 'use strict';
 
-const { createPurgeController: purge } = require('./purge');
-const { createConfigController: config } = require('./config');
+import purge from './purge';
+import config from './config';
 
-const controllers = {
+export default {
   purge,
   config,
-};
-
-module.exports = {
-  controllers,
 };

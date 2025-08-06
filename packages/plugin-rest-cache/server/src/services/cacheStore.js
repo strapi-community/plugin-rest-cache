@@ -4,19 +4,19 @@
  * @typedef {import('@strapi/strapi').Strapi} Strapi
  * @typedef {import('./types').CacheProvider} CacheProvider
  */
-const chalk = require('chalk');
-const debug = require('debug')('strapi:strapi-plugin-rest-cache');
+import chalk from 'chalk';
+import debug from 'debug';
 
-const { serialize } = require('../utils/store/serialize');
-const { deserialize } = require('../utils/store/deserialize');
-const { withTimeout } = require('../utils/store/withTimeout');
+import { serialize } from '../utils/store/serialize';
+import { deserialize } from '../utils/store/deserialize';
+import { withTimeout } from '../utils/store/withTimeout';
 
 // @todo: use cache provider instead of hard-coded LRU
 
 /**
  * @param {{ strapi: Strapi }} strapi
  */
-function createCacheStoreService({ strapi }) {
+export default function createCacheStoreService({ strapi }) {
   /**
    * @type {CacheProvider}
    */
@@ -105,7 +105,7 @@ function createCacheStoreService({ strapi }) {
       }
 
       try {
-        debug(`${chalk.redBright('[PURGING KEY]')}: ${key}`);
+        debug('strapi:strapi-plugin-rest-cache')(`${chalk.redBright('[PURGING KEY]')}: ${key}`);
         return provider.del(`${keysPrefix}${key}`);
       } catch (error) {
         strapi.log.error(`REST Cache provider errored:`);
@@ -221,7 +221,3 @@ function createCacheStoreService({ strapi }) {
     },
   };
 }
-
-module.exports = {
-  createCacheStoreService,
-};

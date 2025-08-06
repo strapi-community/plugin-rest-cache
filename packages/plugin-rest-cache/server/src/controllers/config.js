@@ -8,7 +8,7 @@
 /**
  * @param {{ strapi: Strapi }} strapi
  */
-function createConfigController({ strapi }) {
+export default function createConfigController({ strapi }) {
   return {
     /**
      * @param {Context} ctx
@@ -26,6 +26,3 @@ function createConfigController({ strapi }) {
     },
   };
 }
-module.exports = {
-  createConfigController,
-};

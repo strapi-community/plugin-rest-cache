@@ -4,8 +4,6 @@
  * @param {any} data
  * @return {string}
  */
-function serialize(data) {
+export const serialize = function (data) {
   return JSON.stringify({ data });
 }
-
-module.exports = { serialize };

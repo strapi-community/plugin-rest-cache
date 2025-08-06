@@ -5,14 +5,14 @@
  * @typedef {import('@strapi/strapi').Strapi} Strapi
  */
 
-const { getRelatedModelsUid } = require('./getRelatedModelsUid');
-const { deepFreeze } = require('./deepFreeze');
-const {
+import { getRelatedModelsUid } from './getRelatedModelsUid';
+import { deepFreeze } from './deepFreeze';
+import {
   CachePluginStrategy,
   CacheRouteConfig,
   CacheContentTypeConfig,
   CacheKeysConfig,
-} = require('../../types');
+} from '../../types';
 
 const routeParamNameRegex = /:([^/]+)/g;
 const routeParams = /(?<=\/\:).*?(?=\/|$)/g;
@@ -22,7 +22,7 @@ const routeParams = /(?<=\/\:).*?(?=\/|$)/g;
  * @param {any} userOptions
  * @return {CachePluginStrategy}
  */
-function resolveUserStrategy(strapi, userOptions) {
+export const resolveUserStrategy = function (strapi, userOptions) {
   const { contentTypes = [] } = userOptions;
 
   /**
@@ -198,5 +198,3 @@ function resolveUserStrategy(strapi, userOptions) {
     })
   );
 }
-
-module.exports = { resolveUserStrategy };

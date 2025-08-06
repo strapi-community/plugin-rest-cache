@@ -5,13 +5,13 @@
  * @return {void}
  */
 
-function flattenRoutes(strapi) {
+export const flattenRoutes = function (strapi) {
   let routes = [];
   for (const contentTypes of Object.values(strapi.api)) {
     routes = routes.concat(flatten(contentTypes));
   }
   // @TODO add prefix support before doing this
-  
+
   const apiPrefix = strapi.config.get('api.rest.prefix');
 
   for (const route of routes) {
@@ -33,7 +33,3 @@ function flatten(routes) {
   }
   return returnRoutes;
 }
-
-module.exports = {
-  flattenRoutes,
-};

@@ -1,6 +1,6 @@
 'use strict';
 
-function etagMatch(ctx, etagCached) {
+export const etagMatch = function (ctx, etagCached) {
   const ifNoneMatch = ctx.request.headers['if-none-match'];
 
   if (!ifNoneMatch) {
@@ -9,5 +9,3 @@ function etagMatch(ctx, etagCached) {
 
   return ifNoneMatch.indexOf(`"${etagCached}"`) !== -1;
 }
-
-module.exports = { etagMatch };

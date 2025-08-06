@@ -1,6 +1,6 @@
 'use strict';
 
-function shouldLookup(
+export const shouldLookup = function (
   ctx,
   hitpass // @todo: function or boolean => can be optimized
 ) {
@@ -16,7 +16,3 @@ function shouldLookup(
 
   return false;
 }
-
-module.exports = {
-  shouldLookup,
-};

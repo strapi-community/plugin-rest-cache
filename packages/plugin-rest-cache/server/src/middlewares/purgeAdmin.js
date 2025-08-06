@@ -5,7 +5,7 @@
  * @param {{ strapi: import('@strapi/strapi').Strapi }} context
  */
 
-function createPurgeAdmin(options, { strapi }) {
+export default function createPurgeAdmin(options, { strapi }) {
   const cacheConfig = strapi.plugin('rest-cache').service('cacheConfig');
   const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
 
@@ -32,7 +32,3 @@ function createPurgeAdmin(options, { strapi }) {
     await cacheStore.clearByUid(uid, params);
   };
 }
-
-module.exports = {
-  createPurgeAdmin,
-};

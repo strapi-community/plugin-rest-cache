@@ -4,20 +4,20 @@
  * @typedef {import('../types').CacheRouteConfig} CacheRouteConfig
  */
 
-const chalk = require('chalk');
-const debug = require('debug')('strapi:strapi-plugin-rest-cache');
+import chalk from 'chalk';
+import debug from 'debug';
 
-const { generateCacheKey } = require('../utils/keys/generateCacheKey');
-const { shouldLookup } = require('../utils/middlewares/shouldLookup');
-const { etagGenerate } = require('../utils/etags/etagGenerate');
-const { etagLookup } = require('../utils/etags/etagLookup');
-const { etagMatch } = require('../utils/etags/etagMatch');
+import { generateCacheKey } from '../utils/keys/generateCacheKey';
+import { shouldLookup } from '../utils/middlewares/shouldLookup';
+import { etagGenerate } from '../utils/etags/etagGenerate';
+import { etagLookup } from '../utils/etags/etagLookup';
+import { etagMatch } from '../utils/etags/etagMatch';
 
 /**
  * @param {{ cacheRouteConfig: CacheRouteConfig }} options
  * @param {{ strapi: import('@strapi/strapi').Strapi }} context
  */
-function createRecv(options, { strapi }) {
+export default function createRecv(options, { strapi }) {
   if (!options?.cacheRouteConfig) {
     throw new Error(
       'REST Cache: unable to initialize recv middleware: options.cacheRouteConfig is required'
@@ -62,7 +62,7 @@ function createRecv(options, { strapi }) {
 
       // hit cache
       if (cacheEntry) {
-        debug(`[RECV] GET ${cacheKey} ${chalk.green('HIT')}`);
+        debug('strapi:strapi-plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.green('HIT')}`);
 
         if (enableXCacheHeaders) {
           ctx.set('X-Cache', 'HIT');
@@ -84,7 +84,7 @@ function createRecv(options, { strapi }) {
 
     // fetch done
     if (!lookup) {
-      debug(`[RECV] GET ${cacheKey} ${chalk.magenta('HITPASS')}`);
+      debug('strapi:strapi-plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.magenta('HITPASS')}`);
 
       if (enableXCacheHeaders) {
         ctx.set('X-Cache', 'HITPASS');
@@ -95,7 +95,7 @@ function createRecv(options, { strapi }) {
     }
 
     // deliver
-    debug(`[RECV] GET ${cacheKey} ${chalk.yellow('MISS')}`);
+    debug('strapi:strapi-plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.yellow('MISS')}`);
 
     if (enableXCacheHeaders) {
       ctx.set('X-Cache', 'MISS');
@@ -111,7 +111,7 @@ function createRecv(options, { strapi }) {
 
         // persist etag asynchronously
         store.set(`${cacheKey}_etag`, etag, maxAge).catch(() => {
-          debug(
+          debug('strapi:strapi-plugin-rest-cache')(
             `[RECV] GET ${cacheKey} ${chalk.yellow(
               'Unable to store ETag in cache'
             )}`
@@ -121,7 +121,7 @@ function createRecv(options, { strapi }) {
 
       // persist cache asynchronously
       store.set(cacheKey, ctx.body, maxAge).catch(() => {
-        debug(
+        debug('strapi:strapi-plugin-rest-cache')(
           `[RECV] GET ${cacheKey} ${chalk.yellow(
             'Unable to store Content in cache'
           )}`
@@ -130,7 +130,3 @@ function createRecv(options, { strapi }) {
     }
   };
 }
-
-module.exports = {
-  createRecv,
-};

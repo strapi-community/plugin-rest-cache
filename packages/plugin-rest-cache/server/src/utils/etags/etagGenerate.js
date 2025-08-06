@@ -1,8 +1,8 @@
 'use strict';
 
-const crypto = require('crypto');
+import crypto from 'crypto';
 
-function etagGenerate(ctx) {
+export const etagGenerate = function (ctx) {
   const type = typeof ctx.body;
   const etag = crypto
     .createHash('md5')
@@ -11,6 +11,3 @@ function etagGenerate(ctx) {
 
   return etag;
 }
-module.exports = {
-  etagGenerate,
-};

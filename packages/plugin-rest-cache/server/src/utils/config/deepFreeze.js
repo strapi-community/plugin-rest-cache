@@ -1,6 +1,6 @@
 'use strict';
 
-function deepFreeze(object) {
+export const deepFreeze = function (object) {
   // Retrieve the property names defined on object
   const propNames = Object.getOwnPropertyNames(object);
 
@@ -15,5 +15,3 @@ function deepFreeze(object) {
 
   return Object.freeze(object);
 }
-
-module.exports = { deepFreeze };

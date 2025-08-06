@@ -8,7 +8,7 @@
 /**
  * @param {{ strapi: Strapi }} strapi
  */
-function createPurgeController({ strapi }) {
+export default function createPurgeController({ strapi }) {
   return {
     /**
      * @param {Context} ctx
@@ -42,7 +42,3 @@ function createPurgeController({ strapi }) {
     },
   };
 }
-
-module.exports = {
-  createPurgeController,
-};

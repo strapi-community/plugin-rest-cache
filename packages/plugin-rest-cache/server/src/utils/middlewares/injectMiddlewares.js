@@ -1,8 +1,8 @@
 'use strict';
 
-const chalk = require('chalk');
-const debug = require('debug')('strapi:strapi-plugin-rest-cache');
-const { flattenRoutes } = require('./flattenRoutes');
+import chalk from 'chalk';
+import debug from 'debug';
+import { flattenRoutes } from './flattenRoutes';
 
 const adminRoutes = {
   post: [
@@ -52,11 +52,11 @@ function injectMiddleware(route, pluginUUid, config = {}) {
  * @param {CachePluginStrategy} strategy
  * @return {void}
  */
-function injectMiddlewares(strapi, strategy) {
+export const injectMiddlewares = function (strapi, strategy) {
   const strapiRoutes = flattenRoutes(strapi);
 
   for (const cacheConf of strategy.contentTypes) {
-    debug(`[REGISTER] ${chalk.cyan(cacheConf.contentType)} routes middlewares`);
+    debug('strapi:strapi-plugin-rest-cache')(`[REGISTER] ${chalk.cyan(cacheConf.contentType)} routes middlewares`);
     for (const cacheRoute of cacheConf.routes) {
       const indexID = strapiRoutes.findIndex(
         (route) =>
@@ -68,7 +68,7 @@ function injectMiddlewares(strapi, strategy) {
 
       // If the route exists lets inject the middleware
       if (indexID === -1) {
-        debug(
+        debug('strapi:strapi-plugin-rest-cache')(
           '[WARNING] route "[%s] %s" not registered in strapi, ignoring...',
           cacheRoute.method,
           cacheRoute.path
@@ -79,7 +79,7 @@ function injectMiddlewares(strapi, strategy) {
           case 'PUT':
           case 'PATCH':
           case 'POST':
-            debug(
+            debug('strapi:strapi-plugin-rest-cache')(
               `[REGISTER] ${cacheRoute.method} ${
                 cacheRoute.path
               } ${chalk.redBright('purge')}`
@@ -97,7 +97,7 @@ function injectMiddlewares(strapi, strategy) {
               .map((name) => name.toLowerCase())
               .join(',');
 
-            debug(
+            debug('strapi:strapi-plugin-rest-cache')(
               `[REGISTER] GET ${cacheRoute.path} ${chalk.green(
                 'recv'
               )} ${chalk.grey(`maxAge=${cacheRoute.maxAge}`)}${
@@ -118,7 +118,7 @@ function injectMiddlewares(strapi, strategy) {
 
   // --- Admin REST endpoints
   if (strategy.enableAdminCTBMiddleware) {
-    debug(`[REGISTER] ${chalk.magentaBright('admin')} routes middlewares`);
+    debug('strapi:strapi-plugin-rest-cache')(`[REGISTER] ${chalk.magentaBright('admin')} routes middlewares`);
     let contentMangerRoutes = [];
     for (const routes of Object.values(
       strapi.plugins['content-manager'].routes
@@ -135,7 +135,7 @@ function injectMiddlewares(strapi, strategy) {
           strapiRoute.method === 'POST' && strapiRoute.globalPath === route
       );
       if (indexID !== -1) {
-        debug(`[REGISTER] POST ${route} ${chalk.magentaBright('purge-admin')}`);
+        debug('strapi:strapi-plugin-rest-cache')(`[REGISTER] POST ${route} ${chalk.magentaBright('purge-admin')}`);
         injectMiddleware(
           contentMangerRoutes[indexID],
           'plugin::rest-cache.purgeAdmin'
@@ -149,7 +149,7 @@ function injectMiddlewares(strapi, strategy) {
           strapiRoute.method === 'PUT' && strapiRoute.globalPath === route
       );
       if (indexID !== -1) {
-        debug(`[REGISTER] PUT ${route} ${chalk.magentaBright('purge-admin')}`);
+        debug('strapi:strapi-plugin-rest-cache')(`[REGISTER] PUT ${route} ${chalk.magentaBright('purge-admin')}`);
         injectMiddleware(
           contentMangerRoutes[indexID],
           'plugin::rest-cache.purgeAdmin'
@@ -163,7 +163,7 @@ function injectMiddlewares(strapi, strategy) {
           strapiRoute.method === 'PUT' && strapiRoute.globalPath === route
       );
       if (indexID !== -1) {
-        debug(
+        debug('strapi:strapi-plugin-rest-cache')(
           `[REGISTER] DELETE ${route} ${chalk.magentaBright('purge-admin')}`
         );
         injectMiddleware(
@@ -174,7 +174,3 @@ function injectMiddlewares(strapi, strategy) {
     }
   }
 }
-
-module.exports = {
-  injectMiddlewares,
-};

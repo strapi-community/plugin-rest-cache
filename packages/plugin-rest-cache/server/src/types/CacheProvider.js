@@ -8,7 +8,7 @@
  *
  * @class CacheProvider
  */
-class CacheProvider {
+export class CacheProvider {
   constructor() {
     if (this.constructor === CacheProvider) {
       throw new Error("CacheProvider class can't be instantiated.");
@@ -46,7 +46,3 @@ class CacheProvider {
     throw new Error("getter 'ready' must be implemented.");
   }
 }
-
-module.exports = {
-  CacheProvider,
-};
