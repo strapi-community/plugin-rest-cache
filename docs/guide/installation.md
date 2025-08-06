@@ -19,12 +19,6 @@ title: Installation
      strapi-provider-rest-cache-redis
    ```
 
-   ```bash [couchbase]
-   yarn add \
-     strapi-plugin-rest-cache \
-     strapi-provider-rest-cache-couchbase
-   ```
-
    ::::
 
    ::: info
@@ -81,37 +75,6 @@ title: Installation
          strategy: {
            // if you are using keyPrefix for your Redis, please add <keysPrefix>
            keysPrefix: "<redis_keyPrefix>",
-           contentTypes: [
-             // list of Content-Types UID to cache
-             "api::category.category",
-             "api::article.article",
-             "api::global.global",
-             "api::homepage.homepage",
-           ],
-         },
-       },
-     },
-   };
-   ```
-
-   ```js [couchbase]
-   module.exports = {
-     "rest-cache": {
-       config: {
-         provider: {
-           name: "couchbase",
-           max: 32767,
-           options: {
-             connectionString: "couchbase://127.0.0.1:8091",
-             connectionOptions: {
-               username: "Administrator",
-               password: "couchbase",
-             },
-             bucket: "test-bucket",
-             ttl: 2,
-           },
-         },
-         strategy: {
            contentTypes: [
              // list of Content-Types UID to cache
              "api::category.category",

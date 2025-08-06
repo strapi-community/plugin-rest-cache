@@ -9,7 +9,6 @@ By default, the **strapi-plugin-rest-cache** use **strapi-provider-rest-cache-me
 Alternatively, you can use:
 
 - **strapi-provider-rest-cache-redis** which is a bridge between the cache plugin and the [strapi-plugin-redis](https://github.com/strapi-community/strapi-plugin-redis)
-- **strapi-provider-rest-cache-couchbase** which connect to a couchbase cluster and store the cache in a bucket
 - Your custom provider
 
 You have to set the provider name in the plugin configuration so it will be initialized once the plugin is bootstrapped. At this time only one provider can be used at a time.
@@ -45,7 +44,7 @@ module.exports = ({ env }) => ({
 Note that each provider has its own configuration, so you will have to refer to the provider documentation to know how to configure it.
 
 ::: tip
-Check the [memory](./memory.md), [redis](./redis.md) or [couchbase](./couchbase.md) documentation for more details for advanced provider configuration.
+Check the [memory](./memory.md) or [redis](./redis.md) documentation for more details for advanced provider configuration.
 :::
 
 ## `Provider` reference

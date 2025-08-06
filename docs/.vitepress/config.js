@@ -27,7 +27,7 @@ export default defineConfig({
     nav: [
       {
         text: "Guide",
-        link: "/guide/", 
+        link: "/guide/",
         activeMatch: '/guide/',
       },
       {
@@ -60,7 +60,6 @@ export default defineConfig({
             { text: 'Provider configuration', link: '/guide/provider/' },
             { text: 'Provider: Memory', link: '/guide/provider/memory' },
             { text: 'Provider: Redis', link: '/guide/provider/redis' },
-            { text: 'Provider: Couchbase', link: '/guide/provider/couchbase' },
             { text: 'Custom provider', link: '/guide/provider/custom-provider' },
           ]
         },
