@@ -68,7 +68,7 @@
     "test:lint": "run-s eslint prettier"
   },
   "dependencies": {
-    "cache-manager": "^6.3.2",
+    "cache-manager": "^3.6.0",
     "cache-manager-ioredis": "^2.1.0"
   },
   "devDependencies": {
