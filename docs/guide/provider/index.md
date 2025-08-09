@@ -4,11 +4,11 @@ title: Cache provider configuration
 
 # Cache provider configuration
 
-By default, the **strapi-plugin-rest-cache** use **strapi-provider-rest-cache-memory** which is an in-memory provider. It's not persisted and will be lost when the server restarts.
+By default, the **@strapi-community/plugin-rest-cache** use **@strapi-community/provider-rest-cache-memory** which is an in-memory provider. It's not persisted and will be lost when the server restarts.
 
 Alternatively, you can use:
 
-- **strapi-provider-rest-cache-redis** which is a bridge between the cache plugin and the [strapi-plugin-redis](https://github.com/strapi-community/strapi-plugin-redis)
+- **@strapi-community/provider-rest-cache-redis** which is a bridge between the cache plugin and the [@strapi-community/plugin-redis](https://github.com/strapi-community/plugin-redis)
 - Your custom provider
 
 You have to set the provider name in the plugin configuration so it will be initialized once the plugin is bootstrapped. At this time only one provider can be used at a time.

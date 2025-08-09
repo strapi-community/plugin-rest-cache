@@ -9,14 +9,14 @@ title: Installation
    :::: code-group
 
    ```bash [memory (default)]
-   yarn add strapi-plugin-rest-cache
+   yarn add @strapi-community/plugin-rest-cache
    ```
 
    ```bash [redis]
    yarn add \
-     strapi-plugin-rest-cache \
-     strapi-plugin-redis \
-     strapi-provider-rest-cache-redis
+     @strapi-community/plugin-rest-cache \
+     @strapi-community/plugin-redis \
+     @strapi-community/provider-rest-cache-redis
    ```
 
    ::::

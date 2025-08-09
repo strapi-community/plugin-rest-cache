@@ -2,6 +2,7 @@
   "name": "@strapi-plugin-rest-cache/monorepo",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "Speed-up HTTP requests with LRU cache",
   "workspaces": [
     "./packages/*",
