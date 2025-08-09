@@ -1,15 +1,19 @@
 import { createRequire } from 'module'
-import { defineConfig } from 'vitepress'
+import defineVersionedConfig from 'vitepress-versioning-plugin'
 
 const require = createRequire(import.meta.url)
 const pkg = require('@strapi-community/plugin-rest-cache/package.json')
 
-export default defineConfig({
+export default defineVersionedConfig({
   title: "REST Cache",
   description: "Speed-up HTTP requests with LRU cache",
   base: "/plugin-rest-cache/",
   lastUpdated: true,
+  versioning: {
+    latestVersion: pkg.version,
+  },
   themeConfig: {
+    versionSwitcher: false,
     socialLinks: [
       { icon: 'github', link: 'https://github.com/strapi-community/plugin-rest-cache' },
     ],
@@ -31,17 +35,7 @@ export default defineConfig({
         activeMatch: '/guide/',
       },
       {
-        text: pkg.version,
-        items: [
-          {
-            text: 'Changelog',
-            link: 'https://github.com/strapi-community/plugin-rest-cache/blob/main/CHANGELOG.md'
-          },
-          {
-            text: 'Strapi Community',
-            link: 'https://github.com/strapi-community'
-          }
-        ]
+        component: 'VersionSwitcher',
       }
     ],
     sidebar: {
@@ -81,7 +75,46 @@ export default defineConfig({
             { text: 'Services', link: '/guide/api/' },
             { text: 'Admin Routes', link: '/guide/api/admin-routes' },
           ]
-        }
+        },
+      ],
+      '/4.x.x/': [
+        {
+          text: 'Guide',
+          items: [
+            { text: 'Introduction', link: '/4.x.x/' },
+            { text: 'Installation', link: '/4.x.x/installation' },
+          ]
+        },
+        {
+          text: 'Provider',
+          collapsible: true,
+          items: [
+            { text: 'Provider configuration', link: '/4.x.x/provider/' },
+            { text: 'Provider: Memory', link: '/4.x.x/provider/memory' },
+            { text: 'Provider: Redis', link: '/4.x.x/provider/redis' },
+            { text: 'Provider: Couchbase', link: '/4.x.x/provider/couchbase' },
+            { text: 'Custom provider', link: '/4.x.x/provider/custom-provider' },
+          ]
+        },
+        {
+          text: 'Strategy',
+          collapsible: true,
+          items: [
+            { text: 'Strategy configuration', link: '/4.x.x/strategy/' },
+            { text: 'Cache content type', link: '/4.x.x/strategy/cache-content-type' },
+            { text: 'Cache custom routes', link: '/4.x.x/strategy/cache-custom-routes' },
+            { text: 'Cache keys', link: '/4.x.x/strategy/cache-keys' },
+            { text: 'Debug mode', link: '/4.x.x/strategy/debug' },
+          ]
+        },
+        {
+          text: 'API',
+          collapsible: true,
+          items: [
+            { text: 'Services', link: '/4.x.x/api/' },
+            { text: 'Admin Routes', link: '/4.x.x/api/admin-routes' },
+          ]
+        },
       ],
       '/reference/': [
         {
@@ -96,4 +129,4 @@ export default defineConfig({
       ]
     }
   }
-})
+}, __dirname);
