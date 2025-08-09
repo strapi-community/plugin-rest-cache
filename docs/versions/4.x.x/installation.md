@@ -28,8 +28,7 @@ title: Installation
    ::::
 
    ::: info
-   This plugin is only compatible with Strapi v4.x.  
-   If you are looking for a plugin for Strapi v5.x, please check the [v5 documentation](../guide/installation).  
+    This plugin is only compatible with Strapi v4.0.0 and above.  
    If you are looking for a plugin for Strapi v3.x, please check the [strapi-middleware-cache](https://github.com/patrixr/strapi-middleware-cache/).
    :::
 
