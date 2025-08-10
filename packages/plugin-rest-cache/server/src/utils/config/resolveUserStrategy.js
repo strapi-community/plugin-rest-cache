@@ -141,7 +141,7 @@ export const resolveUserStrategy = function (strapi, userOptions) {
           ) {
             cacheConfig.routes.push(
               new CacheRouteConfig({
-                path: `/${apiPrefix}${route.path}`,
+                path: `${apiPrefix}${route.path}`,
                 paramNames: route.path.match(routeParams) ?? [],
                 method: route.method,
                 keys: new CacheKeysConfig(cacheConfig.keys),
@@ -159,7 +159,7 @@ export const resolveUserStrategy = function (strapi, userOptions) {
           ) {
             cacheConfig.routes.push(
               new CacheRouteConfig({
-                path: `/${apiPrefix}${route.path}`,
+                path: `${apiPrefix}${route.path}`,
                 paramNames: route.path.match(routeParams) ?? [],
                 method: route.method,
                 keys: new CacheKeysConfig(cacheConfig.keys),
@@ -174,7 +174,7 @@ export const resolveUserStrategy = function (strapi, userOptions) {
           ) {
             cacheConfig.routes.push(
               new CacheRouteConfig({
-                path: `/${apiPrefix}${route.path}`,
+                path: `${apiPrefix}${route.path}`,
                 paramNames: route.path.match(routeParams) ?? [],
                 method: route.method,
                 keys: new CacheKeysConfig(cacheConfig.keys),

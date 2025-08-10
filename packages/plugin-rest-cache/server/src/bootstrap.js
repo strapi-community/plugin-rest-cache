@@ -76,7 +76,7 @@ export default async function bootstrap({ strapi }) {
 
   // register cache provider
   const provider = await createProvider(pluginOption.provider, { strapi });
-  cacheStore.init(provider);
+  await cacheStore.init(provider);
 
   strapi.log.info(
     `Using REST Cache plugin with provider "${chalk.cyan(pluginOption.provider.name)}"`
