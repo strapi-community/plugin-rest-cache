@@ -7,7 +7,7 @@
 
 export const flattenRoutes = function (strapi) {
   let routes = [];
-  for (const contentTypes of Object.values(strapi.api)) {
+  for (const contentTypes of Object.values(strapi.apis)) {
     routes = routes.concat(flatten(contentTypes));
   }
   // @TODO add prefix support before doing this
@@ -15,7 +15,7 @@ export const flattenRoutes = function (strapi) {
   const apiPrefix = strapi.config.get('api.rest.prefix');
 
   for (const route of routes) {
-    route.globalPath = `/${apiPrefix}${route.path}`;
+    route.globalPath = `${apiPrefix}${route.path}`;
   }
   return routes;
 }

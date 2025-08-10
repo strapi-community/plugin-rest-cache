@@ -87,6 +87,7 @@
     "watch:link": "strapi-plugin watch:link"
   },
   "dependencies": {
+    "@strapi-community/provider-rest-cache-memory": "5.0.0-beta.0",
     "react-intl": "6.6.2"
   },
   "devDependencies": {

@@ -19,6 +19,10 @@ const createProvider = async (providerConfig, { strapi }) => {
 
   let modulePath;
   try {
+    /**
+     * @todo Allow custom providers installed from npm.
+     * Right now it will only load providers from the `@strapi-community` namespace.
+     */
     modulePath = require.resolve(`@strapi-community/provider-rest-cache-${providerName}`);
   } catch (error) {
     if (error.code === 'MODULE_NOT_FOUND') {
@@ -72,7 +76,7 @@ export default async function bootstrap({ strapi }) {
 
   // register cache provider
   const provider = await createProvider(pluginOption.provider, { strapi });
-  cacheStore.init(provider);
+  await cacheStore.init(provider);
 
   strapi.log.info(
     `Using REST Cache plugin with provider "${chalk.cyan(pluginOption.provider.name)}"`
