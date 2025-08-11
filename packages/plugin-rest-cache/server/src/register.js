@@ -17,7 +17,7 @@ export default async function register({ strapi }) {
   const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
 
   if (pluginOption.strategy.debug === true) {
-    debug.enable('strapi:strapi-plugin-rest-cache');
+    debug.enable('strapi:plugin-rest-cache');
   }
 
   const strategy = resolveUserStrategy(strapi, pluginOption.strategy);
@@ -26,7 +26,7 @@ export default async function register({ strapi }) {
     strategy,
   });
 
-  debug('strapi:strapi-plugin-rest-cache')('[STRATEGY]: %O', strategy);
+  debug('strapi:plugin-rest-cache')('[STRATEGY]: %O', strategy);
 
   // boostrap cache middlewares
   injectMiddlewares(strapi, strategy);
