@@ -25,9 +25,9 @@
     "test:e2e": "run-s test:e2e:*",
     "test:e2e:memory": "yarn workspace @strapi-plugin-rest-cache/playground-memory test:e2e",
     "test:e2e:redis": "yarn workspace @strapi-plugin-rest-cache/playground-redis test:e2e",
-    "build:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin build",
+    "build:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache pack-up build",
     "verify:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin verify",
-    "watch:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin watch",
+    "watch:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache pack-up watch",
     "watch:link:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin watch:link"
   },
   "license": "MIT",
