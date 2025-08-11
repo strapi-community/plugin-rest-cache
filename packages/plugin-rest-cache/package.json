@@ -91,6 +91,7 @@
     "react-intl": "6.6.2"
   },
   "devDependencies": {
+    "@strapi/pack-up": "^5.0.0",
     "@strapi/sdk-plugin": "^5.0.0",
     "@strapi/strapi": "^5.0.0",
     "prettier": "^3.4.2",
