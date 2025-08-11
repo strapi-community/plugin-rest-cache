@@ -7,7 +7,8 @@ module.exports = ({ env }) => ({
       provider: {
         name: "memory",
         options: {
-          ttl: 32767,
+          ttl: 3600 * 1000,
+          maxSize: 32767,
         }
       },
       // loads shared config (from /shared folder)

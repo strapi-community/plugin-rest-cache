@@ -26,6 +26,8 @@ module.exports = ({ env }) => ({
         options: {
           // The time to live in milliseconds. This is the maximum amount of time that an item can be in the cache before it is removed.
           ttl: 3600 * 1000
+          // The maximum number of items before evicting the least recently used items.
+          maxSize: 32767
           // ...
         },
       },
