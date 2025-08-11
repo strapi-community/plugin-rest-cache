@@ -62,7 +62,7 @@ export default function createRecv(options, { strapi }) {
 
       // hit cache
       if (cacheEntry) {
-        debug('strapi:strapi-plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.green('HIT')}`);
+        debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.green('HIT')}`);
 
         if (enableXCacheHeaders) {
           ctx.set('X-Cache', 'HIT');
@@ -84,7 +84,7 @@ export default function createRecv(options, { strapi }) {
 
     // fetch done
     if (!lookup) {
-      debug('strapi:strapi-plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.magenta('HITPASS')}`);
+      debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.magenta('HITPASS')}`);
 
       if (enableXCacheHeaders) {
         ctx.set('X-Cache', 'HITPASS');
@@ -95,7 +95,7 @@ export default function createRecv(options, { strapi }) {
     }
 
     // deliver
-    debug('strapi:strapi-plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.yellow('MISS')}`);
+    debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.yellow('MISS')}`);
 
     if (enableXCacheHeaders) {
       ctx.set('X-Cache', 'MISS');
@@ -111,7 +111,7 @@ export default function createRecv(options, { strapi }) {
 
         // persist etag asynchronously
         store.set(`${cacheKey}_etag`, etag, maxAge).catch(() => {
-          debug('strapi:strapi-plugin-rest-cache')(
+          debug('strapi:plugin-rest-cache')(
             `[RECV] GET ${cacheKey} ${chalk.yellow(
               'Unable to store ETag in cache'
             )}`
@@ -121,7 +121,7 @@ export default function createRecv(options, { strapi }) {
 
       // persist cache asynchronously
       store.set(cacheKey, ctx.body, maxAge).catch(() => {
-        debug('strapi:strapi-plugin-rest-cache')(
+        debug('strapi:plugin-rest-cache')(
           `[RECV] GET ${cacheKey} ${chalk.yellow(
             'Unable to store Content in cache'
           )}`
