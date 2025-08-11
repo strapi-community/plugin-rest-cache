@@ -1,17 +1,24 @@
 "use strict";
 
-const cacheManager = require("cache-manager");
-const redisStore = require("cache-manager-ioredis");
+const { createCache } = require("cache-manager");
+const Keyv = require("keyv");
+const KeyvRedis = require("@keyv/redis");
 const { CacheProvider } = require("@strapi-community/plugin-rest-cache/types");
 
 class RedisCacheProvider extends CacheProvider {
   constructor(client, options) {
     super();
+
+    const { ttl, ...adapterOptions } = options;
+
     this.client = client;
-    this.cache = cacheManager.caching({
-      store: redisStore,
-      redisInstance: client,
-      ...options,
+    this.cache = createCache({
+      ttl,
+      stores: [
+        new Keyv({
+          store: new KeyvRedis.default(client, adapterOptions),
+        }),
+      ]
     });
   }
 
@@ -28,9 +35,8 @@ class RedisCacheProvider extends CacheProvider {
    * @param {number=} maxAge
    */
   async set(key, val, maxAge = 3600) {
-    // TODO: When we upgrade the cache manager >=5.x.x, need to multiply this not divide
     const options = {
-      ttl: maxAge / 1000,
+      ttl: maxAge * 1000,
     };
     return this.cache.set(key, val, options);
   }
@@ -42,12 +48,16 @@ class RedisCacheProvider extends CacheProvider {
     return this.cache.del(key);
   }
 
-  async keys(prefix = "") {
-    return this.cache.keys(`${prefix}*`);
+  async keys() {
+    const keys = [];
+    for await (const [key, value] of this.cache.stores[0].iterator({})) {
+      keys.push(key);
+    }
+    return keys;
   }
 
   get ready() {
-    const client = this.cache.store.getClient();
+    const client = this.cache.stores[0].opts.store.redis;
     return client.status === "ready";
   }
 }

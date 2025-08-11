@@ -39,7 +39,7 @@ module.exports = {
   async init(options, { strapi }) {
     if (!strapi.redis) {
       throw new Error(
-        `Could not initialize REST Cache provider "redis". The package "strapi-plugin-redis" is required.`
+        `Could not initialize REST Cache provider "redis". The package "@strapi-community/plugin-redis" is required.`
       );
     }
 

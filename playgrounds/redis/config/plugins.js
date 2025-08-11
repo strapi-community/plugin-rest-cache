@@ -36,7 +36,7 @@ module.exports = ({ env }) => ({
       provider: {
         name: "redis",
         options: {
-          max: 32767,
+          ttl: 32767,
           connection: "default",
         },
       },

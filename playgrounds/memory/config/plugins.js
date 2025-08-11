@@ -6,7 +6,9 @@ module.exports = ({ env }) => ({
     config: {
       provider: {
         name: "memory",
-        max: 32767,
+        options: {
+          ttl: 32767,
+        }
       },
       // loads shared config (from /shared folder)
       strategy: require("./cache-strategy")({ env }),

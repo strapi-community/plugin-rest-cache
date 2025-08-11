@@ -68,8 +68,8 @@
     "test:lint": "run-s eslint prettier"
   },
   "dependencies": {
-    "cache-manager": "^3.6.0",
-    "cache-manager-ioredis": "^2.1.0"
+    "@keyv/redis": "^3.0.1",
+    "cache-manager": "^7.1.1"
   },
   "devDependencies": {
     "@strapi-community/plugin-redis": "^2.0.0",

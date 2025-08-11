@@ -1,13 +1,24 @@
 "use strict";
 
-/* eslint-disable class-methods-use-this */
-const cacheManager = require("cache-manager");
+const Keyv = require("keyv");
+const QuickLRU = require("quick-lru");
+const { createCache } = require("cache-manager");
 const { CacheProvider } = require("@strapi-community/plugin-rest-cache/types");
 
 class MemoryCacheProvider extends CacheProvider {
   constructor(options) {
     super();
-    this.cache = cacheManager.caching({ store: "memory", ...options });
+
+    const { ttl, ...adapterOptions } = options;
+
+    this.cache = createCache({
+      ttl,
+      stores: [
+        new Keyv({
+          store: new QuickLRU.default(adapterOptions),
+        }),
+      ]
+    });
   }
 
   /**
@@ -23,9 +34,8 @@ class MemoryCacheProvider extends CacheProvider {
    * @param {number=} maxAge
    */
   async set(key, val, maxAge = 3600) {
-    // TODO: When we upgrade the cache manager >=5.x.x, need to multiply this not divide
     const options = {
-      ttl: maxAge / 1000,
+      ttl: maxAge * 1000,
     };
     return this.cache.set(key, val, options);
   }
@@ -38,7 +48,11 @@ class MemoryCacheProvider extends CacheProvider {
   }
 
   async keys() {
-    return this.cache.keys();
+    const keys = [];
+    for await (const [key, value] of this.cache.stores[0].iterator({})) {
+      keys.push(key);
+    }
+    return keys;
   }
 
   get ready() {
