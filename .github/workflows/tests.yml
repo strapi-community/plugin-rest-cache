@@ -80,6 +80,8 @@ jobs:
 
       - run: yarn postinstall:memory
 
+      - run: yarn build:plugin:rest-cache
+
       - name: Run Memory e2e tests
         working-directory: playgrounds/memory
         run: yarn test:e2e
@@ -121,6 +123,8 @@ jobs:
         run: yarn --frozen-lockfile
 
       - run: yarn postinstall:redis
+
+      - run: yarn build:plugin:rest-cache
 
       - name: Run Redis e2e tests
         working-directory: playgrounds/redis
