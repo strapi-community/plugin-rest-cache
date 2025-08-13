@@ -1,7 +1,7 @@
 'use strict';
 
 const { createCache } = require('cache-manager');
-const Keyv = require('keyv');
+const Keyv = require('keyv').default;
 const KeyvRedis = require('@keyv/redis');
 const { CacheProvider } = require('@strapi-community/plugin-rest-cache/types');
 

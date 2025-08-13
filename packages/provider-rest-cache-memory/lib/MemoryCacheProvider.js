@@ -1,6 +1,6 @@
 'use strict';
 
-const Keyv = require('keyv');
+const Keyv = require('keyv').default;
 const QuickLRU = require('quick-lru');
 const { createCache } = require('cache-manager');
 const { CacheProvider } = require('@strapi-community/plugin-rest-cache/types');
