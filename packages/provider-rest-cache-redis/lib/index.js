@@ -1,9 +1,9 @@
-"use strict";
+'use strict';
 
 /**
  * @typedef {import('@strapi/strapi').Strapi} Strapi
  */
-const { RedisCacheProvider } = require("./RedisCacheProvider");
+const { RedisCacheProvider } = require('./RedisCacheProvider');
 
 function waitForRedis(client) {
   return new Promise((resolve, reject) => {
@@ -11,30 +11,26 @@ function waitForRedis(client) {
       strapi.log.info('REST Cache provider "redis": connection established');
 
       // eslint-disable-next-line no-use-before-define
-      client.off("error", onError);
+      client.off('error', onError);
       resolve();
     };
     const onError = (error) => {
-      client.off("ready", onReady);
-      reject(
-        new Error(
-          `Could not initialize REST Cache provider "redis": ${error?.message}`
-        )
-      );
+      client.off('ready', onReady);
+      reject(new Error(`Could not initialize REST Cache provider "redis": ${error?.message}`));
     };
 
-    if (client.status === "ready") {
-       return onReady();
+    if (client.status === 'ready') {
+      return onReady();
     }
 
-    client.once("ready", onReady);
-    client.once("error", onError);
+    client.once('ready', onReady);
+    client.once('error', onError);
   });
 }
 
 module.exports = {
-  provider: "redis",
-  name: "Redis",
+  provider: 'redis',
+  name: 'Redis',
 
   async init(options, { strapi }) {
     if (!strapi.redis) {
@@ -43,7 +39,7 @@ module.exports = {
       );
     }
 
-    const connectionName = options.connection || "default";
+    const connectionName = options.connection || 'default';
     const { client } = strapi.redis.connections[connectionName] ?? {};
 
     if (!client) {
@@ -52,8 +48,6 @@ module.exports = {
       );
     }
 
-    return waitForRedis(client).then(
-      () => new RedisCacheProvider(client, options)
-    );
+    return waitForRedis(client).then(() => new RedisCacheProvider(client, options));
   },
 };

@@ -1,9 +1,9 @@
-"use strict";
+'use strict';
 
-const Keyv = require("keyv");
-const QuickLRU = require("quick-lru");
-const { createCache } = require("cache-manager");
-const { CacheProvider } = require("@strapi-community/plugin-rest-cache/types");
+const Keyv = require('keyv');
+const QuickLRU = require('quick-lru');
+const { createCache } = require('cache-manager');
+const { CacheProvider } = require('@strapi-community/plugin-rest-cache/types');
 
 class MemoryCacheProvider extends CacheProvider {
   constructor(options) {
@@ -17,7 +17,7 @@ class MemoryCacheProvider extends CacheProvider {
         new Keyv({
           store: new QuickLRU.default(adapterOptions),
         }),
-      ]
+      ],
     });
   }
 
@@ -49,7 +49,7 @@ class MemoryCacheProvider extends CacheProvider {
 
   async keys() {
     const keys = [];
-    for await (const [key, value] of this.cache.stores[0].iterator({})) {
+    for await (const [key] of this.cache.stores[0].iterator({})) {
       keys.push(key);
     }
     return keys;

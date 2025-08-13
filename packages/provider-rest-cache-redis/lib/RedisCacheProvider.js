@@ -1,9 +1,9 @@
-"use strict";
+'use strict';
 
-const { createCache } = require("cache-manager");
-const Keyv = require("keyv");
-const KeyvRedis = require("@keyv/redis");
-const { CacheProvider } = require("@strapi-community/plugin-rest-cache/types");
+const { createCache } = require('cache-manager');
+const Keyv = require('keyv');
+const KeyvRedis = require('@keyv/redis');
+const { CacheProvider } = require('@strapi-community/plugin-rest-cache/types');
 
 class RedisCacheProvider extends CacheProvider {
   constructor(client, options) {
@@ -18,7 +18,7 @@ class RedisCacheProvider extends CacheProvider {
         new Keyv({
           store: new KeyvRedis.default(client, adapterOptions),
         }),
-      ]
+      ],
     });
   }
 
@@ -50,7 +50,7 @@ class RedisCacheProvider extends CacheProvider {
 
   async keys() {
     const keys = [];
-    for await (const [key, value] of this.cache.stores[0].iterator({})) {
+    for await (const [key] of this.cache.stores[0].iterator({})) {
       keys.push(key);
     }
     return keys;
@@ -58,7 +58,7 @@ class RedisCacheProvider extends CacheProvider {
 
   get ready() {
     const client = this.cache.stores[0].opts.store.redis;
-    return client.status === "ready";
+    return client.status === 'ready';
   }
 }
 
