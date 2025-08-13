@@ -22,7 +22,7 @@ describe.each([
 
     await setup();
   });
-  afterAll(teardown);
+  afterAll(async () => await teardown());
 
   // @todo: this test rely on assuming the cacheStore.reset() is working
   beforeEach(() => strapi.plugin("rest-cache").service("cacheStore").reset());
