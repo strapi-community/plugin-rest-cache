@@ -7,14 +7,14 @@ const pkg = require('strapi-plugin-rest-cache/package.json')
 export default defineConfig({
   title: "REST Cache",
   description: "Speed-up HTTP requests with LRU cache",
-  base: "/strapi-plugin-rest-cache/",
+  base: "/plugin-rest-cache/",
   lastUpdated: true,
   themeConfig: {
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/strapi-community/strapi-plugin-rest-cache' },
+      { icon: 'github', link: 'https://github.com/strapi-community/plugin-rest-cache' },
     ],
     editLink: {
-      pattern: 'https://github.com/strapi-community/strapi-plugin-rest-cache/edit/main/docs/:path',
+      pattern: 'https://github.com/strapi-community/plugin-rest-cache/edit/main/docs/:path',
       text: 'Edit this page on GitHub'
     },
     logo: {
@@ -27,7 +27,7 @@ export default defineConfig({
     nav: [
       {
         text: "Guide",
-        link: "/guide/", 
+        link: "/guide/",
         activeMatch: '/guide/',
       },
       {
@@ -35,7 +35,7 @@ export default defineConfig({
         items: [
           {
             text: 'Changelog',
-            link: 'https://github.com/strapi-community/strapi-plugin-rest-cache/blob/main/CHANGELOG.md'
+            link: 'https://github.com/strapi-community/plugin-rest-cache/blob/main/CHANGELOG.md'
           },
           {
             text: 'Strapi Community',

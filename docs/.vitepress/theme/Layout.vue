@@ -12,7 +12,7 @@ const { Layout } = DefaultTheme
     <template #doc-after>
       <div class="comments">
         <Giscus
-          repo="strapi-community/strapi-plugin-rest-cache"
+          repo="strapi-community/plugin-rest-cache"
           repo-id="R_kgDOGtExJQ"
           category="Documentation"
           category-id="DIC_kwDOGtExJc4CTWPj"

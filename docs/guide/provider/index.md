@@ -8,7 +8,7 @@ By default, the **strapi-plugin-rest-cache** use **strapi-provider-rest-cache-me
 
 Alternatively, you can use:
 
-- **strapi-provider-rest-cache-redis** which is a bridge between the cache plugin and the [strapi-plugin-redis](https://github.com/strapi-community/strapi-plugin-redis)
+- **strapi-provider-rest-cache-redis** which is a bridge between the cache plugin and the [strapi-plugin-redis](https://github.com/strapi-community/plugin-redis)
 - **strapi-provider-rest-cache-couchbase** which connect to a couchbase cluster and store the cache in a bucket
 - Your custom provider
 

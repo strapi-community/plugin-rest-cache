@@ -14,7 +14,7 @@ hero:
       link: /guide/
     - theme: alt
       text: View on GitHub
-      link: https://github.com/strapi-community/strapi-plugin-rest-cache
+      link: https://github.com/strapi-community/plugin-rest-cache
 features:
   - icon: ⚡
     title: Respond in ~1ms
