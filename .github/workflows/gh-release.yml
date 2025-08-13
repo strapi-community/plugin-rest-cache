@@ -25,7 +25,7 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: Release ${{ steps.meta.outputs.tag }}
-          body: View [CHANGELOG.md](https://github.com/strapi-community/strapi-plugin-rest-cache/blob/main/CHANGELOG.md) for details
+          body: View [CHANGELOG.md](https://github.com/strapi-community/plugin-rest-cache/blob/main/CHANGELOG.md) for details
           draft: false
           prerelease: false
           discussion_category_name: announcements
