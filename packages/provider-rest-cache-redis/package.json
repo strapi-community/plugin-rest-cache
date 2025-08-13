@@ -1,6 +1,6 @@
 {
   "name": "@strapi-community/provider-rest-cache-redis",
-  "version": "5.0.0-alpha.0",
+  "version": "5.0.0-alpha.1",
   "description": "Speed-up HTTP requests with LRU cache",
   "license": "MIT",
   "strapi": {
@@ -77,10 +77,10 @@
   },
   "devDependencies": {
     "@strapi-community/plugin-redis": "^2.0.0",
-    "@strapi-community/plugin-rest-cache": "^5.0.0-alpha.0"
+    "@strapi-community/plugin-rest-cache": "5.0.0-alpha.1"
   },
   "peerDependencies": {
-    "@strapi-community/plugin-rest-cache": "^5.0.0-beta.0",
+    "@strapi-community/plugin-rest-cache": "5.0.0-alpha.1",
     "@strapi/strapi": "^5.0.0"
   }
 }
