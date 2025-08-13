@@ -129,9 +129,10 @@ describe.each([
 
   describe("admin content-manager interactions", () => {
     it("should clear cache when admin update entity", async () => {
-      expect.assertions(5);
+      expect.assertions(7);
 
       const first = await agent().get("/api/homepage");
+      const second = await agent().get("/api/homepage");
       const update = await adminAgent()
         .put(
           "/content-manager/single-types/api::homepage.homepage?plugins[i18n][locale]=en"
@@ -153,14 +154,17 @@ describe.each([
           updatedBy: null,
           localizations: [],
         });
-      const second = await agent().get("/api/homepage");
+
+      const third = await agent().get("/api/homepage");
 
       expect(update.status).toBe(200);
       expect(first.status).toBe(200);
       expect(second.status).toBe(200);
-      // I don't know why but this test is failing as if the cache was not cleared beforehand
-      // expect(first.get("x-cache")).toBe("MISS");
-      expect(second.get("x-cache")).toBe("MISS");
+      expect(third.status).toBe(200);
+
+      expect(first.get("x-cache")).toBe("MISS");
+      expect(second.get("x-cache")).toBe("HIT");
+      expect(third.get("x-cache")).toBe("MISS");
     });
   });
 });

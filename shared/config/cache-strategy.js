@@ -8,7 +8,7 @@ module.exports = ({ env }) => ({
   enableAdminCTBMiddleware: env.bool("ENABLE_ADMIN_CTB_MIDDLEWARE", true),
   resetOnStartup: env.bool("RESET_STARTUP", false),
   clearRelatedCache: env.bool("CREAR_RELATED_CACHE", true),
-  keysPrefix: env.bool("KEYS_PREFIX", ''),
+  keysPrefix: env("KEYS_PREFIX", ''),
   keys: env.json("KEYS", {
     useHeaders: [],
     useQueryParams: true,

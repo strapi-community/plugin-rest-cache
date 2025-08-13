@@ -115,7 +115,6 @@ export const injectMiddlewares = function (strapi, strategy) {
       }
     }
   }
-
   // --- Admin REST endpoints
   if (strategy.enableAdminCTBMiddleware) {
     debug('strapi:plugin-rest-cache')(`[REGISTER] ${chalk.magentaBright('admin')} routes middlewares`);
@@ -132,7 +131,7 @@ export const injectMiddlewares = function (strapi, strategy) {
       const indexID = contentMangerRoutes.findIndex(
         (strapiRoute) =>
           // You can modify this to search for a specific route or multiple
-          strapiRoute.method === 'POST' && strapiRoute.globalPath === route
+          strapiRoute.method === 'POST' && strapiRoute.path === route
       );
       if (indexID !== -1) {
         debug('strapi:plugin-rest-cache')(`[REGISTER] POST ${route} ${chalk.magentaBright('purge-admin')}`);
@@ -146,7 +145,7 @@ export const injectMiddlewares = function (strapi, strategy) {
       const indexID = contentMangerRoutes.findIndex(
         (strapiRoute) =>
           // You can modify this to search for a specific route or multiple
-          strapiRoute.method === 'PUT' && strapiRoute.globalPath === route
+          strapiRoute.method === 'PUT' && strapiRoute.path === route
       );
       if (indexID !== -1) {
         debug('strapi:plugin-rest-cache')(`[REGISTER] PUT ${route} ${chalk.magentaBright('purge-admin')}`);
@@ -160,7 +159,7 @@ export const injectMiddlewares = function (strapi, strategy) {
       const indexID = contentMangerRoutes.findIndex(
         (strapiRoute) =>
           // You can modify this to search for a specific route or multiple
-          strapiRoute.method === 'PUT' && strapiRoute.globalPath === route
+          strapiRoute.method === 'DELETE' && strapiRoute.path === route
       );
       if (indexID !== -1) {
         debug('strapi:plugin-rest-cache')(
