@@ -11,6 +11,11 @@ class MemoryCacheProvider extends CacheProvider {
 
     const { ttl, ...adapterOptions } = options;
 
+    if (adapterOptions.max) {
+      adapterOptions.maxSize = adapterOptions.max;
+      delete adapterOptions.max;
+    }
+
     this.cache = createCache({
       ttl,
       stores: [
