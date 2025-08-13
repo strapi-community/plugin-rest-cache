@@ -12,6 +12,7 @@ const { shouldLookup } = require('../utils/middlewares/shouldLookup');
 const { etagGenerate } = require('../utils/etags/etagGenerate');
 const { etagLookup } = require('../utils/etags/etagLookup');
 const { etagMatch } = require('../utils/etags/etagMatch');
+const { setCacheControlHeader } = require('../utils/cache-control/cacheControlResponse');
 
 /**
  * @param {{ cacheRouteConfig: CacheRouteConfig }} options
@@ -27,7 +28,7 @@ function createRecv(options, { strapi }) {
   const { strategy } = strapi.config.get('plugin.rest-cache');
   const { cacheRouteConfig } = options;
   const { hitpass, maxAge, keys } = cacheRouteConfig;
-  const { enableEtag = false, enableXCacheHeaders = false } = strategy;
+  const { enableEtag = false, enableXCacheHeaders = false, cacheControlHeader = null } = strategy;
 
   return async function recv(ctx, next) {
     // hash
@@ -73,6 +74,8 @@ function createRecv(options, { strapi }) {
           ctx.set('ETag', `"${etagCached}"`);
         }
 
+        setCacheControlHeader(ctx, cacheControlHeader, cacheRouteConfig);
+
         ctx.status = 200;
         ctx.body = cacheEntry;
         return;
@@ -102,7 +105,7 @@ function createRecv(options, { strapi }) {
     }
 
     if (ctx.body && ctx.status >= 200 && ctx.status <= 300) {
-      // @TODO check Cache-Control response header
+      setCacheControlHeader(ctx, cacheControlHeader, cacheRouteConfig);
 
       if (enableEtag) {
         const etag = etagGenerate(ctx, cacheKey);

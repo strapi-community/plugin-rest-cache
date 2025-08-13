@@ -25,6 +25,7 @@ const config = {
         ),
       maxAge: 3600000,
       contentTypes: [],
+      cacheControlHeader: {},
     },
   }),
   validator() {},

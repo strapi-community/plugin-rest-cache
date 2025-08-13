@@ -1,7 +1,9 @@
 'use strict';
 
+const { CacheControlHeaderConfig } = require('./CacheControlHeaderConfig');
 /**
  * @typedef {import('./CacheContentTypeConfig').CacheContentTypeConfig} CacheContentTypeConfig
+ * @typedef {import('./CacheControlHeaderConfig').CacheControlHeaderConfig} CacheControlHeaderConfig
  */
 const { CacheKeysConfig } = require('./CacheKeysConfig');
 
@@ -32,6 +34,11 @@ class CachePluginStrategy {
    */
   keys;
 
+  /**
+   * @param {CacheControlHeaderConfig}
+   */
+  cacheControlHeader;
+
   constructor(options = {}) {
     const {
       debug = false,
@@ -44,6 +51,7 @@ class CachePluginStrategy {
       keysPrefix = '',
       contentTypes = [],
       keys = new CacheKeysConfig(),
+      cacheControlHeader = new CacheControlHeaderConfig(),
     } = options;
 
     this.debug = debug;
@@ -56,6 +64,7 @@ class CachePluginStrategy {
     this.keysPrefix = keysPrefix;
     this.contentTypes = contentTypes;
     this.keys = keys;
+    this.cacheControlHeader = cacheControlHeader;
   }
 }
 

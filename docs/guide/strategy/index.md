@@ -123,3 +123,19 @@ Specify each content types that should be cached. If a string is provided, defau
 
 - **Type:** [`(string|CacheContentTypeConfig)[]`](#cachecontenttypeconfig)
 - **Default:** `[]`
+
+### `cacheControlHeaders`
+Configure how to treat `Cache-Control` header in requests and responses.
+If omitted (default) - ignore `Cache-Control` header in requests and do not add it to responses.
+
+- **Type:** `CacheControlHeaderConfig`
+- **Default:** `{}`
+- **Example**:
+```js
+{
+  response: {
+    staleWhileRevalidate: 3600,
+    maxAge: 'CONFIG',
+  }
+}
+```
