@@ -19429,18 +19429,6 @@ vitepress-versioning-plugin@^1.3.0:
     lodash "^4.17.21"
     vite "^5.4.11"
     vitepress "1.5.0"
-    vitepress-versioning-plugin "file:../../../../Library/Caches/Yarn/v6/npm-vitepress-versioning-plugin-1.3.0-8caf6b03ed03815e11426e5745d408fd60eba758-integrity/node_modules/vitepress-versioning-plugin"
-
-"vitepress-versioning-plugin@file:../../../../Library/Caches/Yarn/v6/npm-vitepress-versioning-plugin-1.3.0-8caf6b03ed03815e11426e5745d408fd60eba758-integrity/node_modules/vitepress-versioning-plugin":
-  version "1.3.0"
-  dependencies:
-    "@types/lodash" "^4.17.13"
-    cli-color "^2.0.4"
-    json5 "^2.2.3"
-    lodash "^4.17.21"
-    vite "^5.4.11"
-    vitepress "1.5.0"
-    vitepress-versioning-plugin "file:../../../../Library/Caches/Yarn/v6/npm-vitepress-versioning-plugin-1.3.0-8caf6b03ed03815e11426e5745d408fd60eba758-integrity/node_modules/vitepress-versioning-plugin"
 
 vitepress@1.5.0:
   version "1.5.0"

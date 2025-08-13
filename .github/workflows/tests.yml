@@ -31,20 +31,20 @@ jobs:
         with:
           node-version: 18.x
 
-      # # cache node_modules
-      # - name: Cache dependencies
-      #   uses: actions/cache@v4
-      #   id: yarn-cache
-      #   with:
-      #     path: |
-      #       **/node_modules
-      #     key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-yarn-
+      # cache node_modules
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        id: yarn-cache
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       # install dependencies if the cache did not hit
       - name: Install dependencies
-        # if: steps.yarn-cache.outputs.cache-hit != 'true'
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
         run: yarn --frozen-lockfile
 
       - run: yarn test:lint
