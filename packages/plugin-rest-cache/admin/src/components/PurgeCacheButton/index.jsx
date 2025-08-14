@@ -15,7 +15,7 @@ function PurgeCacheButton({ contentType, params, wildcard = undefined, fullWidth
   const [isModalConfirmButtonLoading, setIsModalConfirmButtonLoading] =
     useState(false);
   const { formatMessage } = useIntl();
-  const toggleNotification = useNotification();
+  const { toggleNotification } = useNotification();
 
   const abortController = new AbortController();
   const { signal } = abortController;
@@ -44,10 +44,10 @@ function PurgeCacheButton({ contentType, params, wildcard = undefined, fullWidth
 
       toggleNotification({
         type: 'success',
-        message: {
+        message: formatMessage({
           id: 'cache.purge.success',
           defaultMessage: 'Cache purged successfully',
-        },
+        }),
       });
 
       setIsModalConfirmButtonLoading(false);
@@ -61,12 +61,12 @@ function PurgeCacheButton({ contentType, params, wildcard = undefined, fullWidth
       if (errorMessage) {
         toggleNotification({
           type: 'warning',
-          message: { id: 'cache.purge.error', defaultMessage: errorMessage },
+          message: formatMessage({ id: 'cache.purge.error', defaultMessage: errorMessage }),
         });
       } else {
         toggleNotification({
           type: 'warning',
-          message: { id: 'notification.error' },
+          message: formatMessage({ id: 'notification.error' }),
         });
       }
     }

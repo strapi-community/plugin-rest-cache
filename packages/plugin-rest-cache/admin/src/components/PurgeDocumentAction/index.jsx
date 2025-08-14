@@ -5,13 +5,13 @@ import { useFetchClient } from '@strapi/strapi/admin';
 import pluginId from '../../pluginId';
 import { useIntl } from 'react-intl';
 import {ArrowsCounterClockwise } from "@strapi/icons"
-function PurgeDocumentAction({ 
-    activeTab, 
-    collectionType, 
-    document, 
-    documentId, 
-    meta, 
-    model 
+function PurgeDocumentAction({
+    activeTab,
+    collectionType,
+    document,
+    documentId,
+    meta,
+    model
   }) {
     const {toggleNotification } = useNotification();
     const { formatMessage } = useIntl();
@@ -25,14 +25,14 @@ function PurgeDocumentAction({
     } = useContentManagerContext();
     const {post} = useFetchClient()
 
-    const { initialValues } = form; 
+    const { initialValues } = form;
     if (isCreatingEntry) {
       return null;
     }
     if (hasDraftAndPublish && initialValues.publishedAt === null) {
       return null;
     }
-  
+
     if (!allowedActions.canReadStrategy || !allowedActions.canPurge) {
       return null;
     }
@@ -67,10 +67,10 @@ function PurgeDocumentAction({
           });
           toggleNotification({
             type: 'success',
-            message: {
+            message: formatMessage({
               id: 'cache.purge.success',
               defaultMessage: 'Cache purged successfully',
-            },
+            }),
           });
         }
     }
