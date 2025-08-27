@@ -4179,6 +4179,22 @@
     ioredis "5.4.1"
     redlock "5.0.0-beta.2"
 
+"@strapi-community/plugin-rest-cache@5.0.0-alpha.1":
+  version "5.0.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/@strapi-community/plugin-rest-cache/-/plugin-rest-cache-5.0.0-alpha.1.tgz#60cc8701a9257f22a6fe096f5641ae43b266e42e"
+  integrity sha512-HpZEI0nUuYVaFBoU3VZgyyA0/aHmNhWM0/9qmoqs4eBNJAOoBFidyXa//CL2t69iiOqvxli9AHzFpceX1VEdNQ==
+  dependencies:
+    "@strapi-community/provider-rest-cache-memory" "5.0.0-alpha.1"
+    react-intl "6.6.2"
+
+"@strapi-community/provider-rest-cache-memory@5.0.0-alpha.2":
+  version "5.0.0-alpha.2"
+  resolved "https://registry.yarnpkg.com/@strapi-community/provider-rest-cache-memory/-/provider-rest-cache-memory-5.0.0-alpha.2.tgz#00584ab0581b904e2afac45b4402f1340f5b7f93"
+  integrity sha512-3EWaSha65p/J26wz2kHc/lXueqLwa09xyrruB2CzI5hKkL6gHCnUrJFYAUnt6jBr+3Sw3lAaOLKov7zuqXoKqQ==
+  dependencies:
+    cache-manager "^7.1.1"
+    quick-lru "7.0.1"
+
 "@strapi/admin@5.21.0":
   version "5.21.0"
   resolved "https://registry.yarnpkg.com/@strapi/admin/-/admin-5.21.0.tgz#095f3a6ea972d0e3b75f0895f315f48fe4e677d7"
@@ -13119,11 +13135,6 @@ jsesc@^3.0.2:
   resolved "https://registry.yarnpkg.com/jsesc/-/jsesc-3.1.0.tgz#74d335a234f67ed19907fdadfac7ccf9d409825d"
   integrity sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA==
 
-json-buffer@3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"
-  integrity sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==
-
 json-logic-js@2.0.5:
   version "2.0.5"
   resolved "https://registry.yarnpkg.com/json-logic-js/-/json-logic-js-2.0.5.tgz#55f0c687dd6f56b02ccdcfdd64171ed998ab5499"
@@ -13312,14 +13323,7 @@ keygrip@~1.1.0:
   dependencies:
     tsscmp "1.0.6"
 
-keyv@^4.0.0, keyv@^4.5.3:
-  version "4.5.4"
-  resolved "https://registry.yarnpkg.com/keyv/-/keyv-4.5.4.tgz#a879a99e29452f942439f2a405e3af8b31d4de93"
-  integrity sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==
-  dependencies:
-    json-buffer "3.0.1"
-
-keyv@^5.5.0:
+keyv@^4.0.0, keyv@^4.5.3, keyv@^5.5.0:
   version "5.5.0"
   resolved "https://registry.yarnpkg.com/keyv/-/keyv-5.5.0.tgz#0ad5037484a7e01b033df7018033b5cc9ca7884f"
   integrity sha512-QG7qR2tijh1ftOvClut4YKKg1iW6cx3GZsKoGyJPxHkGWK9oJhG9P3j5deP0QQOGDowBMVQFaP+Vm4NpGYvmIQ==
