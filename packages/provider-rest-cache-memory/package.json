@@ -1,6 +1,6 @@
 {
   "name": "@strapi-community/provider-rest-cache-memory",
-  "version": "5.0.0-alpha.1",
+  "version": "5.0.0-alpha.2",
   "description": "Speed-up HTTP requests with LRU cache",
   "license": "MIT",
   "strapi": {
@@ -76,10 +76,10 @@
     "quick-lru": "7.0.1"
   },
   "devDependencies": {
-    "@strapi-community/plugin-rest-cache": "5.0.0-alpha.1"
+    "@strapi-community/plugin-rest-cache": "5.0.0-alpha.2"
   },
   "peerDependencies": {
-    "@strapi-community/plugin-rest-cache": "5.0.0-alpha.1",
+    "@strapi-community/plugin-rest-cache": "5.0.0-alpha.2",
     "@strapi/strapi": "^5.0.0"
   }
 }
