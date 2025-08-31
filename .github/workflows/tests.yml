@@ -6,20 +6,8 @@ on:
     branches:
       - main
       - 'dev/**'
-    paths:
-      - ".github/**"
-      - "data/**"
-      - "packages/**"
-      - "playgrounds/**"
-      - "shared/**"
   pull_request:
     branches: [main]
-    paths:
-      - ".github/**"
-      - "data/**"
-      - "packages/**"
-      - "playgrounds/**"
-      - "shared/**"
 
 jobs:
   linters:
