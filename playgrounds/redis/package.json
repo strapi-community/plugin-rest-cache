@@ -12,8 +12,8 @@
     "test:e2e": "jest --detectOpenHandles --forceExit"
   },
   "dependencies": {
-    "@strapi/plugin-users-permissions": "^5.18.0",
-    "@strapi/strapi": "^5.18.0",
+    "@strapi/plugin-users-permissions": "5.23.3",
+    "@strapi/strapi": "5.23.3",
     "@strapi-community/plugin-redis": "^2.0.0",
     "@strapi-community/plugin-rest-cache": "5.0.0-alpha.5",
     "@strapi-community/provider-rest-cache-redis": "5.0.0-alpha.5",

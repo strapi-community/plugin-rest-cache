@@ -12,8 +12,8 @@
     "test:e2e": "jest --detectOpenHandles --forceExit"
   },
   "dependencies": {
-    "@strapi/plugin-users-permissions": "^5.18.0",
-    "@strapi/strapi": "^5.18.0",
+    "@strapi/plugin-users-permissions": "5.23.3",
+    "@strapi/strapi": "5.23.3",
     "better-sqlite3": "11.3.0",
     "fs-extra": "^10.0.0",
     "mime-types": "^2.1.27",
