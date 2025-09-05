@@ -24,7 +24,7 @@ export default function createRecv(options, { strapi }) {
     );
   }
   const store = strapi.plugin('rest-cache').service('cacheStore');
-  const { strategy } = strapi.config.get("plugin::rest-cache");
+  const { strategy } = strapi.config.get('plugin::rest-cache');
   const { cacheRouteConfig } = options;
   const { hitpass, maxAge, keys } = cacheRouteConfig;
   const { enableEtag = false, enableXCacheHeaders = false } = strategy;
@@ -34,7 +34,7 @@ export default function createRecv(options, { strapi }) {
     const cacheKey = generateCacheKey(ctx, keys);
 
     // hitpass check
-    const lookup = shouldLookup(ctx, hitpass);
+    const lookup = await shouldLookup(ctx, hitpass);
 
     // keep track of the etag
     let etagCached = null;
@@ -112,9 +112,7 @@ export default function createRecv(options, { strapi }) {
         // persist etag asynchronously
         store.set(`${cacheKey}_etag`, etag, maxAge).catch(() => {
           debug('strapi:plugin-rest-cache')(
-            `[RECV] GET ${cacheKey} ${chalk.yellow(
-              'Unable to store ETag in cache'
-            )}`
+            `[RECV] GET ${cacheKey} ${chalk.yellow('Unable to store ETag in cache')}`
           );
         });
       }
@@ -122,9 +120,7 @@ export default function createRecv(options, { strapi }) {
       // persist cache asynchronously
       store.set(cacheKey, ctx.body, maxAge).catch(() => {
         debug('strapi:plugin-rest-cache')(
-          `[RECV] GET ${cacheKey} ${chalk.yellow(
-            'Unable to store Content in cache'
-          )}`
+          `[RECV] GET ${cacheKey} ${chalk.yellow('Unable to store Content in cache')}`
         );
       });
     }

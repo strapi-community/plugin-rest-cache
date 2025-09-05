@@ -1,6 +1,6 @@
 'use strict';
 
-export const shouldLookup = function (
+export const shouldLookup = async function (
   ctx,
   hitpass // @todo: function or boolean => can be optimized
 ) {
@@ -11,8 +11,8 @@ export const shouldLookup = function (
   }
 
   if (type === 'function') {
-    return !hitpass(ctx);
+    return !(await hitpass(ctx));
   }
 
   return false;
-}
+};
