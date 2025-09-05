@@ -18,7 +18,7 @@ yarn add \
 ```js
 module.exports = {
   // Step 1: Configure the redis connection
-  // @see https://github.com/strapi-community/strapi-plugin-redis
+  // @see https://github.com/strapi-community/plugin-redis
   redis: {
     // ...
   },
