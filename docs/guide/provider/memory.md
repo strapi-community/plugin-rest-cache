@@ -4,7 +4,7 @@ title: Memory provider
 
 # Memory provider
 
-The memory provider allow you to store cached content in memory. It use a simple key-value store with LRU algorithm provided by the default provider of [`node-cache-manager`](https://github.com/BryanDonovan/node-cache-manager) module which uses [`lru-node`](https://github.com/isaacs/node-lru-cache/tree/v6.0.0).
+The memory provider allow you to store cached content in memory. It use a simple key-value store with LRU algorithm provided by [`quick-lru`](https://github.com/sindresorhus/quick-lru).
 
 ## Installation
 
@@ -24,10 +24,10 @@ module.exports = ({ env }) => ({
         name: 'memory',
         getTimeout: 500,
         options: {
-          // The maximum size of the cache
-          max: 32767,
-          // Update to the current time whenever it is retrieved from cache, causing it to not expire
-          updateAgeOnGet: false,
+          // The time to live in milliseconds. This is the maximum amount of time that an item can be in the cache before it is removed.
+          ttl: 3600 * 1000
+          // The maximum number of items before evicting the least recently used items.
+          maxSize: 32767
           // ...
         },
       },
@@ -40,5 +40,5 @@ module.exports = ({ env }) => ({
 ```
 
 ::: tip
-View full options available on [`lru-cache`](https://github.com/isaacs/node-lru-cache/tree/v6.0.0#options) documentation.
+Additionally you can add options specifically for this provider. For all the options see [`quick-lru`](https://github.com/sindresorhus/quick-lru/tree/v7.0.1#options) documentation.
 :::

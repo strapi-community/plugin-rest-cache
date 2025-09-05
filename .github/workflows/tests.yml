@@ -3,35 +3,27 @@ name: tests
 on:
   workflow_call:
   push:
-    branches: [main]
-    paths:
-      - ".github/**"
-      - "data/**"
-      - "packages/**"
-      - "playgrounds/**"
-      - "shared/**"
+    branches:
+      - main
+      - 'dev/**'
   pull_request:
     branches: [main]
-    paths:
-      - ".github/**"
-      - "data/**"
-      - "packages/**"
-      - "playgrounds/**"
-      - "shared/**"
 
 jobs:
   linters:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        node: [20, 22]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: ${{ matrix.node }}
 
       # cache node_modules
       - name: Cache dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: yarn-cache
         with:
           path: |
@@ -49,16 +41,18 @@ jobs:
 
   e2e_memory:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        node: [20, 22]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: ${{ matrix.node }}
 
       # cache node_modules
       - name: Cache dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: yarn-cache
         with:
           path: |
@@ -74,13 +68,17 @@ jobs:
 
       - run: yarn postinstall:memory
 
+      - run: yarn build:plugin:rest-cache
+
       - name: Run Memory e2e tests
         working-directory: playgrounds/memory
         run: yarn test:e2e
 
   e2e_redis:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        node: [20, 22]
     services:
       redis:
         image: bitnami/redis:latest
@@ -91,14 +89,14 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: ${{ matrix.node }}
 
       # cache node_modules
       - name: Cache dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: yarn-cache
         with:
           path: |
@@ -113,6 +111,8 @@ jobs:
         run: yarn --frozen-lockfile
 
       - run: yarn postinstall:redis
+
+      - run: yarn build:plugin:rest-cache
 
       - name: Run Redis e2e tests
         working-directory: playgrounds/redis

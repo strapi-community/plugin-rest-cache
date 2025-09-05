@@ -8,7 +8,7 @@ title: Custom provider
 
 ```js
 // file: /custom-rest-cache-provider/MyCacheProvider.js
-const { CacheProvider } = require("strapi-plugin-rest-cache/server/types");
+const { CacheProvider } = require("@strapi-community/plugin-rest-cache/types");
 
 class MyCacheProvider extends CacheProvider {
   // implement your custom provider here

@@ -1,20 +1,24 @@
 import { createRequire } from 'module'
-import { defineConfig } from 'vitepress'
+import defineVersionedConfig from 'vitepress-versioning-plugin'
 
 const require = createRequire(import.meta.url)
-const pkg = require('strapi-plugin-rest-cache/package.json')
+const pkg = require('@strapi-community/plugin-rest-cache/package.json')
 
-export default defineConfig({
+export default defineVersionedConfig({
   title: "REST Cache",
   description: "Speed-up HTTP requests with LRU cache",
-  base: "/strapi-plugin-rest-cache/",
+  base: "/plugin-rest-cache/",
   lastUpdated: true,
+  versioning: {
+    latestVersion: pkg.version,
+  },
   themeConfig: {
+    versionSwitcher: false,
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/strapi-community/strapi-plugin-rest-cache' },
+      { icon: 'github', link: 'https://github.com/strapi-community/plugin-rest-cache' },
     ],
     editLink: {
-      pattern: 'https://github.com/strapi-community/strapi-plugin-rest-cache/edit/main/docs/:path',
+      pattern: 'https://github.com/strapi-community/plugin-rest-cache/edit/main/docs/:path',
       text: 'Edit this page on GitHub'
     },
     logo: {
@@ -27,21 +31,11 @@ export default defineConfig({
     nav: [
       {
         text: "Guide",
-        link: "/guide/", 
+        link: "/guide/",
         activeMatch: '/guide/',
       },
       {
-        text: pkg.version,
-        items: [
-          {
-            text: 'Changelog',
-            link: 'https://github.com/strapi-community/strapi-plugin-rest-cache/blob/main/CHANGELOG.md'
-          },
-          {
-            text: 'Strapi Community',
-            link: 'https://github.com/strapi-community'
-          }
-        ]
+        component: 'VersionSwitcher',
       }
     ],
     sidebar: {
@@ -60,7 +54,6 @@ export default defineConfig({
             { text: 'Provider configuration', link: '/guide/provider/' },
             { text: 'Provider: Memory', link: '/guide/provider/memory' },
             { text: 'Provider: Redis', link: '/guide/provider/redis' },
-            { text: 'Provider: Couchbase', link: '/guide/provider/couchbase' },
             { text: 'Custom provider', link: '/guide/provider/custom-provider' },
           ]
         },
@@ -82,7 +75,46 @@ export default defineConfig({
             { text: 'Services', link: '/guide/api/' },
             { text: 'Admin Routes', link: '/guide/api/admin-routes' },
           ]
-        }
+        },
+      ],
+      '/4.x.x/': [
+        {
+          text: 'Guide',
+          items: [
+            { text: 'Introduction', link: '/4.x.x/' },
+            { text: 'Installation', link: '/4.x.x/installation' },
+          ]
+        },
+        {
+          text: 'Provider',
+          collapsible: true,
+          items: [
+            { text: 'Provider configuration', link: '/4.x.x/provider/' },
+            { text: 'Provider: Memory', link: '/4.x.x/provider/memory' },
+            { text: 'Provider: Redis', link: '/4.x.x/provider/redis' },
+            { text: 'Provider: Couchbase', link: '/4.x.x/provider/couchbase' },
+            { text: 'Custom provider', link: '/4.x.x/provider/custom-provider' },
+          ]
+        },
+        {
+          text: 'Strategy',
+          collapsible: true,
+          items: [
+            { text: 'Strategy configuration', link: '/4.x.x/strategy/' },
+            { text: 'Cache content type', link: '/4.x.x/strategy/cache-content-type' },
+            { text: 'Cache custom routes', link: '/4.x.x/strategy/cache-custom-routes' },
+            { text: 'Cache keys', link: '/4.x.x/strategy/cache-keys' },
+            { text: 'Debug mode', link: '/4.x.x/strategy/debug' },
+          ]
+        },
+        {
+          text: 'API',
+          collapsible: true,
+          items: [
+            { text: 'Services', link: '/4.x.x/api/' },
+            { text: 'Admin Routes', link: '/4.x.x/api/admin-routes' },
+          ]
+        },
       ],
       '/reference/': [
         {
@@ -97,4 +129,4 @@ export default defineConfig({
       ]
     }
   }
-})
+}, __dirname);

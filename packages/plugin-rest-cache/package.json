@@ -1,0 +1,115 @@
+{
+  "name": "@strapi-community/plugin-rest-cache",
+  "version": "5.0.0-alpha.5",
+  "description": "Speed-up HTTP requests with LRU cache",
+  "license": "MIT",
+  "strapi": {
+    "displayName": "REST Cache",
+    "name": "rest-cache",
+    "description": "Speed-up HTTP requests with LRU cache",
+    "required": false,
+    "kind": "plugin"
+  },
+  "keywords": [
+    "strapi",
+    "plugin",
+    "rest",
+    "cache",
+    "http",
+    "lru"
+  ],
+  "author": {
+    "name": "Strapi Community",
+    "url": "https://github.com/strapi-community/"
+  },
+  "maintainers": [
+    {
+      "name": "Sacha Stafyniak",
+      "email": "sacha@digisquad.io",
+      "url": "https://digisquad.io"
+    },
+    {
+      "name": "Patrick R",
+      "url": "https://github.com/patrixr/"
+    },
+    {
+      "name": "Davide Pellegatta",
+      "email": "davide.pellegatta@gmail.com"
+    },
+    {
+      "name": "Derrick Mehaffy",
+      "email": "derrickmehaffy@gmail.com",
+      "url": "https://github.com/derrickmehaffy"
+    },
+    {
+      "name": "Boegie19",
+      "url": "https://github.com/Boegie19"
+    },
+    {
+      "name": "boazpoolman",
+      "url": "https://github.com/boazpoolman"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/strapi-community/plugin-rest-cache.git",
+    "directory": "packages/plugin-rest-cache"
+  },
+  "bugs": {
+    "url": "https://github.com/strapi-community/plugin-rest-cache/issues"
+  },
+  "homepage": "https://strapi-community.github.io/plugin-rest-cache/",
+  "type": "commonjs",
+  "exports": {
+    "./package.json": "./package.json",
+    "./strapi-admin": {
+      "source": "./admin/src/index.js",
+      "import": "./dist/admin/index.mjs",
+      "require": "./dist/admin/index.js",
+      "default": "./dist/admin/index.js"
+    },
+    "./strapi-server": {
+      "source": "./server/src/index.js",
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    },
+    "./types": {
+      "source": "./server/types/src/index.js",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "pack-up build",
+    "verify": "strapi-plugin verify",
+    "watch": "pack-up watch",
+    "watch:link": "strapi-plugin watch:link"
+  },
+  "dependencies": {
+    "@strapi-community/provider-rest-cache-memory": "5.0.0-alpha.5",
+    "react-intl": "6.6.2"
+  },
+  "devDependencies": {
+    "@strapi/pack-up": "^5.0.0",
+    "@strapi/sdk-plugin": "^5.0.0",
+    "@strapi/strapi": "^5.0.0",
+    "prettier": "^3.4.2",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
+  },
+  "peerDependencies": {
+    "@strapi/sdk-plugin": "^5.0.0",
+    "@strapi/strapi": "^5.0.0",
+    "react": "^17.0.0 || ^18.0.0",
+    "react-dom": "^17.0.0 || ^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
+  }
+}
