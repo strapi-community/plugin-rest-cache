@@ -39,10 +39,7 @@ class MemoryCacheProvider extends CacheProvider {
    * @param {number=} maxAge
    */
   async set(key, val, maxAge = 3600) {
-    const options = {
-      ttl: maxAge * 1000,
-    };
-    return this.cache.set(key, val, options);
+    return this.cache.set(key, val, maxAge * 1000);
   }
 
   /**
