@@ -5,7 +5,9 @@ export default {
     provider: {
       name: 'memory',
       getTimeout: 500,
-      options: {},
+      options: {
+        maxSize: 32767,
+      },
     },
     strategy: {
       debug: false,
@@ -19,10 +21,7 @@ export default {
         useHeaders: [],
         useQueryParams: true,
       },
-      hitpass: (ctx) =>
-        Boolean(
-          ctx.request.headers.authorization || ctx.request.headers.cookie
-        ),
+      hitpass: (ctx) => Boolean(ctx.request.headers.authorization || ctx.request.headers.cookie),
       maxAge: 3600000,
       contentTypes: [],
     },
