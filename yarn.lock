@@ -18961,10 +18961,10 @@ vite@~4.4.2:
   optionalDependencies:
     fsevents "~2.3.2"
 
-vitepress-versioning-plugin@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/vitepress-versioning-plugin/-/vitepress-versioning-plugin-1.3.0.tgz#8caf6b03ed03815e11426e5745d408fd60eba758"
-  integrity sha512-36xwYuoRlBtzFnVxB21eIsIWylHzeqKrRmRlTQ3QWY0+Ge0MasW7Y5aJRFs24Az/SoVlB1OQFbIgt+SktCns5w==
+vitepress-versioning-plugin-patched@1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/vitepress-versioning-plugin-patched/-/vitepress-versioning-plugin-patched-1.3.1.tgz#644b84e7ce68b6da2777d096cbf02dfa99ebee9d"
+  integrity sha512-07GwVullqMReiSOoiZmYrwQNeciqSQ7zE3+6gTswbVKKZIup/jVMQI6zWYACsGHI1OLVrwDnVGGdBP+lmA4dUA==
   dependencies:
     "@types/lodash" "^4.17.13"
     cli-color "^2.0.4"
@@ -18972,7 +18972,6 @@ vitepress-versioning-plugin@^1.3.0:
     lodash "^4.17.21"
     vite "^5.4.11"
     vitepress "1.5.0"
-    vitepress-versioning-plugin "file:../../../.cache/yarn/v6/npm-vitepress-versioning-plugin-1.3.0-8caf6b03ed03815e11426e5745d408fd60eba758-integrity/node_modules/vitepress-versioning-plugin"
 
 vitepress@1.5.0:
   version "1.5.0"

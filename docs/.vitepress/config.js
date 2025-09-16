@@ -1,5 +1,5 @@
 import { createRequire } from 'module'
-import defineVersionedConfig from 'vitepress-versioning-plugin'
+import defineVersionedConfig from 'vitepress-versioning-plugin-patched'
 
 const require = createRequire(import.meta.url)
 const pkg = require('@strapi-community/plugin-rest-cache/package.json')
