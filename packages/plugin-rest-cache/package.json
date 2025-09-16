@@ -92,9 +92,16 @@
   },
   "dependencies": {
     "@strapi-community/provider-rest-cache-memory": "5.0.0-beta.0",
-    "react-intl": "6.6.2"
+    "lodash": "^4.17.21",
+    "react-intl": "^6.4.1",
+    "chalk": "^4.1.2",
+    "debug": "^4.4.1",
+    "immer": "^9.0.21",
+    "prop-types": "^15.8.1"
   },
   "devDependencies": {
+    "@strapi/design-system": "^2.0.0-rc",
+    "@strapi/icons": "^2.0.0-rc",
     "@strapi/pack-up": "^5.0.0",
     "@strapi/sdk-plugin": "^5.0.0",
     "@strapi/strapi": "^5.0.0",
@@ -105,6 +112,8 @@
     "styled-components": "^6.0.0"
   },
   "peerDependencies": {
+    "@strapi/design-system": "^2.0.0-rc",
+    "@strapi/icons": "^2.0.0-rc",
     "@strapi/sdk-plugin": "^5.0.0",
     "@strapi/strapi": "^5.0.0",
     "react": "^17.0.0 || ^18.0.0",
