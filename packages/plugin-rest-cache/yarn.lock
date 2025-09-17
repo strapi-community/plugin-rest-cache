@@ -1976,9 +1976,9 @@
     escape-string-regexp "^2.0.0"
     lodash.deburr "^4.1.0"
 
-"@strapi-community/provider-rest-cache-memory@5.0.0-beta.0":
-  version "5.0.0-beta.0"
-  resolved "https://registry.yarnpkg.com/@strapi-community/provider-rest-cache-memory/-/provider-rest-cache-memory-5.0.0-beta.0.tgz#e7eb39abea3f34752f455a93d89b68798a74c95e"
+"@strapi-community/provider-rest-cache-memory@5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@strapi-community/provider-rest-cache-memory/-/provider-rest-cache-memory-5.0.0.tgz#e7eb39abea3f34752f455a93d89b68798a74c95e"
   integrity sha512-YDZpP4YhbvJe7tbxGLg+iPMAOxUkGJwDAjBrY/GcYhZ8uhgEiaAcQ2PeeTAwAR+lIp6S6QEgcr9zikC8HeJjNQ==
   dependencies:
     cache-manager "^7.1.1"
