@@ -4,11 +4,11 @@
 <p style="margin-top: 0;">Speed-up HTTP requests with LRU cache.</p>
 	
 <p>
-  <a href="https://www.npmjs.org/package/strapi-plugin-rest-cache">
-    <img src="https://img.shields.io/npm/v/strapi-plugin-rest-cache/latest.svg" alt="NPM Version" />
+  <a href="https://www.npmjs.org/package/@strapi-community/plugin-rest-cache">
+    <img src="https://img.shields.io/npm/v/@strapi-community/plugin-rest-cache/latest.svg" alt="NPM Version" />
   </a>
-  <a href="https://www.npmjs.org/package/strapi-plugin-rest-cache">
-    <img src="https://img.shields.io/npm/dm/strapi-plugin-rest-cache" alt="Monthly download on NPM" />
+  <a href="https://www.npmjs.org/package/@strapi-community/plugin-rest-cache">
+    <img src="https://img.shields.io/npm/dm/@strapi-community/plugin-rest-cache" alt="Monthly download on NPM" />
   </a>
 </p>
 </div>
@@ -17,7 +17,6 @@
 
 - [🚦 Current Status](#-current-status)
 - [✨ Features](#-features)
-- [🤔 Motivation](#-motivation)
 - [🖐 Requirements](#-requirements)
 - [🚚 Getting Started](#-getting-started)
 - [Contributing](#contributing)
@@ -25,7 +24,7 @@
 
 ## 🚦 Current Status
 
-This package is currently under development and should be consider **ALPHA** in terms of state. I/We are currently accepting contributions and/or dedicated contributors to help develop and maintain this package.
+This package is currently under development and should be consider **BETA** in terms of state. I/We are currently accepting contributions and/or dedicated contributors to help develop and maintain this package.
 
 ## ✨ Features
 
@@ -38,21 +37,20 @@ You can set a **strategy** to tell what to cache and how much time responses sho
 
 Supported Strapi Versions:
 
-- Strapi v4.0.x (recently tested as of January 2022)
-- Strapi v4.1.x (recently tested as of March 2022)
-- Strapi v4.x.x (Assumed, but possibly not tested)
+- Strapi v5.x.x (recently tested as of September 2025)
 
+**If you are looking for the Strapi v4.x support, please check the [legacy package](https://www.npmjs.com/package/strapi-plugin-rest-cache).**
 **If you are looking for a plugin for Strapi v3.x, please check the [strapi-middleware-cache](https://github.com/patrixr/strapi-middleware-cache/).**
 
 ## 🚚 Getting Started
 
-[Read the Docs to Learn More.](https://strapi-community.github.io/strapi-plugin-rest-cache/)
+[Read the Docs to Learn More.](https://strapi-community.github.io/plugin-rest-cache/)
 
 ## Contributing
 
 I/We are actively looking for contributors, maintainers, and others to help shape this package. As this plugins sole purpose within the Strapi community is to be used by other developers and plugin maintainers to get fast responses time.
 
-If interested please feel free to email the lead maintainer Sacha at: sacha@digisquad.io or ping `stf#3254` on Discord.
+If interested please feel free to open an issue or pull request.
 
 ## License
 

@@ -21,7 +21,7 @@ features:
     details: Give your Strapi blazing fast response times with this plugin.
   - icon: 🔀
     title: Cache storage providers
-    details: Choose between in-memory, redis or couchbase to store your cached content.
+    details: Choose between in-memory or redis to store your cached content.
   - icon: 🛠️
     title: Customizable
     details: Want more? Use the internal API or add your own custom cache storage engine.

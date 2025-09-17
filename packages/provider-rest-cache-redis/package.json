@@ -1,0 +1,91 @@
+{
+  "name": "@strapi-community/provider-rest-cache-redis",
+  "version": "5.0.0",
+  "description": "Speed-up HTTP requests with LRU cache",
+  "license": "MIT",
+  "strapi": {
+    "displayName": "REST Cache (redis)",
+    "name": "provider-rest-cache-redis",
+    "description": "Redis provider for REST Cache plugin",
+    "required": false,
+    "kind": "plugin"
+  },
+  "keywords": [
+    "strapi",
+    "provider",
+    "rest-cache",
+    "redis"
+  ],
+  "author": {
+    "name": "Strapi Community",
+    "url": "https://github.com/strapi-community/"
+  },
+  "maintainers": [
+    {
+      "name": "Sacha Stafyniak",
+      "email": "sacha@digisquad.io",
+      "url": "https://digisquad.io"
+    },
+    {
+      "name": "Patrick R",
+      "url": "https://github.com/patrixr/"
+    },
+    {
+      "name": "Davide Pellegatta",
+      "email": "davide.pellegatta@gmail.com"
+    },
+    {
+      "name": "Derrick Mehaffy",
+      "email": "derrickmehaffy@gmail.com",
+      "url": "https://github.com/derrickmehaffy"
+    },
+    {
+      "name": "Boegie19",
+      "url": "https://github.com/Boegie19"
+    },
+    {
+      "name": "boazpoolman",
+      "url": "https://github.com/boazpoolman"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/strapi-community/plugin-rest-cache.git",
+    "directory": "packages/plugin-rest-cache"
+  },
+  "bugs": {
+    "url": "https://github.com/strapi-community/plugin-rest-cache/issues"
+  },
+  "homepage": "https://strapi-community.github.io/plugin-rest-cache/",
+  "type": "commonjs",
+  "main": "lib/index.js",
+  "files": [
+    "lib/**/*.js"
+  ],
+  "scripts": {
+    "lint": "run-s eslint:fix prettier:fix",
+    "eslint": "eslint ./lib",
+    "eslint:fix": "eslint ./lib --fix",
+    "prettier": "prettier --check ./lib",
+    "prettier:fix": "prettier --write ./lib",
+    "test": "run-s test:*",
+    "test:lint": "run-s eslint prettier"
+  },
+  "dependencies": {
+    "@keyv/redis": "^3.0.1",
+    "cache-manager": "^7.1.1"
+  },
+  "devDependencies": {
+    "@strapi-community/plugin-redis": "^2.0.0",
+    "@strapi-community/plugin-rest-cache": "5.0.0",
+    "eslint": "^8.11.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-import": "^2.27.5",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.6.0"
+  },
+  "peerDependencies": {
+    "@strapi-community/plugin-rest-cache": "5.0.0",
+    "@strapi/strapi": "^5.0.0"
+  }
+}

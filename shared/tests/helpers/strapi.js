@@ -1,9 +1,8 @@
 "use strict";
 
 const { existsSync, unlinkSync } = require("fs");
-const Strapi = require("@strapi/strapi");
+const { createStrapi, compileStrapi } = require('@strapi/strapi');
 const supertest = require("supertest");
-const { join } = require("path");
 
 let adminToken;
 
@@ -17,10 +16,10 @@ function adminAgent() {
 }
 
 async function setup() {
-  Strapi({
-    dir: join(__dirname, "../../"),
-  });
-  await strapi.start();
+  const appContext = await compileStrapi();
+  await createStrapi(appContext).load();
+
+  strapi.server.mount();
 
   // create first admin
   await agent().post("/admin/register-admin").send({
@@ -43,7 +42,6 @@ async function setup() {
 async function teardown() {
   const dbSettings = strapi.config.get("database.connection.connection");
 
-  // close server to release the db-file
   await strapi.destroy();
 
   // delete test database after all tests

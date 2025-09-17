@@ -1,6 +1,6 @@
 // this was copied from https://github.com/strapi/starters-and-templates/blob/main/packages/templates/ecommerce/template/src/bootstrap.js
 
-/* eslint-disable */ 
+/* eslint-disable */
 "use strict";
 
 const fs = require("fs");
@@ -70,7 +70,7 @@ function getFileData(fileName) {
   const mimeType = mime.lookup(ext);
 
   return {
-    path: filePath,
+    filepath: filePath,
     name: fileName,
     size,
     type: mimeType,
