@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "docs/**"
+      - 'docs/**'
   # trigger deployment manually
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           # choose node.js version to use
-          node-version: "18"
+          node-version: '20'
 
       # cache node_modules
       - name: Cache dependencies
