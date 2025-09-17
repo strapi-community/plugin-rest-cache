@@ -8,9 +8,9 @@ title: Redis provider
 
 ```bash
 yarn add \
-  strapi-plugin-rest-cache \
-  strapi-plugin-redis \
-  strapi-provider-rest-cache-redis
+  @strapi-community/plugin-rest-cache \
+  @strapi-community/plugin-redis \
+  @strapi-community/provider-rest-cache-redis
 ```
 
 ## Configuration
@@ -49,5 +49,5 @@ module.exports = {
 ```
 
 ::: warning
-Ensure `redis` plugin configuration come before `strapi-plugin-rest-cache`
+Ensure `redis` plugin configuration come before `@strapi-community/plugin-rest-cache`
 :::
