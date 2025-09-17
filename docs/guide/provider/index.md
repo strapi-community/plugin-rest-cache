@@ -4,11 +4,12 @@ title: Cache provider configuration
 
 # Cache provider configuration
 
-By default, the **@strapi-community/plugin-rest-cache** use **@strapi-community/provider-rest-cache-memory** which is an in-memory provider. It's not persisted and will be lost when the server restarts.
+By default, the **strapi-plugin-rest-cache** use **strapi-provider-rest-cache-memory** which is an in-memory provider. It's not persisted and will be lost when the server restarts.
 
 Alternatively, you can use:
 
-- **@strapi-community/provider-rest-cache-redis** which is a bridge between the cache plugin and the [@strapi-community/plugin-redis](https://github.com/strapi-community/plugin-redis)
+- **strapi-provider-rest-cache-redis** which is a bridge between the cache plugin and the [strapi-plugin-redis](https://github.com/strapi-community/plugin-redis)
+- **strapi-provider-rest-cache-couchbase** which connect to a couchbase cluster and store the cache in a bucket
 - Your custom provider
 
 You have to set the provider name in the plugin configuration so it will be initialized once the plugin is bootstrapped. At this time only one provider can be used at a time.
@@ -44,7 +45,7 @@ module.exports = ({ env }) => ({
 Note that each provider has its own configuration, so you will have to refer to the provider documentation to know how to configure it.
 
 ::: tip
-Check the [memory](./memory.md) or [redis](./redis.md) documentation for more details for advanced provider configuration.
+Check the [memory](./memory.md), [redis](./redis.md) or [couchbase](./couchbase.md) documentation for more details for advanced provider configuration.
 :::
 
 ## `Provider` reference
@@ -52,7 +53,7 @@ Check the [memory](./memory.md) or [redis](./redis.md) documentation for more de
 ### `name`
 
 The name of the provider.  
-Will try to load the package with `@strapi-community/rest-cache-provider-<name>` and fallback with `<name>`, so you can either use a package name or an absolute path.
+Will try to load the package with `strapi-rest-cache-provider-<name>` and fallback with `<name>`, so you can either use a package name or an absolute path.
 
 - **Type:** `string`
 - **Default:** `'memory'`
