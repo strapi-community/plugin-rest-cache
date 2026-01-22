@@ -1,7 +1,9 @@
 'use strict';
 
-const Keyv = require('keyv').default;
-const QuickLRU = require('quick-lru');
+const keyvModule = require('keyv');
+const Keyv = keyvModule.default ?? keyvModule;
+const quickLruModule = require('quick-lru');
+const QuickLRU = quickLruModule.default ?? quickLruModule;
 const { createCache } = require('cache-manager');
 const { CacheProvider } = require('@strapi-community/plugin-rest-cache/types');
 
@@ -20,7 +22,7 @@ class MemoryCacheProvider extends CacheProvider {
       ttl,
       stores: [
         new Keyv({
-          store: new QuickLRU.default(adapterOptions),
+          store: new QuickLRU(adapterOptions),
         }),
       ],
     });

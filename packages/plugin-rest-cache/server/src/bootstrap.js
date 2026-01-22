@@ -36,8 +36,11 @@ const createProvider = async (providerConfig, { strapi }) => {
     const requireProvider = createRequire(import.meta.url);
     provider = requireProvider(modulePath);
   } catch (err) {
+    const details = err?.message
+      ? `\nTried to load: ${modulePath}\nCause: ${err.message}`
+      : `\nTried to load: ${modulePath}`;
     throw new Error(
-      `Could not load REST Cache provider "${providerName}". You may need to install a provider plugin "yarn add @strapi-community/provider-rest-cache-${providerName}".`
+      `Could not load REST Cache provider "${providerName}". You may need to install a provider plugin "yarn add @strapi-community/provider-rest-cache-${providerName}".${details}`
     );
   }
 

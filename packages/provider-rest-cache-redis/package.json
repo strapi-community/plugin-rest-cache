@@ -73,7 +73,8 @@
   },
   "dependencies": {
     "@keyv/redis": "^3.0.1",
-    "cache-manager": "^7.1.1"
+    "cache-manager": "^7.1.1",
+    "keyv": "^5.5.0"
   },
   "devDependencies": {
     "@strapi-community/plugin-redis": "^2.0.0",

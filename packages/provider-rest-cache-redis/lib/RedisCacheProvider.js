@@ -1,8 +1,10 @@
 'use strict';
 
 const { createCache } = require('cache-manager');
-const Keyv = require('keyv').default;
-const KeyvRedis = require('@keyv/redis');
+const keyvModule = require('keyv');
+const Keyv = keyvModule.default ?? keyvModule;
+const keyvRedisModule = require('@keyv/redis');
+const KeyvRedis = keyvRedisModule.default ?? keyvRedisModule;
 const { CacheProvider } = require('@strapi-community/plugin-rest-cache/types');
 
 class RedisCacheProvider extends CacheProvider {
@@ -16,7 +18,7 @@ class RedisCacheProvider extends CacheProvider {
       ttl,
       stores: [
         new Keyv({
-          store: new KeyvRedis.default(client, adapterOptions),
+          store: new KeyvRedis(client, adapterOptions),
         }),
       ],
     });
