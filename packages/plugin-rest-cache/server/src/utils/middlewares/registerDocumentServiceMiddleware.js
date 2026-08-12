@@ -76,30 +76,35 @@ export const registerDocumentServiceMiddleware = function (strapi) {
       }`
     );
 
-    // Defer until the surrounding transaction commits. Several content-manager
-    // bulk operations wrap their loop in `strapi.db.transaction`, so purging
-    // inline risks either discarding a purge that gets rolled back, or
-    // repopulating the cache from pre-commit state. When there is no
-    // surrounding transaction this still runs, just immediately.
-    strapi.db.transaction(({ onCommit }) => {
-      onCommit(async () => {
-        try {
-          // Without a documentId we cannot scope the purge, so clear every
-          // entry for the content type.
-          await cacheStore.clearByUid(
-            ctx.uid,
-            documentId ? { id: documentId } : {},
-            !documentId
-          );
-        } catch (error) {
-          // A failed purge must never fail the write that triggered it.
-          strapi.log.error(
-            `REST Cache: failed to purge "${ctx.uid}" after "${ctx.action}"`
-          );
-          strapi.log.error(error);
-        }
-      });
-    });
+    // Purge before returning, so a client that writes and immediately reads
+    // sees fresh content. This has to be awaited here rather than deferred to
+    // `strapi.db.transaction(({ onCommit }) => ...)`: Strapi runs commit
+    // callbacks with `store.commitCallbacks.forEach((cb) => cb())` and never
+    // awaits them, so an async purge registered that way is fire-and-forget.
+    // The write would then race the purge - reliably lost on the redis
+    // provider, where a purge is a SCAN plus a round trip per key.
+    //
+    // The trade-off: content-manager bulk operations wrap their loop in a
+    // transaction, so here the purge lands before that outer commit. A read
+    // arriving in that window can repopulate from pre-commit state. That race
+    // is the pre-existing one tracked in #132 and applies equally to the route
+    // middleware this replaced; an unawaited purge would hit it on every write
+    // rather than only inside bulk operations.
+    try {
+      // Without a documentId we cannot scope the purge, so clear every entry
+      // for the content type.
+      await cacheStore.clearByUid(
+        ctx.uid,
+        documentId ? { id: documentId } : {},
+        !documentId
+      );
+    } catch (error) {
+      // A failed purge must never fail the write that triggered it.
+      strapi.log.error(
+        `REST Cache: failed to purge "${ctx.uid}" after "${ctx.action}"`
+      );
+      strapi.log.error(error);
+    }
 
     return result;
   });
