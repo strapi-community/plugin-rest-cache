@@ -7,9 +7,14 @@ module.exports = ({ env }) => ({
       connections: {
         default: {
           connection: {
-            host: "127.0.0.1",
-            port: 6379,
-            db: 0,
+            host: env("REDIS_HOST", "127.0.0.1"),
+            port: env.int("REDIS_PORT", 6379),
+            // One Redis logical database per jest worker. All workers otherwise
+            // share a single keyspace and clobber each other's cache entries,
+            // since the cache keys are derived from the request path and are
+            // identical across workers.
+            // Redis only has 16 logical databases, so wrap.
+            db: env.int("JEST_WORKER_ID", 0) % 16,
           },
           settings: {
             debug: false,

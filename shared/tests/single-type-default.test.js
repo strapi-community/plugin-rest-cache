@@ -8,18 +8,13 @@ process.env.STRAPI_DISABLE_UPDATE_NOTIFICATION = true;
 process.env.STRAPI_HIDE_STARTUP_MESSAGE = true;
 process.env.STRAPI_TELEMETRY_DISABLED = true;
 
-describe.each([
-  ["default settings"],
-  ["empty string keyprefix", { keyprefix: "" }],
-  ["custom keyprefix", { keyprefix: "my-custom-keyprefix" }],
-])("single-type with: %s", (testname = "", env = {}) => {
+// keysPrefix variants live in keys-prefix.test.js. Re-running the whole
+// behaviour suite once per prefix meant three Strapi boots to assert the same
+// HIT/MISS semantics three times - the prefix changes the storage key, not the
+// caching behaviour.
+describe("single-type with default settings", () => {
   beforeAll(async () => {
     process.env.KEYS_PREFIX = undefined;
-
-    if (typeof env.keyprefix !== "undefined") {
-      process.env.KEYS_PREFIX = env.keyprefix;
-    }
-
     await setup();
   });
   afterAll(async () => await teardown());
