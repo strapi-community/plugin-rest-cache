@@ -7,7 +7,7 @@ module.exports = async () => ({
   // heavy (roughly 300-500MB each). GitHub-hosted runners are small, so
   // over-subscribing there costs more in swap and contention than it saves.
   // Locally, use half the cores.
-  maxWorkers: process.env.CI ? 2 : '50%',
+  maxWorkers: process.env.CI ? 4 : '50%',
   "transform": {
     "^.+\\.[tj]s$": ["ts-jest", {
       "tsconfig": {
