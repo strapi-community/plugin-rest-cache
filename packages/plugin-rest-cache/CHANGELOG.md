@@ -3,6 +3,73 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## Unreleased
+
+### Fixed
+
+* **ttl:** cache entries expired 1000x later than configured. `maxAge` is
+  milliseconds throughout the plugin, but both providers multiplied it by 1000
+  again before handing it to cache-manager, whose `set()` also takes
+  milliseconds - the default hour became 41.7 days, so entries effectively
+  never expired ([#126](https://github.com/strapi-community/plugin-rest-cache/issues/126))
+* **purge:** admin bulk publish, bulk unpublish, discard, clone and auto-clone
+  left the cache stale. Seven content-manager write routes were missing from
+  the hardcoded route list ([#127](https://github.com/strapi-community/plugin-rest-cache/issues/127))
+* **provider:** "Could not load REST Cache provider" and "Keyv is not a
+  constructor" on startup. `keyv` was undeclared and reached the providers only
+  via hoisting, and the ESM-only `quick-lru` was `require()`d from CommonJS,
+  which fails below Node 20.19. The underlying error is no longer replaced with
+  a misleading "you may need to install a provider" message
+  ([#128](https://github.com/strapi-community/plugin-rest-cache/issues/128), [#118](https://github.com/strapi-community/plugin-rest-cache/issues/118),
+  [#123](https://github.com/strapi-community/plugin-rest-cache/issues/123), [#116](https://github.com/strapi-community/plugin-rest-cache/issues/116))
+* **config:** a content type whose name differs from its parent API - such as
+  `api::writer.editor` - crashed the whole application at register time with
+  "Cannot read properties of undefined (reading 'routes')". The owning API is
+  now resolved from the uid ([#125](https://github.com/strapi-community/plugin-rest-cache/issues/125))
+* **routes:** custom routes ending in a repeatable param, such as
+  `/categories/slug/:slug+`, were silently never cached. The trailing `+` was
+  stripped from the configured path but not the registered one, so they could
+  never match
+* **purge:** the purge is awaited again, so a client that writes and
+  immediately reads sees fresh content. Deferring it to `onCommit` made it
+  fire-and-forget, because Strapi runs commit callbacks without awaiting them
+
+### Added
+
+* **invalidation:** cache invalidation now runs off the document service
+  (`strapi.documents.use()`) rather than injected route middleware. Writes that
+  never traverse an HTTP route - GraphQL mutations, scheduled Content Releases,
+  review-workflow transitions, custom `strapi.documents()` calls in services,
+  cron jobs or seed scripts - now invalidate correctly. Controlled by the new
+  `strategy.enableDocumentServiceMiddleware` option, default `true`; set it to
+  `false` for the previous route-based behaviour
+  ([#129](https://github.com/strapi-community/plugin-rest-cache/issues/129))
+* **packaging:** `engines.node` (`>=20.0.0`) is declared on the plugin and both
+  providers, so an unsupported Node fails at install rather than at boot
+
+### Changed
+
+* **BREAKING (behaviour):** because TTLs are now honoured, cached entries
+  expire when configured instead of lasting roughly 41 days. Expect a higher
+  miss rate and more origin traffic after upgrading. If `maxAge` or the
+  provider `ttl` was tuned around the previous behaviour, revisit it
+* when `enableDocumentServiceMiddleware` is enabled (the default), the route
+  `purge` and `purgeAdmin` middlewares are no longer injected, since the
+  document service already covers every write
+
+## 5.0.1
+
+### Changed
+
+* documentation only; no functional change. The published `dist/` output is
+  byte-for-byte identical to `5.0.0`
+
+## 5.0.0
+
+### Added
+
+* Strapi 5 support ([#112](https://github.com/strapi-community/plugin-rest-cache/pull/112))
+
 ## [4.2.4](https://github.com/strapi-community/strapi-plugin-rest-cache/compare/v4.2.3...v4.2.4) (2022-03-19)
 
 

@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## Unreleased
+
+### Fixed
+
+* **ttl:** `maxAge` is milliseconds and was being multiplied by 1000 again
+  before being handed to cache-manager, whose `set()` also takes milliseconds.
+  The default hour became 41.7 days, so entries effectively never expired
+  ([#126](https://github.com/strapi-community/plugin-rest-cache/issues/126))
+* **deps:** `keyv` is now a declared dependency instead of arriving only via
+  hoisting, and is resolved tolerantly (`mod.default ?? mod`) so a keyv v4
+  hoisted by another package no longer causes "Keyv is not a constructor"
+  ([#128](https://github.com/strapi-community/plugin-rest-cache/issues/128))
+* **deps:** `@keyv/redis` is resolved tolerantly as well, since its CommonJS
+  build exposes only `.default` ([#128](https://github.com/strapi-community/plugin-rest-cache/issues/128))
+
+### Added
+
+* `engines.node` (`>=20.0.0`) is declared, so an unsupported Node fails at
+  install rather than mysteriously at boot
+
 ## [4.2.4](https://github.com/strapi-community/strapi-plugin-rest-cache/compare/v4.2.3...v4.2.4) (2022-03-19)
 
 **Note:** Version bump only for package strapi-provider-rest-cache-redis
