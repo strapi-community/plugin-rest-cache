@@ -27,9 +27,9 @@
     "test:e2e:memory": "yarn workspace @strapi-plugin-rest-cache/playground-memory test:e2e",
     "test:e2e:redis": "yarn workspace @strapi-plugin-rest-cache/playground-redis test:e2e",
     "build": "yarn build:plugin:rest-cache",
-    "build:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache pack-up build",
+    "build:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache build",
     "verify:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin verify",
-    "watch:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache pack-up watch",
+    "watch:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache watch",
     "watch:link:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin watch:link",
     "test:smoke": "node scripts/provider-smoke.cjs"
   },
@@ -58,7 +58,7 @@
     "vuepress": "^2.0.0-beta.36"
   },
   "engines": {
-    "node": ">=22.13.0 <=22.x.x",
+    "node": ">=22.13.0 <=26.x.x",
     "npm": ">=6.0.0"
   },
   "lint-staged": {

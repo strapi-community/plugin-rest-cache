@@ -7,7 +7,6 @@
     "displayName": "REST Cache",
     "name": "rest-cache",
     "description": "Speed-up HTTP requests with LRU cache",
-    "required": false,
     "kind": "plugin"
   },
   "keywords": [
@@ -63,19 +62,22 @@
   "exports": {
     "./package.json": "./package.json",
     "./strapi-admin": {
+      "types": "./dist/admin/src/index.d.ts",
       "source": "./admin/src/index.js",
       "import": "./dist/admin/index.mjs",
       "require": "./dist/admin/index.js",
       "default": "./dist/admin/index.js"
     },
     "./strapi-server": {
+      "types": "./dist/server/src/index.d.ts",
       "source": "./server/src/index.js",
       "import": "./dist/server/index.mjs",
       "require": "./dist/server/index.js",
       "default": "./dist/server/index.js"
     },
     "./types": {
-      "source": "./server/types/src/index.js",
+      "types": "./dist/server/src/types/index.d.ts",
+      "source": "./server/src/types/index.js",
       "import": "./dist/types/index.mjs",
       "require": "./dist/types/index.js",
       "default": "./dist/types/index.js"
@@ -85,15 +87,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "pack-up build",
-    "verify": "strapi-plugin verify",
-    "watch": "pack-up watch",
-    "watch:link": "strapi-plugin watch:link"
+    "build": "strapi-plugin build",
+    "watch": "strapi-plugin watch",
+    "watch:link": "strapi-plugin watch:link",
+    "verify": "strapi-plugin verify"
   },
   "dependencies": {
     "@strapi-community/provider-rest-cache-memory": "5.0.0",
-    "lodash": "^4.17.21",
-    "react-intl": "^6.4.1",
     "chalk": "^4.1.2",
     "debug": "^4.4.1",
     "immer": "^9.0.21",
@@ -102,22 +102,23 @@
   "devDependencies": {
     "@strapi/design-system": "^2.0.0-rc",
     "@strapi/icons": "^2.0.0-rc",
-    "@strapi/pack-up": "^5.0.0",
-    "@strapi/sdk-plugin": "^5.0.0",
+    "@strapi/sdk-plugin": "^6.1.1",
     "@strapi/strapi": "^5.52.0",
     "prettier": "^3.4.2",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "react-intl": "^6.4.1",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0"
   },
   "peerDependencies": {
     "@strapi/design-system": "^2.0.0-rc",
     "@strapi/icons": "^2.0.0-rc",
-    "@strapi/sdk-plugin": "^5.0.0",
+    "@strapi/sdk-plugin": "^6.0.0",
     "@strapi/strapi": "^5.0.0",
     "react": "^17.0.0 || ^18.0.0",
     "react-dom": "^17.0.0 || ^18.0.0",
+    "react-intl": "^6.0.0",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0"
   },

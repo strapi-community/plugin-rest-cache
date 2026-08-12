@@ -1,0 +1,25 @@
+{
+  "//": [
+    "Emits .d.ts for the admin bundle from the existing JSDoc annotations.",
+    "See server/tsconfig.build.json for why checkJs is off."
+  ],
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
+    "strict": false,
+    "noEmitOnError": false,
+    "outDir": "../dist/admin"
+  },
+  "include": ["./src/**/*.js", "./src/**/*.jsx"],
+  "exclude": ["node_modules"]
+}

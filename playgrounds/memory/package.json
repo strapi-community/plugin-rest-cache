@@ -14,7 +14,7 @@
   "dependencies": {
     "@strapi/plugin-users-permissions": "5.52.0",
     "@strapi/strapi": "5.52.0",
-    "better-sqlite3": "12.8.0",
+    "better-sqlite3": "12.11.1",
     "fs-extra": "^10.0.0",
     "mime-types": "^2.1.27",
     "react": "^18.0.0",
@@ -37,7 +37,7 @@
     "uuid": "89bd2494-df0e-4b1d-9e55-c46ec3e9952f"
   },
   "engines": {
-    "node": ">=22.13.0 <=22.x.x",
+    "node": ">=22.13.0 <=26.x.x",
     "npm": ">=6.0.0"
   },
   "license": "MIT"
