@@ -17,13 +17,16 @@ const createProvider = async (providerConfig, { strapi }) => {
   const providerName = providerConfig.name.toLowerCase();
   let provider;
 
+  const packageName = `@strapi-community/provider-rest-cache-${providerName}`;
   let modulePath;
+  let resolved = false;
   try {
     /**
      * @todo Allow custom providers installed from npm.
      * Right now it will only load providers from the `@strapi-community` namespace.
      */
-    modulePath = require.resolve(`@strapi-community/provider-rest-cache-${providerName}`);
+    modulePath = require.resolve(packageName);
+    resolved = true;
   } catch (error) {
     if (error.code === 'MODULE_NOT_FOUND') {
       modulePath = providerName;
@@ -36,8 +39,21 @@ const createProvider = async (providerConfig, { strapi }) => {
     const requireProvider = createRequire(import.meta.url);
     provider = requireProvider(modulePath);
   } catch (err) {
+    // Never collapse the underlying failure into "you should install it". The
+    // provider is a dependency of this plugin, so it is almost always present,
+    // and the real cause is usually an unsupported Node version or a module
+    // interop problem. Reporting "not installed" sends people off reinstalling
+    // a package they already have.
+    // See https://github.com/strapi-community/plugin-rest-cache/issues/128
+    const hint = resolved
+      ? `The package "${packageName}" was found at "${modulePath}" but could not be loaded.`
+      : `The package "${packageName}" could not be resolved. You may need to install it: "yarn add ${packageName}".`;
+
     throw new Error(
-      `Could not load REST Cache provider "${providerName}". You may need to install a provider plugin "yarn add @strapi-community/provider-rest-cache-${providerName}".`
+      `Could not load REST Cache provider "${providerName}". ${hint}\n` +
+        `  Cause: ${err.code ? `[${err.code}] ` : ''}${err.message}\n` +
+        `  Running Node ${process.version}. This plugin requires Node >=20.0.0.`,
+      { cause: err }
     );
   }
 

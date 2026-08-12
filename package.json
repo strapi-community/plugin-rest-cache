@@ -30,7 +30,8 @@
     "build:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache pack-up build",
     "verify:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin verify",
     "watch:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache pack-up watch",
-    "watch:link:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin watch:link"
+    "watch:link:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin watch:link",
+    "test:smoke": "node scripts/provider-smoke.cjs"
   },
   "license": "MIT",
   "resolutions": {

@@ -73,6 +73,7 @@
   },
   "dependencies": {
     "cache-manager": "^7.1.1",
+    "keyv": "^5.5.0",
     "quick-lru": "7.0.1"
   },
   "devDependencies": {
@@ -86,5 +87,8 @@
   "peerDependencies": {
     "@strapi-community/plugin-rest-cache": "5.0.0",
     "@strapi/strapi": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0 <=26.x.x"
   }
 }
