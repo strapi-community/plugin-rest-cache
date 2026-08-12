@@ -123,10 +123,6 @@ jobs:
         if: steps.yarn-cache.outputs.cache-hit != 'true'
         run: yarn --frozen-lockfile
 
-      - name: Runner capacity
-        run: |
-          echo "cores: $(nproc)"
-          free -m | head -2
       - run: yarn postinstall:memory
 
       - run: yarn build:plugin:rest-cache
