@@ -1,17 +1,32 @@
 "use strict";
 
-process.env.NODE_ENV = 'test';
+/**
+ * Boots the playground for benchmarking.
+ *
+ * NODE_ENV defaults to `test` so the sqlite file from config/env/test is used,
+ * but it can be overridden - benchmarking under `production` is closer to what
+ * users actually run.
+ */
 
-const Strapi = require("@strapi/strapi");
+process.env.NODE_ENV = process.env.NODE_ENV || "test";
+
+const { createStrapi, compileStrapi } = require("@strapi/strapi");
 
 async function setup() {
-  Strapi({
-    dir: __dirname,
-  });
-  await strapi.start();
+  const appContext = await compileStrapi();
+  const instance = await createStrapi(appContext).load();
 
-  return Promise.resolve(strapi);
+  await instance.start();
+
+  return instance;
 }
 
-// eslint-disable-next-line no-console
-setup().catch(console.error);
+setup()
+  // eslint-disable-next-line no-console
+  .then(() => console.log("[bench] server ready"))
+  // eslint-disable-next-line no-console
+  .catch((error) => {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    process.exit(1);
+  });
