@@ -25,8 +25,8 @@ jobs:
   provider_smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: yarn
@@ -40,17 +40,17 @@ jobs:
       # but it is exactly where the ESM/interop provider bugs reproduce, so a
       # regression there must fail the build. (Node 18 is EOL and is covered by
       # engines.node ">=20.0.0".)
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
       - run: node scripts/provider-smoke.cjs
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: node scripts/provider-smoke.cjs
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - run: node scripts/provider-smoke.cjs
@@ -62,8 +62,8 @@ jobs:
       matrix:
         node: [22, 24, 26]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: yarn
@@ -80,8 +80,8 @@ jobs:
       matrix:
         node: [22, 24, 26]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: yarn
@@ -113,8 +113,8 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: yarn
