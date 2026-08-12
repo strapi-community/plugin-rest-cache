@@ -4,14 +4,26 @@ import chalk from 'chalk';
 import debug from 'debug';
 import { flattenRoutes } from './flattenRoutes';
 
+// Content-manager routes that mutate content and therefore must purge the cache.
+// Keep in sync with packages/core/content-manager/server/src/routes/admin.ts in
+// strapi/strapi. Note that `/collection-types/:model/actions/bulkFindForValidation`
+// is deliberately absent: despite being a POST it is a read operation, so purging
+// on it would cause spurious cache flushes.
 const adminRoutes = {
   post: [
     '/single-types/:model/actions/publish',
     '/single-types/:model/actions/unpublish',
+    '/single-types/:model/actions/discard',
     '/collection-types/:model',
+    '/collection-types/:model/clone/:sourceId',
+    '/collection-types/:model/auto-clone/:sourceId',
+    '/collection-types/:model/actions/publish',
     '/collection-types/:model/:id/actions/publish',
     '/collection-types/:model/:id/actions/unpublish',
+    '/collection-types/:model/:id/actions/discard',
     '/collection-types/:model/actions/bulkDelete',
+    '/collection-types/:model/actions/bulkPublish',
+    '/collection-types/:model/actions/bulkUnpublish',
   ],
   put: ['/single-types/:model', '/collection-types/:model/:id'],
   delete: ['/single-types/:model', '/collection-types/:model/:id'],

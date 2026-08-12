@@ -48,7 +48,7 @@ export class CacheContentTypeConfig {
     const {
       singleType = false,
       injectDefaultRoutes = true,
-      maxAge = true,
+      maxAge = 3600000,
       hitpass = false,
       keys = new CacheKeysConfig(),
       routes = [],
