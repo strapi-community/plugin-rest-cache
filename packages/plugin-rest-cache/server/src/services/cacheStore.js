@@ -68,9 +68,9 @@ export default function createCacheStoreService({ strapi }) {
     /**
      * @param {string} key
      * @param {any} val
-     * @param {number=} maxAge
+     * @param {number=} maxAge in milliseconds
      */
-    async set(key, val, maxAge = 3600) {
+    async set(key, val, maxAge = 3600000) {
       if (!initialized) {
         strapi.log.error('REST Cache provider not initialized');
         return null;

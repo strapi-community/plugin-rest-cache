@@ -25,9 +25,9 @@ export class CacheProvider {
   /**
    * @param {string} key
    * @param {any} val
-   * @param {number=} maxAge
+   * @param {number=} maxAge in milliseconds
    */
-  async set(key, val, maxAge = 3600) {
+  async set(key, val, maxAge = 3600000) {
     throw new Error("Method 'set()' must be implemented.");
   }
 

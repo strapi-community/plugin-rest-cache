@@ -32,10 +32,12 @@ class RedisCacheProvider extends CacheProvider {
   /**
    * @param {string} key
    * @param {any} val
-   * @param {number=} maxAge
+   * @param {number=} maxAge in milliseconds
    */
-  async set(key, val, maxAge = 3600) {
-    return this.cache.set(key, val, maxAge * 1000);
+  async set(key, val, maxAge = 3600000) {
+    // cache-manager's set() takes a ttl in milliseconds and maxAge is already
+    // in milliseconds - do not convert.
+    return this.cache.set(key, val, maxAge);
   }
 
   /**
