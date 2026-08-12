@@ -18,6 +18,18 @@ const routeParamNameRegex = /:([^/]+)/g;
 const routeParams = /(?<=\/\:).*?(?=\/|$)/g;
 
 /**
+ * Extract the API name from a content type uid.
+ *
+ * "api::writer.editor" -> "writer"
+ *
+ * @param {string} uid
+ * @return {string}
+ */
+function getApiNameFromUid(uid) {
+  return uid.split('::')[1]?.split('.')[0];
+}
+
+/**
  * @param {Strapi} strapi
  * @param {any} userOptions
  * @return {CachePluginStrategy}
@@ -128,9 +140,25 @@ export const resolveUserStrategy = function (strapi, userOptions) {
 
     // get strapi api prefix
     const apiPrefix = strapi.config.get('api.rest.prefix');
-    for (const routes of Object.values(
-      strapi.apis[contentType.info.singularName].routes
-    )) {
+
+    // Resolve the owning API from the uid rather than from the content type's
+    // singular name. A content type does not have to be named after the API it
+    // lives in - "api::writer.editor" is registered under strapi.apis.writer,
+    // not strapi.apis.editor - and using the singular name means such content
+    // types either resolve to the wrong API or, more often, crash the whole
+    // application at register time with "Cannot read properties of undefined".
+    // See https://github.com/strapi-community/plugin-rest-cache/issues/125
+    const apiName = getApiNameFromUid(cacheConfig.contentType);
+    const api = strapi.apis[apiName];
+
+    if (!api) {
+      throw new Error(
+        `Unable to resolve rest-cache options: no API "${apiName}" found for contentType "${cacheConfig.contentType}". ` +
+          `Set "injectDefaultRoutes: false" for this contentType if it has no default routes.`
+      );
+    }
+
+    for (const routes of Object.values(api.routes)) {
       for (const route of routes.routes) {
         // @TODO remove path and method and use the one
         if (cacheConfig.singleType === true) {

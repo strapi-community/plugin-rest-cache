@@ -29,6 +29,17 @@ const adminRoutes = {
   delete: ['/single-types/:model', '/collection-types/:model/:id'],
 };
 
+/**
+ * Strip the trailing "+" repeatable-param marker so a configured route path and
+ * the path Strapi registered compare equal.
+ *
+ * @param {string} path
+ * @return {string}
+ */
+function normalizeRoutePath(path) {
+  return (path || '').replace(/\+$/, '');
+}
+
 function injectMiddleware(route, pluginUUid, config = {}) {
   if (typeof route.config === 'undefined') {
     route.config = {};
@@ -67,6 +78,11 @@ function injectMiddleware(route, pluginUUid, config = {}) {
 export const injectMiddlewares = function (strapi, strategy) {
   const strapiRoutes = flattenRoutes(strapi);
 
+  // When invalidation runs off the document service it already covers every
+  // write, including those that never reach a route. Injecting the route purge
+  // middlewares as well would purge twice for every routed write.
+  const purgeViaDocumentService = Boolean(strategy.enableDocumentServiceMiddleware);
+
   for (const cacheConf of strategy.contentTypes) {
     debug('strapi:plugin-rest-cache')(`[REGISTER] ${chalk.cyan(cacheConf.contentType)} routes middlewares`);
     for (const cacheRoute of cacheConf.routes) {
@@ -74,8 +90,12 @@ export const injectMiddlewares = function (strapi, strategy) {
         (route) =>
           // You can modify this to search for a specific route or multiple
           route.method === cacheRoute.method &&
-          //below replace removes the + at the end of the line
-          route.globalPath === cacheRoute.path.replace(/\+$/, '')
+          // Normalise both sides: a trailing "+" marks a repeatable param
+          // (e.g. "/categories/slug/:slug+") and is part of the registered
+          // path as well as the configured one. Stripping it from only one
+          // side means such routes never match, and are silently left
+          // uncached.
+          normalizeRoutePath(route.globalPath) === normalizeRoutePath(cacheRoute.path)
       );
 
       // If the route exists lets inject the middleware
@@ -91,6 +111,9 @@ export const injectMiddlewares = function (strapi, strategy) {
           case 'PUT':
           case 'PATCH':
           case 'POST':
+            if (purgeViaDocumentService) {
+              break;
+            }
             debug('strapi:plugin-rest-cache')(
               `[REGISTER] ${cacheRoute.method} ${
                 cacheRoute.path
@@ -128,7 +151,9 @@ export const injectMiddlewares = function (strapi, strategy) {
     }
   }
   // --- Admin REST endpoints
-  if (strategy.enableAdminCTBMiddleware) {
+  // Superseded by the document service middleware, which sees content-manager
+  // writes (and bulk actions, clones and discards) without needing this list.
+  if (strategy.enableAdminCTBMiddleware && !purgeViaDocumentService) {
     debug('strapi:plugin-rest-cache')(`[REGISTER] ${chalk.magentaBright('admin')} routes middlewares`);
     let contentMangerRoutes = [];
     for (const routes of Object.values(
