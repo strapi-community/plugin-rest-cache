@@ -19,6 +19,12 @@ jobs:
           # fetch all commits to get last updated time or other git log info
           fetch-depth: 0
 
+      # Note: deliberately no `cache: pnpm`. setup-node keys the pnpm store
+      # cache on OS + lockfile hash only, with no Node version, so every matrix
+      # leg shares one store. That store holds compiled native addons, so a
+      # better-sqlite3 built under one Node ABI gets restored under another and
+      # crashes with "Assertion failed: (env) != nullptr". pnpm installs are
+      # fast enough that correctness is the better trade.
       - uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
@@ -26,7 +32,6 @@ jobs:
         with:
           # Strapi 5.52 cannot install below 22.13; docs share the lockfile.
           node-version: '22'
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

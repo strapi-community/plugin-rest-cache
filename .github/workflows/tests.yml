@@ -26,12 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Note: deliberately no `cache: pnpm`. setup-node keys the pnpm store
+      # cache on OS + lockfile hash only, with no Node version, so every matrix
+      # leg shares one store. That store holds compiled native addons, so a
+      # better-sqlite3 built under one Node ABI gets restored under another and
+      # crashes with "Assertion failed: (env) != nullptr". pnpm installs are
+      # fast enough that correctness is the better trade.
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -76,7 +81,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -96,7 +100,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -131,7 +134,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
