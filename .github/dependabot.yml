@@ -1,0 +1,81 @@
+# Dependabot configuration.
+#
+# The repository previously had none, which is why alerts accumulated
+# unattended and why a stale nested lockfile
+# (packages/plugin-rest-cache/yarn.lock, deleted) kept reporting findings for a
+# dependency tree that had not been installed since September 2025.
+#
+# Two things worth knowing when triaging alerts here:
+#
+#   1. The published packages have a very small runtime surface - chalk, debug,
+#      immer, prop-types, cache-manager, keyv, quick-lru and @keyv/redis. Almost
+#      every alert on this repository is against development tooling or the
+#      playground Strapi applications, neither of which ship to users.
+#   2. The playgrounds pin Strapi deliberately, so bumps there are a testing
+#      decision, not a security one. They are grouped separately for that
+#      reason.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+    labels:
+      - "source: dependencies"
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Runtime dependencies of the published packages. These are the ones that
+      # actually reach users, so keep them in their own PR and review properly.
+      production-dependencies:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+
+      # Strapi moves fast and the playgrounds pin exact versions; batch these so
+      # an upgrade is one reviewable change rather than a dozen.
+      strapi:
+        patterns:
+          - "@strapi/*"
+          - "@strapi-community/*"
+
+      # Docs, build, lint and benchmark tooling. Noisy, low risk, safe to batch.
+      dev-tooling:
+        dependency-type: development
+        exclude-patterns:
+          - "@strapi/*"
+          - "@strapi-community/*"
+        update-types:
+          - minor
+          - patch
+
+    ignore:
+      # Majors for these are migrations, not upgrades - they change build
+      # output or test semantics and need to be done deliberately.
+      - dependency-name: "@strapi/sdk-plugin"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "lerna"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - "source: dependencies"
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns:
+          - "*"
