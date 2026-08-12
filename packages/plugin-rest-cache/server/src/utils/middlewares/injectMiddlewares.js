@@ -29,6 +29,17 @@ const adminRoutes = {
   delete: ['/single-types/:model', '/collection-types/:model/:id'],
 };
 
+/**
+ * Strip the trailing "+" repeatable-param marker so a configured route path and
+ * the path Strapi registered compare equal.
+ *
+ * @param {string} path
+ * @return {string}
+ */
+function normalizeRoutePath(path) {
+  return (path || '').replace(/\+$/, '');
+}
+
 function injectMiddleware(route, pluginUUid, config = {}) {
   if (typeof route.config === 'undefined') {
     route.config = {};
@@ -79,8 +90,12 @@ export const injectMiddlewares = function (strapi, strategy) {
         (route) =>
           // You can modify this to search for a specific route or multiple
           route.method === cacheRoute.method &&
-          //below replace removes the + at the end of the line
-          route.globalPath === cacheRoute.path.replace(/\+$/, '')
+          // Normalise both sides: a trailing "+" marks a repeatable param
+          // (e.g. "/categories/slug/:slug+") and is part of the registered
+          // path as well as the configured one. Stripping it from only one
+          // side means such routes never match, and are silently left
+          // uncached.
+          normalizeRoutePath(route.globalPath) === normalizeRoutePath(cacheRoute.path)
       );
 
       // If the route exists lets inject the middleware
