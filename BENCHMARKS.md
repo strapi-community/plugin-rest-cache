@@ -1,6 +1,15 @@
 # Benchmarks
 
-These benchmarks are out of date for the current version of the plugin. They are kept here for reference and might be updated in the future.
+> **These numbers are stale.** They were measured against plugin `4.2.4` on
+> Strapi `4.1.5` and Node `16`, none of which are supported any more. They are
+> kept for reference only.
+>
+> To replace them, run the **benchmarks** workflow from the Actions tab
+> (`.github/workflows/benchmarks.yml`). It measures every scenario back to back
+> on a single runner and, with `update_docs` enabled, opens a pull request
+> rewriting this file. Absolute throughput on shared CI hardware is not
+> comparable between runs - the ratio between cache-off and cache-on is the
+> meaningful figure.
 
 ## Context
 

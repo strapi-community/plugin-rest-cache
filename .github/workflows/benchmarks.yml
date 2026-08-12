@@ -1,0 +1,210 @@
+# Manual performance benchmarks.
+#
+# Results always land in the run summary and as artifacts. Updating
+# BENCHMARKS.md is opt-in and goes through a pull request rather than a direct
+# push, so the numbers get reviewed before they are published.
+#
+# Optional hardening: create a repository environment named `benchmarks` with
+# required reviewers and this workflow will additionally block on approval
+# before it runs at all.
+name: benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Cache provider to benchmark
+        type: choice
+        options: [both, memory, redis]
+        default: both
+      duration:
+        description: Seconds per scenario
+        type: string
+        default: "30"
+      connections:
+        description: Concurrent connections
+        type: string
+        default: "100"
+      pipelining:
+        description: Pipelined requests per connection
+        type: string
+        default: "10"
+      update_docs:
+        description: Open a PR updating BENCHMARKS.md
+        type: boolean
+        default: false
+
+# Benchmarks are timing sensitive; never let two runs share a runner pool.
+concurrency:
+  group: benchmarks
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      providers: ${{ steps.plan.outputs.providers }}
+    steps:
+      - id: plan
+        env:
+          PROVIDER: ${{ inputs.provider }}
+          DURATION: ${{ inputs.duration }}
+          CONNECTIONS: ${{ inputs.connections }}
+          PIPELINING: ${{ inputs.pipelining }}
+        run: |
+          # workflow_dispatch string inputs reach a shell, so validate them as
+          # plain integers rather than trusting the form.
+          for pair in "duration:$DURATION" "connections:$CONNECTIONS" "pipelining:$PIPELINING"; do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            if ! printf '%s' "$value" | grep -Eq '^[0-9]+$'; then
+              echo "::error::$name must be a positive integer, got '$value'"
+              exit 1
+            fi
+          done
+
+          case "$PROVIDER" in
+            both)   echo 'providers=["memory","redis"]' >> "$GITHUB_OUTPUT" ;;
+            memory) echo 'providers=["memory"]'         >> "$GITHUB_OUTPUT" ;;
+            redis)  echo 'providers=["redis"]'          >> "$GITHUB_OUTPUT" ;;
+            *)      echo "::error::unknown provider '$PROVIDER'"; exit 1 ;;
+          esac
+
+  benchmark:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      # Never run providers concurrently: they would compete for the same CPU
+      # and make the numbers meaningless.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        provider: ${{ fromJSON(needs.plan.outputs.providers) }}
+
+    services:
+      redis:
+        image: bitnami/redis:latest
+        env:
+          ALLOW_EMPTY_PASSWORD: yes
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: yarn --frozen-lockfile
+
+      - env:
+          PROVIDER: ${{ matrix.provider }}
+        run: yarn "postinstall:$PROVIDER"
+
+      - run: yarn build:plugin:rest-cache
+
+      - name: Record runner capacity
+        run: |
+          echo "cores: $(nproc)"
+          free -m | head -2
+          echo "kernel: $(uname -r)"
+
+      - name: Run benchmarks
+        env:
+          DURATION: ${{ inputs.duration }}
+          CONNECTIONS: ${{ inputs.connections }}
+          PIPELINING: ${{ inputs.pipelining }}
+          PROVIDER: ${{ matrix.provider }}
+        run: |
+          node scripts/benchmark.mjs \
+            --provider "$PROVIDER" \
+            --duration "$DURATION" \
+            --connections "$CONNECTIONS" \
+            --pipelining "$PIPELINING" \
+            --json "bench-$PROVIDER.json" \
+            --markdown "bench-$PROVIDER.md"
+
+      - name: Publish to run summary
+        env:
+          PROVIDER: ${{ matrix.provider }}
+        run: cat "bench-$PROVIDER.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks-${{ matrix.provider }}
+          path: |
+            bench-${{ matrix.provider }}.json
+            bench-${{ matrix.provider }}.md
+          retention-days: 30
+
+  update-docs:
+    needs: benchmark
+    if: ${{ inputs.update_docs && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: benchmarks-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Assemble BENCHMARKS.md
+        run: |
+          {
+            for f in artifacts/bench-*.md; do
+              cat "$f"
+              echo
+            done
+          } > BENCHMARKS.md
+          echo "--- assembled ---"
+          head -20 BENCHMARKS.md
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          PROVIDER: ${{ inputs.provider }}
+          DURATION: ${{ inputs.duration }}
+          CONNECTIONS: ${{ inputs.connections }}
+          PIPELINING: ${{ inputs.pipelining }}
+        run: |
+          if git diff --quiet -- BENCHMARKS.md; then
+            echo "BENCHMARKS.md unchanged, nothing to open"
+            exit 0
+          fi
+
+          BRANCH="bench/results-${RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add BENCHMARKS.md
+          git commit -m "docs: refresh benchmarks (run ${RUN_ID})"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --base "${GITHUB_REF_NAME}" \
+            --head "$BRANCH" \
+            --title "docs: refresh benchmarks" \
+            --body "$(printf '%s\n' \
+              "Automated benchmark run [\`${RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID})." \
+              "" \
+              "| Setting | Value |" \
+              "|---|---|" \
+              "| Provider | \`${PROVIDER}\` |" \
+              "| Duration | ${DURATION}s per scenario |" \
+              "| Connections | ${CONNECTIONS} |" \
+              "| Pipelining | ${PIPELINING} |" \
+              "" \
+              "Absolute throughput on shared CI hardware is not comparable between runs." \
+              "Scenarios within a single run execute back to back on one machine, so the" \
+              "**ratio between cache-off and cache-on** is the number worth reviewing.")"

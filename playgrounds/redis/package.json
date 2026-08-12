@@ -9,7 +9,7 @@
     "build": "strapi build",
     "strapi": "strapi",
     "test": "run-s test:*",
-    "test:e2e": "jest --detectOpenHandles --forceExit"
+    "test:e2e": "jest --forceExit"
   },
   "dependencies": {
     "@strapi/plugin-users-permissions": "5.52.0",

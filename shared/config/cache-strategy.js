@@ -6,8 +6,16 @@ module.exports = ({ env }) => ({
   enableEtag: env.bool("ENABLE_ETAG", true),
   enableXCacheHeaders: env.bool("ENABLE_XCACHE_HEADERS", true),
   enableAdminCTBMiddleware: env.bool("ENABLE_ADMIN_CTB_MIDDLEWARE", true),
+  enableDocumentServiceMiddleware: env.bool(
+    "ENABLE_DOCUMENT_SERVICE_MIDDLEWARE",
+    true
+  ),
   resetOnStartup: env.bool("RESET_STARTUP", false),
-  clearRelatedCache: env.bool("CREAR_RELATED_CACHE", true),
+  clearRelatedCache: env.bool(
+    "CLEAR_RELATED_CACHE",
+    // legacy misspelling, kept so existing setups keep working
+    env.bool("CREAR_RELATED_CACHE", true)
+  ),
   keysPrefix: env("KEYS_PREFIX", ''),
   keys: env.json("KEYS", {
     useHeaders: [],
