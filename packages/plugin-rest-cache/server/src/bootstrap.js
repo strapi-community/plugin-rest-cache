@@ -9,7 +9,7 @@ const looksLikeInstanceof = (value, target) => {
   return false;
 };
 
-import chalk from 'chalk';
+import colors from './utils/colors';
 import { createRequire } from 'module';
 import permissionsActions from './permissions-actions';
 import { CacheProvider } from './types';
@@ -95,6 +95,6 @@ export default async function bootstrap({ strapi }) {
   await cacheStore.init(provider);
 
   strapi.log.info(
-    `Using REST Cache plugin with provider "${chalk.cyan(pluginOption.provider.name)}"`
+    `Using REST Cache plugin with provider "${colors.cyan(pluginOption.provider.name)}"`
   );
 }

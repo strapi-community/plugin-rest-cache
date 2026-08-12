@@ -31,8 +31,13 @@ function parseArgs(argv) {
   const args = {
     provider: "memory",
     duration: 30,
-    connections: 100,
-    pipelining: 10,
+    // Defaults are deliberately modest. The uncached scenario is the slowest
+    // by construction, and if it saturates the machine it stops being a
+    // measurement and becomes a timeout counter - every ratio computed against
+    // it is then meaningless. 100 connections x pipelining 10 did exactly that
+    // on a 4-core runner. Raise them for a soak test, not for a baseline.
+    connections: 50,
+    pipelining: 1,
     warmup: 5,
     port: 1337,
     path: "/api/homepage?populate=*",
@@ -218,11 +223,35 @@ function toMarkdown(results, args, meta) {
   );
   lines.push("");
 
+  const unreliable = results.filter((r) => r.errors + r.timeouts + r.non2xx > 0);
+  if (unreliable.length) {
+    const baselineFailed = unreliable.some((r) => r.id === "cache-disabled");
+    lines.push("> [!WARNING]");
+    lines.push(
+      "> **These numbers are not trustworthy.** " +
+        unreliable
+          .map((r) => `${r.name} had ${r.errors + r.timeouts + r.non2xx} failed requests`)
+          .join("; ") +
+        "."
+    );
+    if (baselineFailed) {
+      lines.push(
+        "> The reference scenario is the divisor for every ratio below, so if it " +
+          "was saturated rather than measured, every speedup figure is wrong. " +
+          "Re-run with fewer connections or less pipelining."
+      );
+    }
+    lines.push("");
+  }
+
   lines.push("## Summary");
   lines.push("");
-  lines.push("| Scenario | Req/Sec (avg) | Latency p50 | Latency p99 | vs reference |");
-  lines.push("|---|---:|---:|---:|---:|");
+  lines.push(
+    "| Scenario | Req/Sec (avg) | Latency p50 | Latency p99 | Failed | vs reference |"
+  );
+  lines.push("|---|---:|---:|---:|---:|---:|");
   for (const r of results) {
+    const failed = r.errors + r.timeouts + r.non2xx;
     const speedup =
       baseline && r.id !== "cache-disabled" && baseline.requests.average > 0
         ? `${(r.requests.average / baseline.requests.average).toFixed(1)}x`
@@ -230,7 +259,9 @@ function toMarkdown(results, args, meta) {
     lines.push(
       `| ${r.name} | ${Math.round(r.requests.average).toLocaleString()} | ${
         r.latency.p50
-      } ms | ${r.latency.p99} ms | ${speedup} |`
+      } ms | ${r.latency.p99} ms | ${failed ? `**${failed}**` : "0"} | ${speedup}${
+        failed ? " ⚠️" : ""
+      } |`
     );
   }
   lines.push("");
@@ -294,9 +325,19 @@ async function main() {
 
   const failed = results.filter((r) => r.errors || r.timeouts || r.non2xx);
   if (failed.length) {
-    process.stdout.write(
-      `\n[bench] WARNING: ${failed.length} scenario(s) reported errors or non-2xx responses\n`
-    );
+    for (const r of failed) {
+      process.stdout.write(
+        `\n[bench] WARNING: "${r.name}" had ${r.errors} errors, ${r.timeouts} timeouts, ${r.non2xx} non-2xx\n`
+      );
+    }
+    if (failed.some((r) => r.id === "cache-disabled")) {
+      process.stdout.write(
+        '\n[bench] The reference scenario failed requests, so every ratio in this\n' +
+          '[bench] report is measured against a saturated server. Lower --connections\n' +
+          '[bench] or --pipelining and re-run before publishing these numbers.\n'
+      );
+      process.exitCode = 1;
+    }
   }
 }
 

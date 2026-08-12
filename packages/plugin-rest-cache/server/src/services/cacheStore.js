@@ -4,7 +4,7 @@
  * @typedef {import('@strapi/strapi').Strapi} Strapi
  * @typedef {import('./types').CacheProvider} CacheProvider
  */
-import chalk from 'chalk';
+import colors from '../utils/colors';
 import debug from 'debug';
 
 import { serialize } from '../utils/store/serialize';
@@ -105,7 +105,7 @@ export default function createCacheStoreService({ strapi }) {
       }
 
       try {
-        debug('strapi:plugin-rest-cache')(`${chalk.redBright('[PURGING KEY]')}: ${key}`);
+        debug('strapi:plugin-rest-cache')(`${colors.redBright('[PURGING KEY]')}: ${key}`);
         return provider.del(`${keysPrefix}${key}`);
       } catch (error) {
         strapi.log.error(`REST Cache provider errored:`);
