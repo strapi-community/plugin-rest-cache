@@ -1,13 +1,47 @@
 'use strict';
 
-const Keyv = require('keyv').default;
-const QuickLRU = require('quick-lru');
 const { createCache } = require('cache-manager');
 const { CacheProvider } = require('@strapi-community/plugin-rest-cache/types');
 
+// keyv 4 exports the constructor directly, keyv 5 exports it as `.default`.
+// Accept both: which one we get depends on what else in the host application's
+// dependency tree won the hoist.
+const keyvModule = require('keyv');
+const Keyv = keyvModule.default ?? keyvModule;
+
 class MemoryCacheProvider extends CacheProvider {
-  constructor(options) {
+  /**
+   * quick-lru v7 is ESM-only, so it cannot be require()d from CommonJS on Node
+   * versions without require(esm) (added in 20.19). Loading it with a dynamic
+   * import works on every supported Node version, which is why construction
+   * goes through this factory rather than the constructor.
+   *
+   * Do not "simplify" this back to a top-level require - see
+   * https://github.com/strapi-community/plugin-rest-cache/issues/128
+   *
+   * @param {object} options
+   */
+  static async create(options) {
+    const quickLruModule = await import('quick-lru');
+    const QuickLRU = quickLruModule.default ?? quickLruModule;
+
+    return new MemoryCacheProvider(options, QuickLRU);
+  }
+
+  /**
+   * Prefer MemoryCacheProvider.create(), which resolves QuickLRU for you.
+   *
+   * @param {object} options
+   * @param {Function} QuickLRU the quick-lru constructor
+   */
+  constructor(options, QuickLRU) {
     super();
+
+    if (typeof QuickLRU !== 'function') {
+      throw new Error(
+        'MemoryCacheProvider requires the QuickLRU constructor. Use MemoryCacheProvider.create(options) instead of calling the constructor directly.'
+      );
+    }
 
     const { ttl, ...adapterOptions } = options;
 
@@ -20,7 +54,7 @@ class MemoryCacheProvider extends CacheProvider {
       ttl,
       stores: [
         new Keyv({
-          store: new QuickLRU.default(adapterOptions),
+          store: new QuickLRU(adapterOptions),
         }),
       ],
     });

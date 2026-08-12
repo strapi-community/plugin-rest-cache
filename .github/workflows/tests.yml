@@ -17,6 +17,56 @@ on:
     branches: [main]
 
 jobs:
+  # The e2e jobs below can only run on Node 22, because Strapi 5.52.0 itself
+  # cannot be installed on anything else (see the note at the top of this file).
+  # That left the Node versions where the providers actually fail to load
+  # unreachable from CI, which is how #118 / #123 / #116 survived a green build.
+  #
+  # This job closes that gap: it installs on 22, then exercises the providers
+  # standalone (no Strapi) across every Node version we claim to support.
+  provider_smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        id: yarn-cache
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn --frozen-lockfile
+
+      - run: yarn build:plugin:rest-cache
+
+      # Deliberately includes 20: it is below Strapi's install floor of 22.13,
+      # but it is exactly where the ESM/interop provider bugs reproduce, so a
+      # regression there must fail the build. (Node 18 is EOL and is covered by
+      # engines.node ">=20.0.0".)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/provider-smoke.cjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/provider-smoke.cjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/provider-smoke.cjs
+
   linters:
     runs-on: ubuntu-latest
     strategy:

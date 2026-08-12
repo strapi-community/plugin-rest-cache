@@ -11,6 +11,6 @@ module.exports = {
   name: 'Memory',
 
   async init(options /* , { strapi } */) {
-    return new MemoryCacheProvider(options);
+    return MemoryCacheProvider.create(options);
   },
 };
