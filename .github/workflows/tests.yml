@@ -68,6 +68,7 @@ jobs:
   linters:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         node: [22, 24, 26]
     steps:
@@ -97,6 +98,7 @@ jobs:
   e2e_memory:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         node: [22, 24, 26]
     steps:
@@ -132,6 +134,7 @@ jobs:
   e2e_redis:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         node: [22, 24, 26]
     services:
