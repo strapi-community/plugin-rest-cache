@@ -22,7 +22,7 @@
     "profile:memory": "cd ./playgrounds/memory && 0x -o -D .profile -P 'autocannon --warmup [ -c 1 -d 3 ] -c 100 -p 10 -d 120 http://localhost:1337/api/homepage?populate=*' start-profiler.js",
     "profile:redis": "cd ./playgrounds/redis && 0x -o -D .profile -P 'autocannon --warmup [ -c 1 -d 3 ] -c 100 -p 10 -d 120 http://localhost:1337/api/homepage?populate=*' start-profiler.js",
     "lint": "lerna run lint --stream",
-    "test:lint": "lerna run test:lint --stream",
+    "test:lint": "run-s test:deps lint:workspaces",
     "test:e2e": "run-s test:e2e:*",
     "test:e2e:memory": "yarn workspace @strapi-plugin-rest-cache/playground-memory test:e2e",
     "test:e2e:redis": "yarn workspace @strapi-plugin-rest-cache/playground-redis test:e2e",
@@ -31,7 +31,9 @@
     "verify:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin verify",
     "watch:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache watch",
     "watch:link:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin watch:link",
-    "test:smoke": "node scripts/provider-smoke.cjs"
+    "test:smoke": "node scripts/provider-smoke.cjs",
+    "test:deps": "node scripts/check-undeclared-deps.cjs",
+    "lint:workspaces": "lerna run test:lint --stream"
   },
   "license": "MIT",
   "resolutions": {
