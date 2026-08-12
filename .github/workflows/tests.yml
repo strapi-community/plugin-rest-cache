@@ -1,3 +1,10 @@
+# Node matrix is pinned to 22 by two opposing transitive constraints:
+#   - @strapi/utils (Strapi 5.52.0) pins preferred-pm@5.0.0, engines node >=22.13
+#   - @strapi/sdk-plugin@5.x, engines node >=18.0.0 <=22.x.x
+# That leaves 22.13-22.x as the only viable range. sdk-plugin 6.1.1 drops the
+# upper bound, so widening to [22, 24, 26] is unblocked by the SDK v6 migration
+# tracked in #134.
+
 name: tests
 
 on:
@@ -14,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        node: [22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        node: [22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -78,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        node: [22]
     services:
       redis:
         image: bitnami/redis:latest
