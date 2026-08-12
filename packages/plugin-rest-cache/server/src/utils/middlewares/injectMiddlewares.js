@@ -1,6 +1,6 @@
 'use strict';
 
-import chalk from 'chalk';
+import colors from '../colors';
 import debug from 'debug';
 import { flattenRoutes } from './flattenRoutes';
 
@@ -84,7 +84,7 @@ export const injectMiddlewares = function (strapi, strategy) {
   const purgeViaDocumentService = Boolean(strategy.enableDocumentServiceMiddleware);
 
   for (const cacheConf of strategy.contentTypes) {
-    debug('strapi:plugin-rest-cache')(`[REGISTER] ${chalk.cyan(cacheConf.contentType)} routes middlewares`);
+    debug('strapi:plugin-rest-cache')(`[REGISTER] ${colors.cyan(cacheConf.contentType)} routes middlewares`);
     for (const cacheRoute of cacheConf.routes) {
       const indexID = strapiRoutes.findIndex(
         (route) =>
@@ -117,7 +117,7 @@ export const injectMiddlewares = function (strapi, strategy) {
             debug('strapi:plugin-rest-cache')(
               `[REGISTER] ${cacheRoute.method} ${
                 cacheRoute.path
-              } ${chalk.redBright('purge')}`
+              } ${colors.redBright('purge')}`
             );
             injectMiddleware(
               strapiRoutes[indexID],
@@ -133,10 +133,10 @@ export const injectMiddlewares = function (strapi, strategy) {
               .join(',');
 
             debug('strapi:plugin-rest-cache')(
-              `[REGISTER] GET ${cacheRoute.path} ${chalk.green(
+              `[REGISTER] GET ${cacheRoute.path} ${colors.green(
                 'recv'
-              )} ${chalk.grey(`maxAge=${cacheRoute.maxAge}`)}${
-                vary && chalk.grey(` vary=${vary}`)
+              )} ${colors.grey(`maxAge=${cacheRoute.maxAge}`)}${
+                vary && colors.grey(` vary=${vary}`)
               }`
             );
             injectMiddleware(strapiRoutes[indexID], 'plugin::rest-cache.recv', {
@@ -154,7 +154,7 @@ export const injectMiddlewares = function (strapi, strategy) {
   // Superseded by the document service middleware, which sees content-manager
   // writes (and bulk actions, clones and discards) without needing this list.
   if (strategy.enableAdminCTBMiddleware && !purgeViaDocumentService) {
-    debug('strapi:plugin-rest-cache')(`[REGISTER] ${chalk.magentaBright('admin')} routes middlewares`);
+    debug('strapi:plugin-rest-cache')(`[REGISTER] ${colors.magentaBright('admin')} routes middlewares`);
     let contentMangerRoutes = [];
     for (const routes of Object.values(
       strapi.plugins['content-manager'].routes
@@ -171,7 +171,7 @@ export const injectMiddlewares = function (strapi, strategy) {
           strapiRoute.method === 'POST' && strapiRoute.path === route
       );
       if (indexID !== -1) {
-        debug('strapi:plugin-rest-cache')(`[REGISTER] POST ${route} ${chalk.magentaBright('purge-admin')}`);
+        debug('strapi:plugin-rest-cache')(`[REGISTER] POST ${route} ${colors.magentaBright('purge-admin')}`);
         injectMiddleware(
           contentMangerRoutes[indexID],
           'plugin::rest-cache.purgeAdmin'
@@ -185,7 +185,7 @@ export const injectMiddlewares = function (strapi, strategy) {
           strapiRoute.method === 'PUT' && strapiRoute.path === route
       );
       if (indexID !== -1) {
-        debug('strapi:plugin-rest-cache')(`[REGISTER] PUT ${route} ${chalk.magentaBright('purge-admin')}`);
+        debug('strapi:plugin-rest-cache')(`[REGISTER] PUT ${route} ${colors.magentaBright('purge-admin')}`);
         injectMiddleware(
           contentMangerRoutes[indexID],
           'plugin::rest-cache.purgeAdmin'
@@ -200,7 +200,7 @@ export const injectMiddlewares = function (strapi, strategy) {
       );
       if (indexID !== -1) {
         debug('strapi:plugin-rest-cache')(
-          `[REGISTER] DELETE ${route} ${chalk.magentaBright('purge-admin')}`
+          `[REGISTER] DELETE ${route} ${colors.magentaBright('purge-admin')}`
         );
         injectMiddleware(
           contentMangerRoutes[indexID],

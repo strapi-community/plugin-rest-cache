@@ -24,11 +24,11 @@ on:
       connections:
         description: Concurrent connections
         type: string
-        default: "100"
+        default: "50"
       pipelining:
         description: Pipelined requests per connection
         type: string
-        default: "10"
+        default: "1"
       update_docs:
         description: Open a PR updating BENCHMARKS.md
         type: boolean
