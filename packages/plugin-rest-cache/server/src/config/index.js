@@ -14,6 +14,12 @@ export default {
       enableEtag: false,
       enableXCacheHeaders: false,
       enableAdminCTBMiddleware: true,
+      // Invalidate from the document service instead of from HTTP route
+      // middleware. Catches writes that no route can see (GraphQL mutations,
+      // scheduled Content Releases, custom strapi.documents() calls) and
+      // cannot drift out of sync with Strapi's route list.
+      // Set to false to fall back to the legacy route-injection behaviour.
+      enableDocumentServiceMiddleware: true,
       resetOnStartup: false,
       clearRelatedCache: true,
       keysPrefix: '',

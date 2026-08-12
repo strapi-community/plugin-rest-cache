@@ -7,6 +7,7 @@ import debug from 'debug';
 
 import { resolveUserStrategy } from './utils/config/resolveUserStrategy';
 import { injectMiddlewares } from './utils/middlewares/injectMiddlewares';
+import { registerDocumentServiceMiddleware } from './utils/middlewares/registerDocumentServiceMiddleware';
 
 /**
  * @param {{ strapi: Strapi }} strapi
@@ -30,6 +31,13 @@ export default async function register({ strapi }) {
 
   // boostrap cache middlewares
   injectMiddlewares(strapi, strategy);
+
+  // Invalidation. The document service hook supersedes the route-injected
+  // purge middlewares, so the two are mutually exclusive - running both would
+  // purge twice for every write that does go through a route.
+  if (strategy.enableDocumentServiceMiddleware) {
+    registerDocumentServiceMiddleware(strapi);
+  }
 
   if (strategy.resetOnStartup) {
     strapi.log.warn('Reset cache on startup is enabled');

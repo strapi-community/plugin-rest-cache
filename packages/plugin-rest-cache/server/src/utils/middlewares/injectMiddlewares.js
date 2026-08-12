@@ -67,6 +67,11 @@ function injectMiddleware(route, pluginUUid, config = {}) {
 export const injectMiddlewares = function (strapi, strategy) {
   const strapiRoutes = flattenRoutes(strapi);
 
+  // When invalidation runs off the document service it already covers every
+  // write, including those that never reach a route. Injecting the route purge
+  // middlewares as well would purge twice for every routed write.
+  const purgeViaDocumentService = Boolean(strategy.enableDocumentServiceMiddleware);
+
   for (const cacheConf of strategy.contentTypes) {
     debug('strapi:plugin-rest-cache')(`[REGISTER] ${chalk.cyan(cacheConf.contentType)} routes middlewares`);
     for (const cacheRoute of cacheConf.routes) {
@@ -91,6 +96,9 @@ export const injectMiddlewares = function (strapi, strategy) {
           case 'PUT':
           case 'PATCH':
           case 'POST':
+            if (purgeViaDocumentService) {
+              break;
+            }
             debug('strapi:plugin-rest-cache')(
               `[REGISTER] ${cacheRoute.method} ${
                 cacheRoute.path
@@ -128,7 +136,9 @@ export const injectMiddlewares = function (strapi, strategy) {
     }
   }
   // --- Admin REST endpoints
-  if (strategy.enableAdminCTBMiddleware) {
+  // Superseded by the document service middleware, which sees content-manager
+  // writes (and bulk actions, clones and discards) without needing this list.
+  if (strategy.enableAdminCTBMiddleware && !purgeViaDocumentService) {
     debug('strapi:plugin-rest-cache')(`[REGISTER] ${chalk.magentaBright('admin')} routes middlewares`);
     let contentMangerRoutes = [];
     for (const routes of Object.values(
