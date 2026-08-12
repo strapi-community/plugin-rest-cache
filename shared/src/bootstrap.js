@@ -42,10 +42,16 @@ async function setPublicPermissions(newPermissions) {
   const allPermissionsToCreate = [];
   Object.keys(newPermissions).map((controller) => {
     const actions = newPermissions[controller];
+    // A key may be a bare name ("article" -> api::article.article) or a full
+    // uid ("api::writer.editor") for content types whose name differs from
+    // their parent API.
+    const uid = controller.startsWith("api::")
+      ? controller
+      : `api::${controller}.${controller}`;
     const permissionsToCreate = actions.map((action) => {
       return strapi.query("plugin::users-permissions.permission").create({
         data: {
-          action: `api::${controller}.${controller}.${action}`,
+          action: `${uid}.${action}`,
           role: publicRole.id,
         },
       });
@@ -182,6 +188,7 @@ async function importSeedData() {
     article: ["find", "findOne"],
     category: ["find", "findBySlug", "findOne"],
     writer: ["find", "findOne"],
+    "api::writer.editor": ["find", "findOne"],
   });
 
   // Create all entries

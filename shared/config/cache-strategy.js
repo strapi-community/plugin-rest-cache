@@ -19,6 +19,10 @@ module.exports = ({ env }) => ({
     ),
   contentTypes: [
     "api::article.article",
+    // A content type whose singular name ("editor") differs from its parent
+    // API ("writer"). See
+    // https://github.com/strapi-community/plugin-rest-cache/issues/125
+    "api::writer.editor",
     "api::global.global",
     "api::homepage.homepage",
     {

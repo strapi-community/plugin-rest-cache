@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "editors",
+  "info": {
+    "singularName": "editor",
+    "pluralName": "editors",
+    "displayName": "Editor",
+    "name": "editor",
+    "description": "A content type whose name differs from its parent API (api::writer.editor). Regression fixture for https://github.com/strapi-community/plugin-rest-cache/issues/125"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string"
+    }
+  }
+}
