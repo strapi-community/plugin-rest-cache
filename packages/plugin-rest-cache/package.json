@@ -97,6 +97,7 @@
     "chalk": "^4.1.2",
     "debug": "^4.4.1",
     "immer": "^9.0.21",
+    "lodash": "^4.17.21",
     "prop-types": "^15.8.1"
   },
   "devDependencies": {

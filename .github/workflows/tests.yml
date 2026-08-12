@@ -29,19 +29,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        id: yarn-cache
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          cache: yarn
 
       - name: Install dependencies
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
         run: yarn --frozen-lockfile
 
       - run: yarn build:plugin:rest-cache
@@ -76,21 +66,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          cache: yarn
 
-      # cache node_modules
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        id: yarn-cache
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      # install dependencies if the cache did not hit
       - name: Install dependencies
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
         run: yarn --frozen-lockfile
 
       - run: yarn test:lint
@@ -106,21 +84,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          cache: yarn
 
-      # cache node_modules
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        id: yarn-cache
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      # install dependencies if the cache did not hit
       - name: Install dependencies
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
         run: yarn --frozen-lockfile
 
       - run: yarn postinstall:memory
@@ -151,21 +117,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          cache: yarn
 
-      # cache node_modules
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        id: yarn-cache
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      # install dependencies if the cache did not hit
       - name: Install dependencies
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
         run: yarn --frozen-lockfile
 
       - run: yarn postinstall:redis
