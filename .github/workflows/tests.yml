@@ -26,29 +26,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - run: yarn build:plugin:rest-cache
+      - run: pnpm run build:plugin:rest-cache
 
       # Deliberately includes 20: it is below Strapi's install floor of 22.13,
       # but it is exactly where the ESM/interop provider bugs reproduce, so a
       # regression there must fail the build. (Node 18 is EOL and is covered by
       # engines.node ">=20.0.0".)
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: node scripts/provider-smoke.cjs
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: node scripts/provider-smoke.cjs
+
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -63,15 +71,17 @@ jobs:
         node: [22, 24, 26]
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - run: yarn test:lint
+      - run: pnpm run test:lint
 
   e2e_memory:
     runs-on: ubuntu-latest
@@ -81,21 +91,23 @@ jobs:
         node: [22, 24, 26]
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - run: yarn postinstall:memory
+      - run: pnpm run postinstall:memory
 
-      - run: yarn build:plugin:rest-cache
+      - run: pnpm run build:plugin:rest-cache
 
       - name: Run Memory e2e tests
         working-directory: playgrounds/memory
-        run: yarn test:e2e
+        run: pnpm run test:e2e
 
   e2e_redis:
     runs-on: ubuntu-latest
@@ -114,18 +126,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - run: yarn postinstall:redis
+      - run: pnpm run postinstall:redis
 
-      - run: yarn build:plugin:rest-cache
+      - run: pnpm run build:plugin:rest-cache
 
       - name: Run Redis e2e tests
         working-directory: playgrounds/redis
-        run: yarn test:e2e
+        run: pnpm run test:e2e

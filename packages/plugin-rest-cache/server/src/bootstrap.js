@@ -47,7 +47,7 @@ const createProvider = async (providerConfig, { strapi }) => {
     // See https://github.com/strapi-community/plugin-rest-cache/issues/128
     const hint = resolved
       ? `The package "${packageName}" was found at "${modulePath}" but could not be loaded.`
-      : `The package "${packageName}" could not be resolved. You may need to install it: "yarn add ${packageName}".`;
+      : `The package "${packageName}" could not be resolved. You may need to install it with your package manager, e.g. "npm install ${packageName}".`;
 
     throw new Error(
       `Could not load REST Cache provider "${providerName}". ${hint}\n` +

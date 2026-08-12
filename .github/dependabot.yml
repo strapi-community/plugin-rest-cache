@@ -17,6 +17,8 @@
 version: 2
 
 updates:
+  # `npm` is the correct ecosystem for pnpm too - dependabot reads
+  # pnpm-lock.yaml under it.
   - package-ecosystem: npm
     directory: /
     schedule:

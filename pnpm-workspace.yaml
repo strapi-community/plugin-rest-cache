@@ -1,0 +1,17 @@
+packages:
+  - 'packages/*'
+  - 'playgrounds/*'
+
+# pnpm 10 does not run dependency lifecycle scripts unless a package is listed
+# here. These all need theirs: they compile or download a native binary at
+# install time and are non-functional without it.
+#
+# The list mirrors the one Strapi's own CLI uses when scaffolding a pnpm app
+# (packages/cli/create-strapi-app/src/utils/pnpm-config.ts), plus better-sqlite3
+# for the playgrounds' database.
+onlyBuiltDependencies:
+  - '@swc/core'
+  - better-sqlite3
+  - core-js-pure
+  - esbuild
+  - sharp

@@ -23,7 +23,7 @@
 ### Cache disabled (reference)
 
 ```sh
-$ ENABLE_CACHE=false yarn profile:memory
+$ ENABLE_CACHE=false pnpm run profile:memory
 ```
 
 | Stat        | 2.5%    | 50%     | 97.5%   | 99%     | Avg        | Stdev  | Max     |
@@ -38,7 +38,7 @@ $ ENABLE_CACHE=false yarn profile:memory
 ### Cache enabled (without etag)
 
 ```sh
-$ ENABLE_ETAG=false yarn profile:memory
+$ ENABLE_ETAG=false pnpm run profile:memory
 ```
 
 | Stat        | 2.5%   | 50%    | 97.5%  | 99%    | Avg       | Stdev    | Max    |
@@ -53,7 +53,7 @@ $ ENABLE_ETAG=false yarn profile:memory
 ### Cache enabled (with etag)
 
 ```sh
-$ yarn profile:memory
+$ pnpm run profile:memory
 ```
 
 | Stat        | 2.5%   | 50%    | 97.5%  | 99%    | Avg       | Stdev    | Max    |

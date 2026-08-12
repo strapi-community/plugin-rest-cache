@@ -17,7 +17,11 @@ module.exports = async () => ({
       }
     }]
   },
+  // quick-lru v7 is ESM-only and must be transformed. The pattern has to
+  // account for pnpm's layout, where the real path is
+  // node_modules/.pnpm/quick-lru@7.0.1/node_modules/quick-lru rather than
+  // node_modules/quick-lru.
   "transformIgnorePatterns": [
-    "node_modules/(?!quick-lru)"
+    "node_modules/(?!(\\.pnpm/)?quick-lru)"
   ],
 });

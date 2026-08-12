@@ -93,7 +93,7 @@
     "verify": "strapi-plugin verify"
   },
   "dependencies": {
-    "@strapi-community/provider-rest-cache-memory": "5.0.0",
+    "@strapi-community/provider-rest-cache-memory": "workspace:*",
     "chalk": "^4.1.2",
     "debug": "^4.4.1",
     "immer": "^9.0.21",
