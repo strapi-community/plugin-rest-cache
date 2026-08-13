@@ -36,8 +36,14 @@ export abstract class CacheProvider {
   /**
    * Every key this provider holds, without the store's configured keysPrefix
    * and without any adapter-internal qualification.
+   *
+   * The store passes its keysPrefix, and neither shipped provider reads it -
+   * the store filters and strips the prefix itself, because a provider that
+   * ignored the argument would otherwise return a superset and silently break
+   * that filtering. It stays in the signature so third-party providers that do
+   * use it to narrow their enumeration keep receiving it.
    */
-  abstract keys(): Promise<string[]>;
+  abstract keys(keysPrefix?: string): Promise<string[]>;
 
   abstract get ready(): boolean;
 

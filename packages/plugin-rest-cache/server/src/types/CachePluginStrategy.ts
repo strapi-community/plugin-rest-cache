@@ -19,7 +19,8 @@ export class CachePluginStrategy {
 
   resetOnStartup: boolean = false;
 
-  clearRelatedCache: boolean = false;
+  // Defaults to true, matching the constructor and the shipped plugin config.
+  clearRelatedCache: boolean = true;
 
   /** Milliseconds. */
   maxAge: Milliseconds = ms(3600000);

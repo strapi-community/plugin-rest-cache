@@ -57,4 +57,15 @@ export interface CachePluginStrategyInput {
   keysPrefix?: string;
   contentTypes?: Array<ContentTypeUID | string | CacheContentTypeConfigInput> | CacheContentTypeConfig[];
   keys?: CacheKeysConfig | CacheKeysConfigInput;
+  /**
+   * The default hitpass for every content type and route that does not set its
+   * own. The plugin ships one that bypasses the cache for any request carrying
+   * an authorization or cookie header.
+   *
+   * Note this is consumed during resolution and deliberately not carried on the
+   * resolved CachePluginStrategy: by the time resolution finishes, every route
+   * holds its own effective hitpass, so a copy on the strategy could only
+   * disagree with them.
+   */
+  hitpass?: CachePluginHitpass | boolean;
 }

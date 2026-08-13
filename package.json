@@ -30,7 +30,8 @@
     "test:smoke": "node scripts/provider-smoke.cjs",
     "test:deps": "node scripts/check-undeclared-deps.cjs",
     "lint:workspaces": "pnpm -r run test:lint",
-    "test:cluster": "node scripts/redis-cluster-check.cjs"
+    "test:cluster": "node scripts/redis-cluster-check.cjs",
+    "test:esm": "node scripts/check-esm-bundle.cjs"
   },
   "license": "MIT",
   "devDependencies": {
