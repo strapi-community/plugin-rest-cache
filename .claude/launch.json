@@ -4,8 +4,25 @@
     {
       "name": "playground-memory",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@strapi-plugin-rest-cache/playground-memory", "run", "develop"],
+      "runtimeArgs": [
+        "--filter",
+        "@strapi-plugin-rest-cache/playground-memory",
+        "run",
+        "develop"
+      ],
       "port": 1337
+    },
+    {
+      "name": "docs",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "run",
+        "docs:dev",
+        "--",
+        "--port",
+        "5173"
+      ],
+      "port": 5173
     }
   ]
 }

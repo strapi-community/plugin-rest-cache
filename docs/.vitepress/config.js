@@ -44,36 +44,57 @@ export default defineVersionedConfig({
           text: 'Guide',
           items: [
             { text: 'Introduction', link: '/guide/' },
-            { text: 'Installation', link: '/guide/installation' },
+            { text: 'Getting started', link: '/guide/getting-started' },
           ]
         },
         {
-          text: 'Provider',
+          text: 'Caching',
           collapsible: true,
           items: [
-            { text: 'Provider configuration', link: '/guide/provider/' },
-            { text: 'Provider: Memory', link: '/guide/provider/memory' },
-            { text: 'Provider: Redis', link: '/guide/provider/redis' },
-            { text: 'Custom provider', link: '/guide/provider/custom-provider' },
+            { text: 'How caching works', link: '/guide/caching/' },
+            { text: 'Content types', link: '/guide/caching/content-types' },
+            { text: 'Custom routes', link: '/guide/caching/custom-routes' },
+            { text: 'Cache keys', link: '/guide/caching/keys' },
           ]
         },
         {
-          text: 'Strategy',
+          text: 'Invalidation',
           collapsible: true,
           items: [
-            { text: 'Strategy configuration', link: '/guide/strategy/' },
-            { text: 'Cache content type', link: '/guide/strategy/cache-content-type' },
-            { text: 'Cache custom routes', link: '/guide/strategy/cache-custom-routes' },
-            { text: 'Cache keys', link: '/guide/strategy/cache-keys' },
-            { text: 'Debug mode', link: '/guide/strategy/debug' },
+            { text: 'How invalidation works', link: '/guide/invalidation/' },
+            { text: 'Purging manually', link: '/guide/invalidation/purging' },
           ]
         },
         {
-          text: 'API',
+          text: 'Providers',
           collapsible: true,
           items: [
-            { text: 'Services', link: '/guide/api/' },
-            { text: 'Admin Routes', link: '/guide/api/admin-routes' },
+            { text: 'Choosing a provider', link: '/guide/providers/' },
+            { text: 'Memory', link: '/guide/providers/memory' },
+            { text: 'Redis, KeyDB & Valkey', link: '/guide/providers/redis' },
+            { text: 'Custom provider', link: '/guide/providers/custom' },
+          ]
+        },
+        {
+          text: 'Admin panel',
+          items: [
+            { text: 'Dashboard & controls', link: '/guide/admin/' },
+          ]
+        },
+        {
+          text: 'Reference',
+          collapsible: true,
+          items: [
+            { text: 'Configuration', link: '/guide/reference/config' },
+            { text: 'Services', link: '/guide/reference/services' },
+            { text: 'Routes', link: '/guide/reference/routes' },
+            { text: 'Types', link: '/guide/reference/types' },
+          ]
+        },
+        {
+          text: 'Troubleshooting',
+          items: [
+            { text: 'Common problems', link: '/guide/troubleshooting' },
           ]
         },
       ],

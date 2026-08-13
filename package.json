@@ -9,7 +9,7 @@
     "postinstall:memory": "rimraf playgrounds/memory/tests/*.test.js && cpy . ../playgrounds/memory/ --cwd=shared",
     "postinstall:redis": "rimraf playgrounds/redis/tests/*.test.js && cpy . ../playgrounds/redis/ --cwd=shared",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "docs:build": "run-s docs:api docs:build:only",
     "docs:serve": "vitepress serve docs",
     "dev:memory": "pnpm --filter @strapi-plugin-rest-cache/playground-memory run develop",
     "dev:redis": "pnpm --filter @strapi-plugin-rest-cache/playground-redis run develop",
@@ -33,7 +33,9 @@
     "test:cluster": "node scripts/redis-cluster-check.cjs",
     "test:esm": "node scripts/check-esm-bundle.cjs",
     "test:admin": "playwright test -c e2e/playwright.config.ts",
-    "test:admin:ui": "playwright test -c e2e/playwright.config.ts --ui"
+    "test:admin:ui": "playwright test -c e2e/playwright.config.ts --ui",
+    "docs:api": "typedoc",
+    "docs:build:only": "vitepress build docs"
   },
   "license": "MIT",
   "devDependencies": {
@@ -47,6 +49,8 @@
     "mime-types": "^2.1.35",
     "npm-run-all": "^4.1.5",
     "rimraf": "^6.1.3",
+    "typedoc": "0.28.20",
+    "typedoc-plugin-markdown": "^4.12.0",
     "vitepress": "^1.6.4",
     "vitepress-versioning-plugin-patched": "1.3.1",
     "vue": "^3.5.41"
@@ -67,7 +71,8 @@
   "pnpm": {
     "overrides": {
       "colors": "1.4.0",
-      "d3-color": "3.1.0"
+      "d3-color": "3.1.0",
+      "typedoc": "0.28.20"
     }
   }
 }

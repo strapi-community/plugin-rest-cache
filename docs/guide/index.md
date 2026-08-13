@@ -4,11 +4,59 @@ title: Introduction
 
 # {{ $frontmatter.title }}
 
-This plugin inject a middleware that caches incoming `GET` requests on the strapi API, based on query params and Content-Type UID.
-The cache is automatically busted everytime a `PUT`, `PATCH`, `POST`, or `DELETE` request comes in or when an entity is updated through the admin panel. It can also be programmatically cleared via exposed services or admin routes.
+REST Cache stores the responses your Strapi API sends, and serves them again
+without touching the database. When content changes, it clears what that change
+affected.
 
-The cache content is stored by a [**provider**](./provider/index.md), which can be either an in-memory provider, a redis connection, a file system, or any other custom provider.
+The second half is the difficult half, and it is what this plugin is really
+for. Caching is easy; knowing when to stop is not.
 
-You can set a [**strategy**](./strategy/index.md) to tell what to cache and how much time responses should be cached. The cache will be invalidated when the related Content-Type is updated, so you **never have to worry about stale data**.
+## How it works
 
-In addition, you can interact with the plugin through the admin panel, api admin routes or programmatically using internal services.
+A `GET` to a cached route is answered from the store when an entry exists for
+its [cache key](./caching/keys.md), and otherwise passed through, with the
+response stored on the way back.
+
+Invalidation hooks the **document service**, which every write in Strapi passes
+through — REST, GraphQL, the content manager, the deprecated entity service,
+scheduled Content Releases, review workflows, and any `strapi.documents()` call
+of your own. A change made through any of them clears the entries it affects,
+including those of [related content types](./invalidation/index.md).
+
+That matters because the obvious alternative — watching HTTP routes for writes
+— cannot see a GraphQL mutation or a scheduled release, and drifts out of step
+with Strapi's route list every time that list changes.
+
+## What you get
+
+- **Pluggable storage.** In-memory for a single instance,
+  [Redis](./providers/redis.md) (or KeyDB, or Valkey) when several instances
+  need to share one cache, or [your own](./providers/custom.md).
+- **Per-content-type and per-route control** over lifetime, key composition and
+  when to bypass the cache entirely.
+- **Cache keys you decide.** Query parameters, request headers, and
+  [per-caller keys](./caching/keys.md#per-caller-keys) for authenticated
+  traffic.
+- **Request coalescing.** Concurrent requests for the same missing key make one
+  call to the origin, not one each — which is exactly what you want on a cold
+  start or straight after a purge.
+- **ETag and `304`** support, and `X-Cache` headers for seeing what happened.
+- **An [admin panel](./admin/index.md)** showing what is cached right now, with
+  purge controls.
+
+## When not to use it
+
+This plugin caches REST responses. It does not cache GraphQL responses — though
+a GraphQL mutation still invalidates what it changes, so the two coexist
+safely.
+
+It also will not make a slow query fast for the person who triggers it. A cache
+miss costs the original query plus the write to the store. What it changes is
+what the next reader pays.
+
+## Start here
+
+- [Getting started](./getting-started.md) — install, configure, verify
+- [How caching works](./caching/index.md)
+- [How invalidation works](./invalidation/index.md)
+- [Configuration reference](./reference/config.md)
