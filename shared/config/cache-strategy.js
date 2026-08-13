@@ -10,6 +10,7 @@ module.exports = ({ env }) => ({
     "ENABLE_DOCUMENT_SERVICE_MIDDLEWARE",
     true
   ),
+  enableContentApiPurge: env.bool("ENABLE_CONTENT_API_PURGE", false),
   resetOnStartup: env.bool("RESET_STARTUP", false),
   clearRelatedCache: env.bool(
     "CLEAR_RELATED_CACHE",

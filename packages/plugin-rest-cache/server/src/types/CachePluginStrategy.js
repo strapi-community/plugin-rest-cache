@@ -16,6 +16,8 @@ export class CachePluginStrategy {
 
   enableDocumentServiceMiddleware = true;
 
+  enableContentApiPurge = false;
+
   resetOnStartup = false;
 
   clearRelatedCache = false;
@@ -41,6 +43,7 @@ export class CachePluginStrategy {
       enableXCacheHeaders = false,
       enableAdminCTBMiddleware = true,
       enableDocumentServiceMiddleware = true,
+      enableContentApiPurge = false,
       resetOnStartup = false,
       clearRelatedCache = true,
       maxAge = 3600000,
@@ -54,6 +57,7 @@ export class CachePluginStrategy {
     this.enableXCacheHeaders = enableXCacheHeaders;
     this.enableAdminCTBMiddleware = enableAdminCTBMiddleware;
     this.enableDocumentServiceMiddleware = enableDocumentServiceMiddleware;
+    this.enableContentApiPurge = enableContentApiPurge;
     this.resetOnStartup = resetOnStartup;
     this.clearRelatedCache = clearRelatedCache;
     this.maxAge = maxAge;
