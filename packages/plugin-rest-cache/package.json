@@ -63,7 +63,7 @@
     "./package.json": "./package.json",
     "./strapi-admin": {
       "types": "./dist/admin/src/index.d.ts",
-      "source": "./admin/src/index.js",
+      "source": "./admin/src/index.ts",
       "import": "./dist/admin/index.mjs",
       "require": "./dist/admin/index.js",
       "default": "./dist/admin/index.js"
@@ -92,15 +92,15 @@
     "watch:link": "strapi-plugin watch:link",
     "verify": "strapi-plugin verify",
     "test:ts:back": "tsc -p server/tsconfig.json --noEmit",
-    "test:lint": "pnpm run test:ts:back"
+    "test:lint": "run-s test:ts:back test:ts:front",
+    "test:ts:front": "tsc -p admin/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@strapi-community/provider-rest-cache-memory": "workspace:*",
-    "debug": "^4.4.1",
-    "immer": "^9.0.21",
-    "prop-types": "^15.8.1"
+    "debug": "^4.4.1"
   },
   "devDependencies": {
+    "@reduxjs/toolkit": "^1.9.7",
     "@strapi/design-system": "^2.0.0-rc",
     "@strapi/icons": "^2.0.0-rc",
     "@strapi/sdk-plugin": "^6.1.1",

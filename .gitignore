@@ -118,3 +118,5 @@ build
 .strapi-updater.json
 .strapi-cloud.json
 playgrounds/**/types/*
+# Playwright MCP scratch output
+.playwright-mcp/
