@@ -12,6 +12,7 @@ import { shouldLookup } from '../utils/middlewares/shouldLookup';
 import { etagGenerate } from '../utils/etags/etagGenerate';
 import { etagLookup } from '../utils/etags/etagLookup';
 import { etagMatch } from '../utils/etags/etagMatch';
+import { isCacheable } from '../utils/middlewares/isCacheable';
 
 /**
  * Requests currently fetching from the origin, keyed by cache key.
@@ -169,9 +170,16 @@ export default function createRecv(options, { strapi }) {
     // so waiters are not blocked on the store.
     publish?.({ body: ctx.body, status: ctx.status });
 
-    if (ctx.body && ctx.status >= 200 && ctx.status <= 300) {
-      // @TODO check Cache-Control response header
+    const { cacheable, reason } = isCacheable(ctx);
 
+    if (!cacheable) {
+      debug('strapi:plugin-rest-cache')(
+        `[RECV] GET ${cacheKey} ${colors.grey(`not cached: ${reason}`)}`
+      );
+      return;
+    }
+
+    {
       const writes = [];
 
       if (enableEtag) {

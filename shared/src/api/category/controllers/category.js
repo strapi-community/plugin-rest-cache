@@ -9,6 +9,30 @@ const { createCoreController } = require("@strapi/strapi").factories;
 module.exports = createCoreController(
   "api::category.category",
   ({ strapi }) => ({
+    /**
+     * Writes straight to the raw socket, the way Strapi's own /mcp route does.
+     * Koa is told not to handle the response at all.
+     */
+    async raw(ctx) {
+      ctx.respond = false;
+      ctx.res.statusCode = 200;
+      ctx.res.setHeader("Content-Type", "application/json");
+      ctx.res.end(JSON.stringify({ raw: true }));
+    },
+
+    /** A streamed body, which cannot be serialised into a cache entry. */
+    async stream(ctx) {
+      const { Readable } = require("stream");
+      ctx.type = "application/json";
+      ctx.body = Readable.from([JSON.stringify({ streamed: true })]);
+    },
+
+    /** A response carrying a Set-Cookie, which must never be shared. */
+    async withCookie(ctx) {
+      ctx.cookies.set("session", `s-${Date.now()}`, { httpOnly: true });
+      ctx.body = { cookie: true };
+    },
+
     async findBySlug(ctx) {
       const { slug } = ctx.params;
       const { query } = ctx;
