@@ -216,6 +216,28 @@ export const resolveUserStrategy = function (strapi, userOptions) {
     }
   }
 
+  // Caching authenticated responses without keying on the caller means two
+  // people authorised for the same route share one entry. Whoever misses first
+  // decides what everybody else sees.
+  //
+  // This is only reachable deliberately - the default hitpass skips anything
+  // carrying an authorization or cookie header - so warn rather than refuse,
+  // but warn loudly and name the content type.
+  // See https://github.com/strapi-community/plugin-rest-cache/issues/113
+  for (const cacheConfig of cacheConfigs) {
+    const cachesAuthenticated = cacheConfig.hitpass === false;
+    const keysAuthIdentity = cacheConfig.keys?.useAuth === true;
+
+    if (cachesAuthenticated && !keysAuthIdentity) {
+      strapi.log.warn(
+        `REST Cache: "${cacheConfig.contentType}" has hitpass disabled but keys.useAuth is not set. ` +
+          'Authenticated responses will be cached under a key that does not identify the caller, ' +
+          'so one user\'s response can be served to another. Set keys: { useAuth: true } for this ' +
+          'contentType, or leave hitpass enabled.'
+      );
+    }
+  }
+
   return deepFreeze(
     new CachePluginStrategy({
       ...userOptions,
