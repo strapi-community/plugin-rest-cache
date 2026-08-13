@@ -1,11 +1,27 @@
-'use strict';
+import {
+  RedisCacheProvider,
+  type RedisCacheProviderOptions,
+  type RedisClient,
+} from './RedisCacheProvider';
 
 /**
- * @typedef {import('@strapi/strapi').Strapi} Strapi
+ * The Strapi global.
+ *
+ * `strapi.redis` is installed by `@strapi-community/plugin-redis`, which ships
+ * no type declarations, so the registry is described here rather than imported.
  */
-const { RedisCacheProvider } = require('./RedisCacheProvider');
+declare const strapi: {
+  log: { info(message: string): void };
+};
 
-function waitForRedis(client) {
+/** Strapi as this provider needs to see it: whatever the redis plugin added. */
+interface StrapiWithRedis {
+  redis?: {
+    connections: Record<string, { client?: RedisClient } | undefined>;
+  };
+}
+
+function waitForRedis(client: RedisClient): Promise<void> {
   return new Promise((resolve, reject) => {
     const onReady = () => {
       strapi.log.info('REST Cache provider "redis": connection established');
@@ -14,7 +30,7 @@ function waitForRedis(client) {
       client.off('error', onError);
       resolve();
     };
-    const onError = (error) => {
+    const onError = (error: { message?: string }) => {
       client.off('ready', onReady);
       reject(new Error(`Could not initialize REST Cache provider "redis": ${error?.message}`));
     };
@@ -28,11 +44,15 @@ function waitForRedis(client) {
   });
 }
 
-module.exports = {
+// `export =` rather than named exports: the plugin loads this entry through
+// `createRequire(...)(modulePath)` and reads `provider`, `name` and `init` off
+// the result, so module.exports has to stay a plain object with exactly those
+// keys - no `__esModule` marker and no interop wrapper in between.
+export = {
   provider: 'redis',
   name: 'Redis',
 
-  async init(options, { strapi }) {
+  async init(options: RedisCacheProviderOptions, { strapi }: { strapi: StrapiWithRedis }) {
     if (!strapi.redis) {
       throw new Error(
         `Could not initialize REST Cache provider "redis". The package "@strapi-community/plugin-redis" is required.`

@@ -25,7 +25,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const { RedisCacheProvider } = require(
-  path.join(ROOT, 'packages/provider-rest-cache-redis/lib/RedisCacheProvider.js')
+  path.join(ROOT, 'packages/provider-rest-cache-redis/dist/RedisCacheProvider.js')
 );
 
 /** Commands that address more than one key, and so must be slot-safe. */

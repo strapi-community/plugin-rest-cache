@@ -25,16 +25,22 @@ const PACKAGES = [
   'packages/provider-rest-cache-redis',
 ];
 
-const SOURCE_DIRS = ['server/src', 'admin/src', 'lib'];
+// 'src' covers the provider packages since they moved to TypeScript. Leaving
+// it out silently disarms this check for exactly the two packages it was
+// written for - walk() would find no files and the run would pass vacuously.
+const SOURCE_DIRS = ['server/src', 'admin/src', 'src'];
 
-const IMPORT_RE = /(?:require\(\s*['"]([^'"]+)['"]\s*\)|from\s+['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\))/g;
+// The last alternative is a bare side-effect import - `import 'polyfill';` -
+// which has no `from` and was therefore invisible to this check.
+const IMPORT_RE =
+  /(?:require\(\s*['"]([^'"]+)['"]\s*\)|from\s+['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"])/g;
 
 function walk(dir, acc = []) {
   if (!fs.existsSync(dir)) return acc;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, acc);
-    else if (/\.(js|jsx|mjs|cjs)$/.test(entry.name)) acc.push(full);
+    else if (/\.(js|jsx|mjs|cjs|ts|tsx|mts|cts)$/.test(entry.name)) acc.push(full);
   }
   return acc;
 }
@@ -79,8 +85,16 @@ for (const pkgDir of PACKAGES) {
       // Strip comments so JSDoc annotations are not mistaken for real imports.
       const source = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-      for (const match of source.matchAll(IMPORT_RE)) {
-        const specifier = match[1] || match[2] || match[3];
+      // Type-only imports erase at compile time and create no runtime
+      // dependency, so they must not be required to be declared. `koa` is the
+      // live example: every reference to it in this plugin is `import type`,
+      // and it appears nowhere in the built bundles.
+      const runtimeSource = source
+        .replace(/^\s*import\s+type\s[^;]*;?$/gm, '')
+        .replace(/^\s*export\s+type\s[^;]*;?$/gm, '');
+
+      for (const match of runtimeSource.matchAll(IMPORT_RE)) {
+        const specifier = match[1] || match[2] || match[3] || match[4];
         if (!specifier || specifier.startsWith('.') || specifier.startsWith('/')) continue;
         if (specifier.startsWith('node:')) continue;
         const name = toPackageName(specifier);
