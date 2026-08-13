@@ -51,7 +51,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/strapi-community/plugin-rest-cache.git",
-    "directory": "packages/plugin-rest-cache"
+    "directory": "packages/provider-rest-cache-redis"
   },
   "bugs": {
     "url": "https://github.com/strapi-community/plugin-rest-cache/issues"
@@ -87,5 +87,9 @@
   },
   "engines": {
     "node": ">=20.0.0 <=26.x.x"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

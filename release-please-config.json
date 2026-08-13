@@ -1,0 +1,69 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "separate-pull-requests": false,
+  "group-pull-request-title-pattern": "chore: release ${version}",
+  "pull-request-title-pattern": "chore: release ${version}",
+  "draft": true,
+  "prerelease-type": "beta",
+  "plugins": [
+    "node-workspace"
+  ],
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance"
+    },
+    {
+      "type": "refactor",
+      "section": "Refactoring"
+    },
+    {
+      "type": "revert",
+      "section": "Reverts"
+    },
+    {
+      "type": "docs",
+      "section": "Documentation"
+    },
+    {
+      "type": "build",
+      "section": "Build System"
+    },
+    {
+      "type": "ci",
+      "section": "Continuous Integration",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Chores",
+      "hidden": true
+    }
+  ],
+  "packages": {
+    "packages/plugin-rest-cache": {
+      "component": "plugin-rest-cache"
+    },
+    "packages/provider-rest-cache-memory": {
+      "component": "provider-rest-cache-memory"
+    },
+    "packages/provider-rest-cache-redis": {
+      "component": "provider-rest-cache-redis"
+    }
+  },
+  "last-release-sha": "6407e61f4c89863c84e542bc2a92a07801ff4f9a"
+}
