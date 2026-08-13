@@ -14,10 +14,10 @@ import type { RestCachePluginConfig } from '../types/config';
 /**
  * The cache as the rest of the plugin sees it.
  *
- * Declared explicitly rather than inferred because several methods consult
- * `this.ready`, and inferring the object's type from members that reference it
- * is circular - TypeScript resolves `ready` to `any` and every guard silently
- * stops being checked.
+ * Declared explicitly rather than inferred because reset, clearByRegexp and
+ * clearByUid reach other members through `this`, and inferring an object's type
+ * from members that reference it is circular - TypeScript resolves those
+ * members to `any` and stops checking the calls entirely.
  */
 export interface CacheStoreService {
   init(newProvider: CacheProvider): Promise<void>;
@@ -52,7 +52,47 @@ export default function createCacheStoreService({
   const pluginConfig = strapi.config.get<RestCachePluginConfig>('plugin::rest-cache');
   const { getTimeout } = pluginConfig.provider;
   const { keysPrefix } = pluginConfig.strategy;
-  const keysPrefixRe = keysPrefix ? new RegExp(`^${keysPrefix}`) : null;
+
+  /**
+   * Whether the provider cannot be used right now.
+   *
+   * Every operation opened with these same two checks and the same two log
+   * lines. Kept as a plain call rather than a wrapper around each method: this
+   * sits on the per-request read path, and a closure per operation buys
+   * nothing.
+   */
+  const unusable = (): boolean => {
+    if (!initialized) {
+      strapi.log.error('REST Cache provider not initialized');
+      return true;
+    }
+
+    if (!provider.ready) {
+      strapi.log.error('REST Cache provider not ready');
+      return true;
+    }
+
+    return false;
+  };
+
+  const logProviderError = (error: unknown): null => {
+    strapi.log.error(`REST Cache provider errored:`);
+    strapi.log.error(error);
+    return null;
+  };
+
+  /**
+   * Strip the configured prefix from a stored key.
+   *
+   * String operations rather than a regexp. The regexp was built by
+   * interpolating the prefix straight into a pattern, so any prefix containing
+   * a metacharacter meant something other than itself - `+` or `$` in a prefix
+   * made the filter match no keys at all, which reads as an empty cache and
+   * silently disables both purging and reset. It is also two regexp passes per
+   * key on a list that can run to six figures.
+   */
+  const hasPrefix = (key: string): boolean => key.startsWith(keysPrefix);
+  const stripPrefix = (key: string): string => key.slice(keysPrefix.length);
 
   return {
     async init(newProvider) {
@@ -61,15 +101,7 @@ export default function createCacheStoreService({
     },
 
     async get(key) {
-      if (!initialized) {
-        strapi.log.error('REST Cache provider not initialized');
-        return null;
-      }
-
-      if (!this.ready) {
-        strapi.log.error('REST Cache provider not ready');
-        return null;
-      }
+      if (unusable()) return null;
 
       return withTimeout(
         async () => deserialize((await provider.get(`${keysPrefix}${key}`)) as string),
@@ -77,65 +109,36 @@ export default function createCacheStoreService({
       ).catch((error) => {
         if (error?.message === 'timeout') {
           strapi.log.error(`REST Cache provider timed-out after ${getTimeout}ms.`);
-        } else {
-          strapi.log.error(`REST Cache provider errored:`);
-          strapi.log.error(error);
+          return null;
         }
-        return null;
+
+        return logProviderError(error);
       });
     },
 
     async set(key, val, maxAge = 3600000) {
-      if (!initialized) {
-        strapi.log.error('REST Cache provider not initialized');
-        return null;
-      }
-
-      if (!this.ready) {
-        strapi.log.error('REST Cache provider not ready');
-        return null;
-      }
+      if (unusable()) return null;
 
       try {
         return provider.set(`${keysPrefix}${key}`, serialize(val), maxAge);
       } catch (error) {
-        strapi.log.error(`REST Cache provider errored:`);
-        strapi.log.error(error);
-        return null;
+        return logProviderError(error);
       }
     },
 
     async del(key) {
-      if (!initialized) {
-        strapi.log.error('REST Cache provider not initialized');
-        return null;
-      }
-
-      if (!this.ready) {
-        strapi.log.error('REST Cache provider not ready');
-        return null;
-      }
+      if (unusable()) return null;
 
       try {
         debug('strapi:plugin-rest-cache')(`${colors.redBright('[PURGING KEY]')}: ${key}`);
         return provider.del(`${keysPrefix}${key}`);
       } catch (error) {
-        strapi.log.error(`REST Cache provider errored:`);
-        strapi.log.error(error);
-        return null;
+        return logProviderError(error);
       }
     },
 
     async delMany(keys) {
-      if (!initialized) {
-        strapi.log.error('REST Cache provider not initialized');
-        return null;
-      }
-
-      if (!this.ready) {
-        strapi.log.error('REST Cache provider not ready');
-        return null;
-      }
+      if (unusable()) return null;
 
       if (!keys.length) {
         return null;
@@ -148,50 +151,28 @@ export default function createCacheStoreService({
       try {
         return await provider.delMany(keys.map((key) => `${keysPrefix}${key}`));
       } catch (error) {
-        strapi.log.error(`REST Cache provider errored:`);
-        strapi.log.error(error);
-        return null;
+        return logProviderError(error);
       }
     },
 
     async keys() {
-      if (!initialized) {
-        strapi.log.error('REST Cache provider not initialized');
-        return null;
-      }
-
-      if (!this.ready) {
-        strapi.log.error('REST Cache provider not ready');
-        return null;
-      }
+      if (unusable()) return null;
 
       try {
         return provider.keys(keysPrefix).then((keys) => {
-          if (!keysPrefixRe) {
+          if (!keysPrefix) {
             return keys;
           }
 
-          return keys
-            .filter((key) => keysPrefixRe.test(key))
-            .map((key) => key.replace(keysPrefixRe, ''));
+          return keys.filter(hasPrefix).map(stripPrefix);
         });
       } catch (error) {
-        strapi.log.error(`REST Cache provider errored:`);
-        strapi.log.error(error);
-        return null;
+        return logProviderError(error);
       }
     },
 
     async reset() {
-      if (!initialized) {
-        strapi.log.error('REST Cache provider not initialized');
-        return null;
-      }
-
-      if (!this.ready) {
-        strapi.log.error('REST Cache provider not ready');
-        return null;
-      }
+      if (unusable()) return null;
 
       try {
         // A prefixed store shares its keyspace with other consumers, so only
@@ -203,9 +184,7 @@ export default function createCacheStoreService({
 
         return await provider.clear();
       } catch (error) {
-        strapi.log.error(`REST Cache provider errored:`);
-        strapi.log.error(error);
-        return null;
+        return logProviderError(error);
       }
     },
 
@@ -219,10 +198,14 @@ export default function createCacheStoreService({
     },
 
     async clearByRegexp(regExps = []) {
+      // Already logical keys: keys() filters on the prefix and strips it. This
+      // used to strip it a second time with a plain String.replace, which
+      // removes the first occurrence anywhere rather than an anchored prefix -
+      // so a prefix of "api" turned "/api/articles?..." into "//articles?...",
+      // no purge regexp matched, and the entry survived until maxAge.
       const keys = (await this.keys()) || [];
 
-      const shouldDel = (key: string) =>
-        regExps.find((r) => r.test(key.replace(keysPrefix, '')));
+      const shouldDel = (key: string) => regExps.some((r) => r.test(key));
 
       // One batched delete rather than an unbounded Promise.all of individual
       // deletes, which on redis was a round trip per key and opened as many
