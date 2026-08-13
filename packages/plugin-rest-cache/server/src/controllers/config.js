@@ -24,5 +24,13 @@ export default function createConfigController({ strapi }) {
       const { provider } = strapi.config.get("plugin::rest-cache");
       ctx.body = { provider };
     },
+    /**
+     * Snapshot of what the cache currently holds, for the admin dashboard.
+     *
+     * @param {Context} ctx
+     */
+    async stats(ctx) {
+      ctx.body = await strapi.plugin('rest-cache').service('cacheStats').summary();
+    },
   };
 }
