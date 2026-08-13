@@ -22,7 +22,7 @@
     "test:e2e": "run-s test:e2e:*",
     "test:e2e:memory": "pnpm --filter @strapi-plugin-rest-cache/playground-memory run test:e2e",
     "test:e2e:redis": "pnpm --filter @strapi-plugin-rest-cache/playground-redis run test:e2e",
-    "build": "pnpm run build:plugin:rest-cache",
+    "build": "pnpm --filter \"./packages/*\" run build",
     "build:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run build",
     "verify:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run verify",
     "watch:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run watch",
@@ -35,7 +35,8 @@
     "test:admin": "playwright test -c e2e/playwright.config.ts",
     "test:admin:ui": "playwright test -c e2e/playwright.config.ts --ui",
     "docs:api": "typedoc",
-    "docs:build:only": "vitepress build docs"
+    "docs:build:only": "vitepress build docs",
+    "build:providers": "pnpm --filter \"./packages/provider-*\" run build"
   },
   "license": "MIT",
   "devDependencies": {

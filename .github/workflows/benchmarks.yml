@@ -114,7 +114,7 @@ jobs:
           PROVIDER: ${{ matrix.provider }}
         run: pnpm run "postinstall:$PROVIDER"
 
-      - run: pnpm run build:plugin:rest-cache
+      - run: pnpm run build
 
       - name: Record runner capacity
         run: |

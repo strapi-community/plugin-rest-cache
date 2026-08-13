@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - run: pnpm run build:plugin:rest-cache
+      - run: pnpm run build
 
       # The .mjs half of the dual package is never exercised by the e2e suite,
       # which loads the CommonJS entry. A bare `require` surviving into it is a
@@ -116,7 +116,7 @@ jobs:
 
       - run: pnpm run postinstall:memory
 
-      - run: pnpm run build:plugin:rest-cache
+      - run: pnpm run build
 
       - name: Run Memory e2e tests
         working-directory: playgrounds/memory
@@ -142,7 +142,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - run: pnpm run build:plugin:rest-cache
+      - run: pnpm run build
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
@@ -185,7 +185,7 @@ jobs:
 
       - run: pnpm run postinstall:redis
 
-      - run: pnpm run build:plugin:rest-cache
+      - run: pnpm run build
 
       - name: Run Redis e2e tests
         working-directory: playgrounds/redis
