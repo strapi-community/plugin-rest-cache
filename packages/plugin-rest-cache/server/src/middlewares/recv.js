@@ -4,7 +4,7 @@
  * @typedef {import('../types').CacheRouteConfig} CacheRouteConfig
  */
 
-import chalk from 'chalk';
+import colors from '../utils/colors';
 import debug from 'debug';
 
 import { generateCacheKey } from '../utils/keys/generateCacheKey';
@@ -62,7 +62,7 @@ export default function createRecv(options, { strapi }) {
 
       // hit cache
       if (cacheEntry) {
-        debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.green('HIT')}`);
+        debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${colors.green('HIT')}`);
 
         if (enableXCacheHeaders) {
           ctx.set('X-Cache', 'HIT');
@@ -84,7 +84,7 @@ export default function createRecv(options, { strapi }) {
 
     // fetch done
     if (!lookup) {
-      debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.magenta('HITPASS')}`);
+      debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${colors.magenta('HITPASS')}`);
 
       if (enableXCacheHeaders) {
         ctx.set('X-Cache', 'HITPASS');
@@ -95,7 +95,7 @@ export default function createRecv(options, { strapi }) {
     }
 
     // deliver
-    debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${chalk.yellow('MISS')}`);
+    debug('strapi:plugin-rest-cache')(`[RECV] GET ${cacheKey} ${colors.yellow('MISS')}`);
 
     if (enableXCacheHeaders) {
       ctx.set('X-Cache', 'MISS');
@@ -112,7 +112,7 @@ export default function createRecv(options, { strapi }) {
         // persist etag asynchronously
         store.set(`${cacheKey}_etag`, etag, maxAge).catch(() => {
           debug('strapi:plugin-rest-cache')(
-            `[RECV] GET ${cacheKey} ${chalk.yellow('Unable to store ETag in cache')}`
+            `[RECV] GET ${cacheKey} ${colors.yellow('Unable to store ETag in cache')}`
           );
         });
       }
@@ -120,7 +120,7 @@ export default function createRecv(options, { strapi }) {
       // persist cache asynchronously
       store.set(cacheKey, ctx.body, maxAge).catch(() => {
         debug('strapi:plugin-rest-cache')(
-          `[RECV] GET ${cacheKey} ${chalk.yellow('Unable to store Content in cache')}`
+          `[RECV] GET ${cacheKey} ${colors.yellow('Unable to store Content in cache')}`
         );
       });
     }

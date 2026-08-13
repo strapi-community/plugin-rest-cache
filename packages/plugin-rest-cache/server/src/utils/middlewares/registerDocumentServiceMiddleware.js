@@ -1,6 +1,6 @@
 'use strict';
 
-import chalk from 'chalk';
+import colors from '../colors';
 import debug from 'debug';
 
 /**
@@ -51,7 +51,7 @@ function resolveDocumentId(ctx, result) {
  */
 export const registerDocumentServiceMiddleware = function (strapi) {
   debug('strapi:plugin-rest-cache')(
-    `[REGISTER] ${chalk.blueBright('document service')} invalidation middleware`
+    `[REGISTER] ${colors.blueBright('document service')} invalidation middleware`
   );
 
   strapi.documents.use(async (ctx, next) => {
@@ -71,7 +71,7 @@ export const registerDocumentServiceMiddleware = function (strapi) {
     const documentId = resolveDocumentId(ctx, result);
 
     debug('strapi:plugin-rest-cache')(
-      `${chalk.redBright('[PURGE]')} ${ctx.action} ${chalk.cyan(ctx.uid)}${
+      `${colors.redBright('[PURGE]')} ${ctx.action} ${colors.cyan(ctx.uid)}${
         documentId ? ` documentId=${documentId}` : ' (wildcard)'
       }`
     );
