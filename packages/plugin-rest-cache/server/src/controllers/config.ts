@@ -12,7 +12,22 @@ export default function createConfigController({ strapi }: { strapi: Core.Strapi
 
     async provider(ctx: Context) {
       const { provider } = strapi.config.get<RestCachePluginConfig>('plugin::rest-cache');
-      ctx.body = { provider };
+
+      // Deliberately not the whole provider config. `options` is handed
+      // straight to the adapter, and for redis that is where connection
+      // details live - @keyv/redis accepts a full
+      // "redis://user:password@host" URI there. Nothing in the admin panel
+      // needs it, and holding cache.read-provider does not make someone an
+      // operator entitled to infrastructure credentials.
+      //
+      // Allow-list rather than deleting `options`, so a provider config that
+      // grows a new field does not start leaking it by default.
+      ctx.body = {
+        provider: {
+          name: provider?.name,
+          getTimeout: provider?.getTimeout,
+        },
+      };
     },
 
     /**

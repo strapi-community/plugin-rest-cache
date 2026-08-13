@@ -1,0 +1,18 @@
+{
+  "extends": "@strapi/typescript-utils/tsconfigs/admin",
+
+  // The server's type directory is included so the admin can import the API
+  // response contracts. They are type-only imports and erase completely, so
+  // nothing from the server reaches the admin bundle - but a controller
+  // changing its response shape now breaks the component that reads it.
+  "include": ["./src", "../server/src/types"],
+
+  "compilerOptions": {
+    "rootDir": "../",
+    "baseUrl": ".",
+
+    // Same reasoning as server/tsconfig.json: check declaration emit here too,
+    // so `tsc --noEmit` cannot pass on a tree the build would reject.
+    "declaration": true
+  }
+}

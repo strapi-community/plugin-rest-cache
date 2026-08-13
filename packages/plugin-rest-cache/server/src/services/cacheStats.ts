@@ -1,32 +1,10 @@
 import type { Core } from '@strapi/strapi';
 
-import type { CachePluginHitpass, ContentTypeUID, Milliseconds } from '../types/common';
+import type { CachePluginHitpass } from '../types/common';
+import type { CacheSummary, ContentTypeStats } from '../types/api';
 import type { RestCachePluginConfig } from '../types/config';
 
-export interface ContentTypeStats {
-  uid: ContentTypeUID | string;
-  entries: number;
-  maxAge?: Milliseconds;
-  hitpass: boolean;
-  keysAuthIdentity: boolean;
-  routes: string[];
-  relatedContentTypes: string[];
-}
-
-export interface CacheSummary {
-  /** Only the provider's name: `options` holds connection credentials. */
-  provider: { name?: string };
-  strategy: {
-    enableEtag: boolean;
-    enableXCacheHeaders: boolean;
-    enableDocumentServiceMiddleware: boolean;
-    clearRelatedCache: boolean;
-    keysPrefix: string;
-    maxAge: Milliseconds;
-  };
-  totals: { entries: number; etags: number; contentTypes: number };
-  contentTypes: ContentTypeStats[];
-}
+export type { CacheSummary, ContentTypeStats };
 
 export interface CacheStatsService {
   summary(): Promise<CacheSummary>;

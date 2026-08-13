@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "playground-memory",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@strapi-plugin-rest-cache/playground-memory", "run", "develop"],
+      "port": 1337
+    }
+  ]
+}

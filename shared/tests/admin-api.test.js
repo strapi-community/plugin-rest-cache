@@ -83,6 +83,20 @@ describe("admin api", () => {
       expect(res.body).toHaveProperty("provider");
       expect(typeof res.body.provider.name).toBe("string");
     });
+
+    it("does not return the provider's options", async () => {
+      const res = await adminAgent().get("/rest-cache/config/provider");
+
+      // `options` is passed straight to the adapter, and for redis that is
+      // where connection details live - @keyv/redis accepts a full
+      // "redis://user:password@host" URI there. Nothing in the admin panel
+      // needs it, and every admin holding cache.read-provider is not
+      // necessarily someone who should read infrastructure credentials.
+      //
+      // cacheStats.summary() already exposes only the name for this reason;
+      // this endpoint used to return the whole object.
+      expect(res.body.provider).not.toHaveProperty("options");
+    });
   });
 
   describe("POST /rest-cache/purge", () => {
