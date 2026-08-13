@@ -1,0 +1,75 @@
+name: Feature request
+description: Suggest a capability the plugin does not have.
+labels: ["issue: feature request", "source: plugin"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem before the solution. A caching layer has a lot of ways to be
+        wrong, and the shape of the problem usually decides which of them is safe.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: >
+        The situation you are in and why the plugin does not handle it today. Not the
+        feature — the problem.
+      placeholder: >
+        Our API serves the same document under several paths, and purging one content
+        type leaves the others serving the old body until maxAge expires.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What are you doing about it now?
+      description: The workaround, if you have one, and where it falls short.
+    validations:
+      required: false
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use case
+      description: >
+        Your application shape — traffic, number of instances, provider, whether the
+        affected responses are public or per-caller. This is what decides whether a
+        proposal is generally safe or only safe for you.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: >
+        Optional. If you have a concrete shape for it, sketch the configuration or API
+        you would expect.
+      render: js
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including doing this outside the plugin — in a CDN, a reverse proxy, or your own middleware.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you be willing to open a pull request for this?
+      description: >
+        Not a commitment, and a "no" does not count against the request. See
+        [CONTRIBUTING.md](https://github.com/strapi-community/plugin-rest-cache/blob/main/CONTRIBUTING.md)
+        for how the repository is laid out and what the test suites cover.
+      options:
+        - "Yes"
+        - "Yes, with guidance on where to start"
+        - "No"
+    validations:
+      required: true

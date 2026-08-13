@@ -1,0 +1,178 @@
+name: Bug report
+description: Something the plugin does is wrong, and you can show it.
+labels: ["issue: bug", "status: pending reproduction", "source: plugin"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most reports are resolved by three fields: the `X-Cache` header, the `rest-cache`
+        config block, and the provider. Please fill those in even if they seem obvious.
+
+        If you are not sure the behaviour is a bug, use **Help configuring the plugin**
+        instead — it is not a lesser template, it just asks different questions.
+
+  - type: checkboxes
+    id: prechecks
+    attributes:
+      label: Before filing
+      options:
+        - label: I read the [troubleshooting guide](https://strapi-community.github.io/plugin-rest-cache/guide/troubleshooting.html) and my problem is not one of the cases it covers.
+          required: true
+        - label: I searched [existing issues](https://github.com/strapi-community/plugin-rest-cache/issues?q=is%3Aissue) for this.
+          required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: The installed version of `@strapi-community/plugin-rest-cache`. `npm ls @strapi-community/plugin-rest-cache` if you are unsure.
+      placeholder: "5.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: strapi-version
+    attributes:
+      label: Strapi version
+      placeholder: "5.52.0"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      description: "`node -v`. Supported range: >=20.0.0 <=26.x.x."
+      placeholder: "v22.18.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      description: The `provider.name` in your `rest-cache` config.
+      options:
+        - memory
+        - redis
+        - other / custom
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment shape
+      description: >
+        How many Strapi processes serve this traffic. The memory provider gives each
+        process its own cache, so with more than one instance a purge on one of them
+        leaves the others stale.
+      options:
+        - Single instance
+        - Multiple instances (load balanced, replicas, or restarting containers)
+        - Serverless / per-request processes
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: x-cache
+    attributes:
+      label: "`X-Cache` header on the failing request"
+      description: >
+        Set `strategy.enableXCacheHeaders: true`, repeat the request, and read the
+        `X-Cache` response header. `HITPASS` means the request bypassed the cache
+        deliberately (the default `hitpass` bypasses anything with an `authorization`
+        or `cookie` header). `MISS` every time means the response was refused for
+        storage. No header at all means the route is not cached.
+      options:
+        - HIT
+        - MISS
+        - HITPASS
+        - No X-Cache header present
+        - Not checked
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Your `rest-cache` configuration
+      description: >
+        The `rest-cache` block from `config/plugins.js` / `config/plugins.ts`. Redact
+        credentials, but leave the strategy intact — `contentTypes`, `maxAge`, `keys`,
+        `hitpass` and `keysPrefix` are usually where the answer is.
+      render: js
+      placeholder: |
+        module.exports = {
+          "rest-cache": {
+            config: {
+              provider: { name: "memory", options: { max: 32767 } },
+              strategy: {
+                enableXCacheHeaders: true,
+                contentTypes: ["api::article.article"],
+              },
+            },
+          },
+        };
+    validations:
+      required: true
+
+  - type: input
+    id: request
+    attributes:
+      label: The failing request
+      description: Method and path, as Strapi registered it, including the API prefix and any query string.
+      placeholder: "GET /api/articles?locale=en&populate=cover"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Include the response, error, or log output if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: >
+        From a clean state. A failing spec added to `shared/tests/` is the most useful
+        thing you can attach; a link to a minimal Strapi app is the next best.
+      placeholder: |
+        1. Configure `rest-cache` as above
+        2. `curl -i http://localhost:1337/api/articles` — X-Cache: MISS
+        3. `curl -i http://localhost:1337/api/articles` — expected HIT, got MISS
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug-log
+    attributes:
+      label: Debug output
+      description: >
+        Optional but usually decisive. Run with `DEBUG=strapi:plugin-rest-cache` (or set
+        `strategy.debug: true`) and paste the plugin's log lines for the failing request.
+        It logs route registration, every hit and miss with its key, and every purge with
+        the number of keys removed.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: CDN or reverse proxy in front, Redis version and whether it is clustered, custom provider, custom routes or middlewares.
+    validations:
+      required: false
