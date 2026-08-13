@@ -72,7 +72,7 @@
     "test:lint": "run-s eslint prettier"
   },
   "dependencies": {
-    "@keyv/redis": "^3.0.1",
+    "@keyv/redis": "^5.1.6",
     "cache-manager": "^7.1.1",
     "keyv": "^5.5.0"
   },
