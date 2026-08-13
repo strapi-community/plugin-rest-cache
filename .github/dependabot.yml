@@ -74,6 +74,20 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "jest"
         update-types: ["version-update:semver-major"]
+
+      # TypeScript 7 is the native port and does not expose the JavaScript
+      # compiler API, so ts-jest cannot use it:
+      #   The TypeScript compiler "typescript" (version 7.0.2) does not expose
+      #   the JavaScript compiler API required by ts-jest
+      # Every e2e suite fails to even start. Revisit when ts-jest supports it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+      # The admin imports Strapi's own RTK Query instance, and Strapi ships
+      # @reduxjs/toolkit 1.9.x. This is a devDependency only so declaration
+      # emit can name the types; resolving a different major than the one the
+      # admin actually runs on is how those types stop matching.
+      - dependency-name: "@reduxjs/toolkit"
         update-types: ["version-update:semver-major"]
 
       # chalk 5+ is ESM-only and cannot be require()d from the CommonJS server
