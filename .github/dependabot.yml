@@ -110,6 +110,17 @@ updates:
       - dependency-name: "@keyv/redis"
         update-types: ["version-update:semver-major"]
 
+      # react-intl is governed by the admin runtime, not by us. The plugin peers
+      # on ^6.0.0 and @strapi/admin bundles 6.6.2, so a major only produces an
+      # unmergeable PR - the same situation as react and react-router-dom above.
+      - dependency-name: "react-intl"
+        update-types: ["version-update:semver-major"]
+
+      # jest majors are already ignored, so jest-cli must be too. Letting it
+      # advance alone pairs jest-cli 30 with jest 29.
+      - dependency-name: "jest-cli"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
