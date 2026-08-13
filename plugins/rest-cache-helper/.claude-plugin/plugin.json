@@ -1,0 +1,13 @@
+{
+  "name": "rest-cache-helper",
+  "description": "Configure and troubleshoot @strapi-community/plugin-rest-cache in a Strapi 5 project",
+  "version": "1.0.0",
+  "author": {
+    "name": "Strapi Community",
+    "url": "https://github.com/strapi-community"
+  },
+  "homepage": "https://strapi-community.github.io/plugin-rest-cache/",
+  "repository": "https://github.com/strapi-community/plugin-rest-cache",
+  "license": "MIT",
+  "keywords": ["strapi", "cache", "rest", "redis", "performance"]
+}

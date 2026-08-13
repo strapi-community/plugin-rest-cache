@@ -1,0 +1,14 @@
+{
+  "name": "strapi-community-rest-cache",
+  "owner": {
+    "name": "Strapi Community",
+    "url": "https://github.com/strapi-community"
+  },
+  "plugins": [
+    {
+      "name": "rest-cache-helper",
+      "source": "./plugins/rest-cache-helper",
+      "description": "Configure and troubleshoot @strapi-community/plugin-rest-cache in a Strapi 5 project"
+    }
+  ]
+}
