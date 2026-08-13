@@ -18,7 +18,7 @@ Use them when [writing a custom provider](../providers/custom.md), when typing
 your own `config/plugins.ts`, or when consuming the
 [admin API](./routes.md) from your own code.
 
-[**Browse the generated API reference →**](./api/README.md)
+[**Browse the generated API reference →**](./api/)
 
 That reference is generated from the source with TypeDoc, so it cannot drift
 from what ships. Regenerate it with `pnpm run docs:api`.

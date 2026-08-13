@@ -1,6 +1,6 @@
 # Abstract Class: CacheProvider
 
-Defined in: [CacheProvider.ts:14](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L14)
+Defined in: [CacheProvider.ts:14](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L14)
 
 Contract every cache provider implements.
 
@@ -22,7 +22,7 @@ https://github.com/strapi-community/plugin-rest-cache/issues/131
 new CacheProvider(): CacheProvider;
 ```
 
-Defined in: [CacheProvider.ts:15](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L15)
+Defined in: [CacheProvider.ts:15](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L15)
 
 #### Returns
 
@@ -38,7 +38,7 @@ Defined in: [CacheProvider.ts:15](https://github.com/strapi-community/plugin-res
 get abstract ready(): boolean;
 ```
 
-Defined in: [CacheProvider.ts:48](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L48)
+Defined in: [CacheProvider.ts:48](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L48)
 
 ##### Returns
 
@@ -52,7 +52,7 @@ Defined in: [CacheProvider.ts:48](https://github.com/strapi-community/plugin-res
 clear(): Promise<void>;
 ```
 
-Defined in: [CacheProvider.ts:65](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L65)
+Defined in: [CacheProvider.ts:65](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L65)
 
 Remove every entry this provider holds.
 
@@ -68,7 +68,7 @@ Remove every entry this provider holds.
 abstract del(key): Promise<unknown>;
 ```
 
-Defined in: [CacheProvider.ts:34](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L34)
+Defined in: [CacheProvider.ts:34](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L34)
 
 #### Parameters
 
@@ -88,7 +88,7 @@ Defined in: [CacheProvider.ts:34](https://github.com/strapi-community/plugin-res
 delMany(keys): Promise<void>;
 ```
 
-Defined in: [CacheProvider.ts:56](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L56)
+Defined in: [CacheProvider.ts:56](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L56)
 
 Delete many keys at once.
 
@@ -113,7 +113,7 @@ purge cannot open thousands of simultaneous operations.
 abstract get(key): Promise<unknown>;
 ```
 
-Defined in: [CacheProvider.ts:21](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L21)
+Defined in: [CacheProvider.ts:21](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L21)
 
 #### Parameters
 
@@ -133,7 +133,7 @@ Defined in: [CacheProvider.ts:21](https://github.com/strapi-community/plugin-res
 abstract keys(keysPrefix?): Promise<string[]>;
 ```
 
-Defined in: [CacheProvider.ts:46](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L46)
+Defined in: [CacheProvider.ts:46](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L46)
 
 Every key this provider holds, without the store's configured keysPrefix
 and without any adapter-internal qualification.
@@ -165,7 +165,7 @@ abstract set(
 maxAge?): Promise<unknown>;
 ```
 
-Defined in: [CacheProvider.ts:28](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L28)
+Defined in: [CacheProvider.ts:28](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/CacheProvider.ts#L28)
 
 #### Parameters
 

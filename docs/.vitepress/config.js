@@ -120,6 +120,7 @@ export default withMermaid(defineVersionedConfig({
             { text: 'Services', link: '/guide/reference/services' },
             { text: 'Routes', link: '/guide/reference/routes' },
             { text: 'Types', link: '/guide/reference/types' },
+            { text: 'API (generated)', link: '/guide/reference/api/' },
           ]
         },
         {
