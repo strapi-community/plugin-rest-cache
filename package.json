@@ -6,8 +6,8 @@
   "description": "Speed-up HTTP requests with LRU cache",
   "scripts": {
     "postinstall": "run-s postinstall:*",
-    "postinstall:memory": "cpy . ../playgrounds/memory/ --cwd=shared",
-    "postinstall:redis": "cpy . ../playgrounds/redis/ --cwd=shared",
+    "postinstall:memory": "rimraf playgrounds/memory/tests/*.test.js && cpy . ../playgrounds/memory/ --cwd=shared",
+    "postinstall:redis": "rimraf playgrounds/redis/tests/*.test.js && cpy . ../playgrounds/redis/ --cwd=shared",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:serve": "vitepress serve docs",
@@ -29,7 +29,8 @@
     "watch:link:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run watch:link",
     "test:smoke": "node scripts/provider-smoke.cjs",
     "test:deps": "node scripts/check-undeclared-deps.cjs",
-    "lint:workspaces": "pnpm -r run test:lint"
+    "lint:workspaces": "pnpm -r run test:lint",
+    "test:cluster": "node scripts/redis-cluster-check.cjs"
   },
   "license": "MIT",
   "devDependencies": {
@@ -41,6 +42,7 @@
     "lint-staged": "^12.3.7",
     "mime-types": "^2.1.35",
     "npm-run-all": "^4.1.5",
+    "rimraf": "^6.1.3",
     "vitepress": "^1.6.4",
     "vitepress-versioning-plugin-patched": "1.3.1",
     "vue": "^3.5.41"

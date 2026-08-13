@@ -43,6 +43,10 @@ jobs:
 
       - run: pnpm run build:plugin:rest-cache
 
+      # Cluster safety is a provider concern and needs the built plugin types,
+      # so it runs here rather than in the lint job.
+      - run: pnpm run test:cluster
+
       # Deliberately includes 20: it is below Strapi's install floor of 22.13,
       # but it is exactly where the ESM/interop provider bugs reproduce, so a
       # regression there must fail the build. (Node 18 is EOL and is covered by
