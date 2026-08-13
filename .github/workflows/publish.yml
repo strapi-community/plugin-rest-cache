@@ -35,6 +35,21 @@ on:
   release:
     types: [published]
 
+  # Label a pull request `publish-experimental` and it publishes an
+  # experimental build, republishing on every push to that PR.
+  #
+  # `pull_request_target`, not `pull_request`, and the difference is the whole
+  # security argument: `pull_request` would run the *PR branch's* copy of this
+  # file, with publish credentials in scope. `pull_request_target` runs this
+  # file as it exists on the default branch, so the environment gate and the
+  # version assertion below cannot be edited by the branch being published.
+  #
+  # The usual `pull_request_target` footgun - checking out untrusted code in a
+  # job that holds secrets - does not apply, because the build job below holds
+  # neither secrets nor an id-token.
+  pull_request_target:
+    types: [labeled, synchronize]
+
   workflow_dispatch:
     inputs:
       mode:
@@ -50,13 +65,22 @@ on:
 permissions: {}
 
 concurrency:
-  group: publish-${{ github.event.inputs.mode || 'release' }}
+  # Per pull request for labelled builds, so two PRs do not serialise behind
+  # each other; a single group for real releases, so they never overlap.
+  group: publish-${{ github.event.pull_request.number || github.event.inputs.mode || 'release' }}
   cancel-in-progress: false
 
 jobs:
   build:
     name: Build and pack
     runs-on: ubuntu-latest
+    # Never for forks: a fork PR must not be able to reach the publish job,
+    # and `pull_request_target` would otherwise run for one.
+    if: |
+      github.event_name != 'pull_request_target' || (
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        contains(github.event.pull_request.labels.*.name, 'publish-experimental')
+      )
     # Deliberately minimal. This job may run code from an unreviewed branch.
     permissions:
       contents: read
@@ -75,13 +99,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "$EVENT" = "release" ]; then
-            if [ "$IS_PRERELEASE" = "true" ]; then mode=next; else mode=latest; fi
-          else
-            mode="$INPUT_MODE"
-          fi
+          case "$EVENT" in
+            release)
+              if [ "$IS_PRERELEASE" = "true" ]; then mode=next; else mode=latest; fi
+              ;;
+            pull_request_target)
+              # A labelled PR can only ever produce an experimental build.
+              mode=experimental
+              ;;
+            *)
+              mode="$INPUT_MODE"
+              ;;
+          esac
 
-          if [ "$mode" = "experimental" ]; then
+          if [ "$mode" = "experimental" ] && [ "$EVENT" = "workflow_dispatch" ]; then
             # Never interpolated into a shell or a ref without passing this.
             # Branch names are attacker-chosen in the threat model this
             # workflow exists for.
@@ -103,8 +134,17 @@ jobs:
         if: steps.plan.outputs.mode != 'experimental'
         uses: actions/checkout@v7
 
+      # Pinned to the exact head sha, not the branch name: a branch can move
+      # between the label event and the checkout.
+      - name: Check out the pull request
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
       - name: Check out the branch under test
-        if: steps.plan.outputs.mode == 'experimental'
+        if: steps.plan.outputs.mode == 'experimental' && github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.target_branch }}
@@ -124,7 +164,10 @@ jobs:
       - name: Stamp an experimental version
         if: steps.plan.outputs.mode == 'experimental'
         env:
-          SHA: ${{ github.sha }}
+          # The sha of the code actually being built. For a labelled PR that is
+          # the PR head, not github.sha - which under pull_request_target is the
+          # base branch, and would stamp a version nobody could correlate.
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/stamp-experimental-version.mjs
 
       - name: Build
@@ -166,6 +209,8 @@ jobs:
       # The only job with a publish-capable token.
       id-token: write
       contents: read
+      # To post the install instructions back onto a labelled pull request.
+      pull-requests: write
     environment: npm-${{ needs.build.outputs.mode }}
     steps:
       - uses: actions/setup-node@v7
@@ -228,6 +273,46 @@ jobs:
             echo "publishing $(basename "$tgz") to @$DIST_TAG"
             npm publish "$tgz" --tag "$DIST_TAG"
           done
+
+      # Tells the PR author how to install what was just published. The
+      # experimental dist-tag is clobbered by the next build, so the comment
+      # gives the exact version, which is stable.
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request_target'
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        with:
+          script: |
+            const version = process.env.VERSION;
+            const marker = '<!-- experimental-build -->';
+            const body = [
+              marker,
+              '## Experimental build',
+              '',
+              '| | |',
+              '|---|---|',
+              '| **Version** | `' + version + '` |',
+              '| **Dist tag** | `experimental` |',
+              '| **Commit** | ' + context.payload.pull_request.head.sha.slice(0, 7) + ' |',
+              '',
+              '```bash',
+              'npm install @strapi-community/plugin-rest-cache@' + version,
+              '```',
+              '',
+              'Install by exact version. The `experimental` tag moves with every build.',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const existing = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const mine = existing.data.find((c) => c.body?.includes(marker));
+
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
 
       - name: Summary
         env:
