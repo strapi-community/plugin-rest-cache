@@ -74,7 +74,6 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "jest"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "lerna"
         update-types: ["version-update:semver-major"]
 
       # chalk 5+ is ESM-only and cannot be require()d from the CommonJS server

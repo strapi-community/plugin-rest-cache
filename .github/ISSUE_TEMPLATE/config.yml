@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://strapi-community.github.io/plugin-rest-cache/
+    about: Configuration reference, recipes, and the troubleshooting guide. Most configuration questions are answered here.
+  - name: Troubleshooting guide
+    url: https://strapi-community.github.io/plugin-rest-cache/guide/troubleshooting.html
+    about: Nothing cached, stale content, entries expiring far too late, Redis purges doing nothing. Read this before filing a bug.
+  - name: Strapi Discord
+    url: https://discord.strapi.io
+    about: Community help with Strapi itself, and quick questions that are not plugin bugs.

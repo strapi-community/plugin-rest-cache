@@ -1,8 +1,0 @@
-{
-  "packages": [
-    "packages/*",
-    "playgrounds/*"
-  ],
-  "version": "5.0.0",
-  "npmClient": "pnpm"
-}

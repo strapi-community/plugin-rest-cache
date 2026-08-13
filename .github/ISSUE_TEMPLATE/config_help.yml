@@ -1,0 +1,113 @@
+name: Help configuring the plugin
+description: You are not sure how to configure the cache for your application. Not a bug.
+labels: ["issue: question", "source: plugin"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Start with the recipes
+
+        Each [recipe](https://strapi-community.github.io/plugin-rest-cache/guide/recipes/)
+        is a shape of application, a configuration that fits it, and an honest account of
+        what that configuration costs. Most configuration questions are one of these six,
+        and more than one usually applies at once — they compose.
+
+        Two things worth knowing before you read any of them:
+
+        - Every duration in this plugin is **milliseconds**. `3600000` is one hour.
+        - Turn on `strategy.enableXCacheHeaders` while you are configuring. Every recipe
+          verifies itself with it.
+
+  - type: checkboxes
+    id: recipes
+    attributes:
+      label: Which recipe is closest to your situation?
+      description: Tick the ones you read. If one of them fits and you are stuck inside it, say where.
+      options:
+        - label: "[Public content API](https://strapi-community.github.io/plugin-rest-cache/guide/recipes/public-content.html) — anonymous readers, content edited in the admin panel, no per-user responses."
+        - label: "[Authenticated responses](https://strapi-community.github.io/plugin-rest-cache/guide/recipes/authenticated.html) — logged-in callers with a JWT or API token, and you want those cached too."
+        - label: "[Several instances, one cache](https://strapi-community.github.io/plugin-rest-cache/guide/recipes/multi-instance.html) — more than one Strapi process, or containers that restart often."
+        - label: "[A few expensive routes](https://strapi-community.github.io/plugin-rest-cache/guide/recipes/expensive-routes.html) — most of the API is fine, two or three endpoints are slow."
+        - label: "[Locales and query-heavy APIs](https://strapi-community.github.io/plugin-rest-cache/guide/recipes/i18n-and-query.html) — many locales, or long `filters`/`populate`/`pagination` query strings."
+        - label: "[Previews and drafts](https://strapi-community.github.io/plugin-rest-cache/guide/recipes/previews-drafts.html) — a workflow that must always show current editorial state."
+        - label: None of them fit, which is why I am here.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to achieve?
+      description: The behaviour you want, in terms of requests and responses rather than options.
+      placeholder: >
+        Cache the article list for an hour for anonymous visitors, but never serve a
+        cached body to an editor previewing a draft.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Your current configuration
+      description: The `rest-cache` block from `config/plugins.js` / `config/plugins.ts`, credentials redacted. Paste what you have even if it is incomplete.
+      render: js
+      placeholder: |
+        module.exports = {
+          "rest-cache": {
+            config: {
+              provider: { name: "memory" },
+              strategy: {
+                enableXCacheHeaders: true,
+                contentTypes: ["api::article.article"],
+              },
+            },
+          },
+        };
+    validations:
+      required: true
+
+  - type: textarea
+    id: traffic
+    attributes:
+      label: Traffic shape
+      description: >
+        Roughly: how many Strapi instances, whether the traffic is anonymous or
+        authenticated (and how — JWT, API token, cookies), how many locales, how varied
+        the query strings are, and how often the content changes.
+      placeholder: |
+        - 3 instances behind a load balancer
+        - ~90% anonymous, the rest authenticated with a JWT
+        - 4 locales, clients send populate + pagination
+        - Editors publish a few times an hour
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Plugin, Strapi and Node versions
+      placeholder: "plugin 5.1.0, Strapi 5.52.0, Node v22.18.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - memory
+        - redis
+        - other / custom
+        - Not decided yet
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you have tried, and what `X-Cache` said
+      description: >
+        If you have a request behaving unexpectedly, include its `X-Cache` header
+        (`enableXCacheHeaders: true`). `HITPASS` means the request bypassed the cache,
+        `MISS` every time means the response was refused for storage, and no header at
+        all means the route is not cached.
+    validations:
+      required: false
