@@ -34,9 +34,16 @@ updates:
     groups:
       # Runtime dependencies of the published packages. These are the ones that
       # actually reach users, so keep them in their own PR and review properly.
+      #
+      # Majors are included deliberately. Leaving them out does not stop them -
+      # it just means they arrive as ungrouped single PRs with no label and no
+      # context, which is exactly how a chalk 4 -> 6 bump landed on a
+      # production dependency. chalk 5+ is ESM-only and would have broken the
+      # CommonJS server build.
       production-dependencies:
         dependency-type: production
         update-types:
+          - major
           - minor
           - patch
 
@@ -48,12 +55,15 @@ updates:
           - "@strapi-community/*"
 
       # Docs, build, lint and benchmark tooling. Noisy, low risk, safe to batch.
+      # Majors included for the same reason as above: an ungrouped major is
+      # harder to review, not easier.
       dev-tooling:
         dependency-type: development
         exclude-patterns:
           - "@strapi/*"
           - "@strapi-community/*"
         update-types:
+          - major
           - minor
           - patch
 
@@ -65,6 +75,18 @@ updates:
       - dependency-name: "jest"
         update-types: ["version-update:semver-major"]
       - dependency-name: "lerna"
+        update-types: ["version-update:semver-major"]
+
+      # chalk 5+ is ESM-only and cannot be require()d from the CommonJS server
+      # build. The plugin no longer depends on it, but pinning the constraint
+      # documents why, should anything reintroduce it.
+      - dependency-name: "chalk"
+        update-types: ["version-update:semver-major"]
+
+      # quick-lru 5 lacks the iterator keyv needs, so a downgrade silently
+      # breaks all cache invalidation; the v7 line is loaded via dynamic
+      # import specifically to keep it working. See #128.
+      - dependency-name: "quick-lru"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
