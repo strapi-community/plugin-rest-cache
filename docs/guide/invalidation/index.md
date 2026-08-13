@@ -43,7 +43,7 @@ flowchart TD
     G -->|yes| S{Document id known?}
     S -->|yes| T[Purge that document's entries]
     S -->|no| A[Purge every entry for the content type]
-    T --> R[/"clearRelatedCache widens this<br/>to related content types"/]
+    T --> R[Also purge related types]
     A --> R
     R --> Done([Write returns])
 ```
