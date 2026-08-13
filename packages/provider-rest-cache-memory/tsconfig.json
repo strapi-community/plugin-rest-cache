@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "include": ["./src"],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // CommonJS output, but expressed as Node16 rather than plain CommonJS.
+    //
+    // Two things depend on this:
+    //  - `await import('quick-lru')` in MemoryCacheProvider.ts stays a real
+    //    dynamic import. Under `module: CommonJS` TypeScript downlevels it to a
+    //    `require()`, which is exactly the ERR_REQUIRE_ESM failure of #128.
+    //  - `@strapi-community/plugin-rest-cache/types` is a subpath in the
+    //    plugin's exports map, which classic Node resolution does not read.
+    //
+    // The package is `"type": "commonjs"`, so Node16 treats every file here as
+    // CommonJS and emits `require`/`module.exports` as before.
+    "module": "Node16",
+    "moduleResolution": "Node16",
+
+    "lib": ["ES2022"],
+    "target": "ES2022",
+
+    // Emit `this.cache = ...` in the constructor rather than a defineProperty,
+    // keeping the compiled class identical to the JavaScript it replaces.
+    "useDefineForClassFields": false,
+
+    "declaration": true,
+
+    // Mirrors @strapi/typescript-utils/tsconfigs/server, which the plugin's own
+    // server tsconfig extends. Not extended directly: that base also sets an
+    // incremental tsBuildInfoFile resolved relative to itself, i.e. inside
+    // node_modules, and these two packages have no other reason to depend on it.
+    "strict": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noEmitOnError": true,
+    "noImplicitThis": true,
+
+    "types": ["node"]
+  }
+}

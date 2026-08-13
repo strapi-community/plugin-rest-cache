@@ -33,7 +33,7 @@ function record(name, fn) {
 }
 
 async function memoryProvider() {
-  const provider = require(path.join(ROOT, 'packages/provider-rest-cache-memory/lib/index.js'));
+  const provider = require(path.join(ROOT, 'packages/provider-rest-cache-memory/dist/index.js'));
 
   const instance = await provider.init({ maxSize: 100 });
 
@@ -56,7 +56,7 @@ async function memoryProvider() {
 }
 
 async function memoryProviderRespectsTtl() {
-  const provider = require(path.join(ROOT, 'packages/provider-rest-cache-memory/lib/index.js'));
+  const provider = require(path.join(ROOT, 'packages/provider-rest-cache-memory/dist/index.js'));
   const instance = await provider.init({ maxSize: 100 });
 
   // maxAge is milliseconds. Regression guard for #126, where both providers
@@ -71,12 +71,12 @@ async function memoryProviderRespectsTtl() {
 async function redisProviderModuleLoads() {
   // The redis provider needs a live connection to init(), but the reported
   // failures happen at require() time, which is what we can check anywhere.
-  const provider = require(path.join(ROOT, 'packages/provider-rest-cache-redis/lib/index.js'));
+  const provider = require(path.join(ROOT, 'packages/provider-rest-cache-redis/dist/index.js'));
   assert.strictEqual(provider.provider, 'redis');
   assert.strictEqual(typeof provider.init, 'function');
 
   const { RedisCacheProvider } = require(
-    path.join(ROOT, 'packages/provider-rest-cache-redis/lib/RedisCacheProvider.js')
+    path.join(ROOT, 'packages/provider-rest-cache-redis/dist/RedisCacheProvider.js')
   );
   assert.strictEqual(typeof RedisCacheProvider, 'function');
 }
