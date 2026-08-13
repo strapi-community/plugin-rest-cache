@@ -1,4 +1,3 @@
-import { toLower } from 'lodash/fp';
 import path from 'path';
 import type { Context } from 'koa';
 import { generateHeadersKey } from './generateHeadersKey';
@@ -34,10 +33,13 @@ export const generateCacheKey = function (
     authSuffix = generateAuthKey(ctx);
   }
 
-  const requestPath = toLower(path.posix.normalize(ctx.request.path)).replace(
-    /\/$/,
-    ''
-  );
+  // path.posix.normalize always returns a string, so lodash's toLower was
+  // exactly toLowerCase here - the whole of lodash, on the per-request path,
+  // for one method that String already has.
+  const requestPath = path.posix
+    .normalize(ctx.request.path)
+    .toLowerCase()
+    .replace(/\/$/, '');
 
   return `${requestPath}?${querySuffix}&${headersSuffix}&${authSuffix}` as CacheKey;
 };

@@ -4,8 +4,18 @@ export const generateHeadersKey = function (
   ctx: Context,
   useHeaders: string[] = []
 ): string {
-  return useHeaders
-    .filter((k) => ctx.request.header[k.toLowerCase()] !== undefined)
-    .map((k) => `${k.toLowerCase()}=${ctx.request.header[k.toLowerCase()]}`) // headers are key insensitive
-    .join(',');
+  // One pass, lowercasing each name once instead of three times per request,
+  // and without the intermediate array the filter/map chain allocated.
+  const parts: string[] = [];
+
+  for (const name of useHeaders) {
+    const header = name.toLowerCase(); // headers are key insensitive
+    const value = ctx.request.header[header];
+
+    if (value !== undefined) {
+      parts.push(`${header}=${value}`);
+    }
+  }
+
+  return parts.join(',');
 };

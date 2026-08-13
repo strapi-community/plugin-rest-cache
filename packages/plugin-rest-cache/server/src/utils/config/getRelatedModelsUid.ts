@@ -9,18 +9,17 @@ import type { ContentTypeUID } from '../../types/common';
  * models every attribute kind and only two of them - relation and component -
  * can carry a dependency from one model to another.
  */
+interface TraversableAttribute {
+  type: string;
+  /** Set on relation attributes: the uid this relation points at. */
+  target?: string;
+  /** Set on component attributes: the uid of the embedded component. */
+  component?: string;
+}
+
 interface TraversableSchema {
   uid: string;
-  attributes: Record<
-    string,
-    {
-      type: string;
-      /** Set on relation attributes: the uid this relation points at. */
-      target?: string;
-      /** Set on component attributes: the uid of the embedded component. */
-      component?: string;
-    }
-  >;
+  attributes: Record<string, TraversableAttribute>;
 }
 
 /**
@@ -50,63 +49,49 @@ export const getRelatedModelsUid = function (
     strapi.contentTypes
   ) as unknown as TraversableSchema[];
 
-  const contentTypeList: string[] = [uid];
-  const componentList: string[] = [];
+  // Sets rather than arrays. Membership is tested once per attribute inside a
+  // loop that already runs (models x attributes) per round, and the round count
+  // grows with the depth of the component nesting - so an O(n) Array.includes
+  // at the innermost point made boot time quadratic in the size of the schema.
+  // Insertion order is preserved either way, so the returned order is unchanged.
+  const contentTypeUids = new Set<string>([uid]);
+  const componentUids = new Set<string>();
 
-  while (true) {
-    const componentListLength = componentList.length;
+  /** Whether this attribute reaches something already known to be related. */
+  const reachesKnown = (attribute: TraversableAttribute): boolean =>
+    (attribute.type === 'relation' && contentTypeUids.has(attribute.target)) ||
+    (attribute.type === 'component' && componentUids.has(attribute.component));
+
+  for (;;) {
+    const knownBefore = contentTypeUids.size + componentUids.size;
+
     for (const component of allComponents) {
-      if (componentList.includes(component.uid)) {
+      if (componentUids.has(component.uid)) {
         continue;
       }
       for (const attribute of Object.values(component.attributes)) {
-        if (attribute.type === 'relation') {
-          if (
-            contentTypeList.includes(attribute.target) &&
-            !componentList.includes(component.uid)
-          ) {
-            componentList.push(component.uid);
-          }
-        } else if (attribute.type === 'component') {
-          if (
-            componentList.includes(attribute.component) &&
-            !componentList.includes(component.uid)
-          ) {
-            componentList.push(component.uid);
-          }
+        if (reachesKnown(attribute)) {
+          componentUids.add(component.uid);
+          // Nothing further this component declares can add it a second time.
+          break;
         }
       }
     }
 
-    const contentTypeListLength = contentTypeList.length;
     for (const contentType of allContentTypes) {
-      if (contentTypeList.includes(contentType.uid)) {
+      if (contentTypeUids.has(contentType.uid)) {
         continue;
       }
       for (const attribute of Object.values(contentType.attributes)) {
-        if (attribute.type === 'relation') {
-          if (
-            contentTypeList.includes(attribute.target) &&
-            !contentTypeList.includes(contentType.uid)
-          ) {
-            contentTypeList.push(contentType.uid);
-          }
-        } else if (attribute.type === 'component') {
-          if (
-            componentList.includes(attribute.component) &&
-            !contentTypeList.includes(contentType.uid)
-          ) {
-            contentTypeList.push(contentType.uid);
-          }
+        if (reachesKnown(attribute)) {
+          contentTypeUids.add(contentType.uid);
+          break;
         }
       }
     }
 
-    if (
-      contentTypeListLength === contentTypeList.length &&
-      componentListLength === componentList.length
-    ) {
-      return contentTypeList;
+    if (contentTypeUids.size + componentUids.size === knownBefore) {
+      return [...contentTypeUids];
     }
   }
 };
