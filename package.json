@@ -34,7 +34,7 @@
   "license": "MIT",
   "devDependencies": {
     "0x": "^5.5.0",
-    "autocannon": "^7.7.1",
+    "autocannon": "^8.0.0",
     "copyfiles": "^2.4.1",
     "cpy-cli": "^4.1.0",
     "lerna": "^10.0.0",
