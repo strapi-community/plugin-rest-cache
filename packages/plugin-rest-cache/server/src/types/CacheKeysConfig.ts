@@ -1,15 +1,9 @@
-'use strict';
+import type { CacheKeysConfigInput } from './inputs';
 
 export class CacheKeysConfig {
-  /**
-   * @type {string[]}
-   */
-  useHeaders = [];
+  useHeaders: string[] = [];
 
-  /**
-   * @type {Boolean|string[]}
-   */
-  useQueryParams = true;
+  useQueryParams: boolean | string[] = true;
 
   /**
    * Include the authenticated caller's identity in the cache key.
@@ -19,16 +13,14 @@ export class CacheKeysConfig {
    * same route share one entry.
    *
    * @see https://github.com/strapi-community/plugin-rest-cache/issues/113
-   * @type {Boolean}
    */
-  useAuth = false;
+  useAuth: boolean = false;
 
-  constructor(options = {}) {
+  constructor(options: CacheKeysConfigInput = {}) {
     const { useHeaders = [], useQueryParams = true, useAuth = false } = options;
-    this.useHeaders = useHeaders;
+
+    this.useHeaders = [...useHeaders].sort();
     this.useQueryParams = useQueryParams;
     this.useAuth = useAuth;
-
-    this.useHeaders.sort();
   }
 }

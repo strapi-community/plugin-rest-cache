@@ -1,42 +1,36 @@
-'use strict';
-
-/**
- * @typedef {import('./CacheContentTypeConfig').CacheContentTypeConfig} CacheContentTypeConfig
- */
 import { CacheKeysConfig } from './CacheKeysConfig';
+import { CacheContentTypeConfig } from './CacheContentTypeConfig';
+import { ms } from './common';
+import type { Milliseconds } from './common';
+import type { CachePluginStrategyInput } from './inputs';
 
 export class CachePluginStrategy {
-  debug = false;
+  debug: boolean = false;
 
-  enableEtag = false;
+  enableEtag: boolean = false;
 
-  enableXCacheHeaders = false;
+  enableXCacheHeaders: boolean = false;
 
-  enableAdminCTBMiddleware = true;
+  enableAdminCTBMiddleware: boolean = true;
 
-  enableDocumentServiceMiddleware = true;
+  enableDocumentServiceMiddleware: boolean = true;
 
-  enableContentApiPurge = false;
+  enableContentApiPurge: boolean = false;
 
-  resetOnStartup = false;
+  resetOnStartup: boolean = false;
 
-  clearRelatedCache = false;
+  clearRelatedCache: boolean = false;
 
-  maxAge = 3600000;
+  /** Milliseconds. */
+  maxAge: Milliseconds = ms(3600000);
 
-  keysPrefix = '';
+  keysPrefix: string = '';
 
-  /**
-   * @type {CacheContentTypeConfig[]}
-   */
-  contentTypes = [];
+  contentTypes: CacheContentTypeConfig[] = [];
 
-  /**
-   * @type {CacheKeysConfig}
-   */
-  keys;
+  keys: CacheKeysConfig;
 
-  constructor(options = {}) {
+  constructor(options: CachePluginStrategyInput = {}) {
     const {
       debug = false,
       enableEtag = false,
@@ -60,9 +54,9 @@ export class CachePluginStrategy {
     this.enableContentApiPurge = enableContentApiPurge;
     this.resetOnStartup = resetOnStartup;
     this.clearRelatedCache = clearRelatedCache;
-    this.maxAge = maxAge;
+    this.maxAge = ms(maxAge);
     this.keysPrefix = keysPrefix;
-    this.contentTypes = contentTypes;
-    this.keys = keys;
+    this.contentTypes = contentTypes as CacheContentTypeConfig[];
+    this.keys = keys instanceof CacheKeysConfig ? keys : new CacheKeysConfig(keys);
   }
 }
