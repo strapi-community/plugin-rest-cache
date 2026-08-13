@@ -35,7 +35,7 @@ with Strapi's route list every time that list changes.
 - **Per-content-type and per-route control** over lifetime, key composition and
   when to bypass the cache entirely.
 - **Cache keys you decide.** Query parameters, request headers, and
-  [per-caller keys](./caching/keys.md#per-caller-keys) for authenticated
+  [per-caller keys](./caching/keys.md#useauth) for authenticated
   traffic.
 - **Request coalescing.** Concurrent requests for the same missing key make one
   call to the origin, not one each — which is exactly what you want on a cold

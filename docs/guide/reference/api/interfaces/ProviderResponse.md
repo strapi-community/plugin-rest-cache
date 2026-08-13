@@ -1,6 +1,6 @@
 # Interface: ProviderResponse
 
-Defined in: [api.ts:24](https://github.com/strapi-community/plugin-rest-cache/blob/5c0a229485e8bf21c63fff8f88536d0ee05fc966/packages/plugin-rest-cache/server/src/types/api.ts#L24)
+Defined in: [api.ts:24](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/api.ts#L24)
 
 Note this is not the provider config as written in config/plugins.
 
@@ -12,6 +12,6 @@ fields rather than returning the object it holds.
 
 | Property | Type | Defined in |
 | ------ | ------ | ------ |
-| <a id="provider"></a> `provider` | \{ `getTimeout?`: `number`; `name?`: `string`; \} | [api.ts:25](https://github.com/strapi-community/plugin-rest-cache/blob/5c0a229485e8bf21c63fff8f88536d0ee05fc966/packages/plugin-rest-cache/server/src/types/api.ts#L25) |
-| `provider.getTimeout?` | `number` | [api.ts:27](https://github.com/strapi-community/plugin-rest-cache/blob/5c0a229485e8bf21c63fff8f88536d0ee05fc966/packages/plugin-rest-cache/server/src/types/api.ts#L27) |
-| `provider.name?` | `string` | [api.ts:26](https://github.com/strapi-community/plugin-rest-cache/blob/5c0a229485e8bf21c63fff8f88536d0ee05fc966/packages/plugin-rest-cache/server/src/types/api.ts#L26) |
+| <a id="provider"></a> `provider` | \{ `getTimeout?`: `number`; `name?`: `string`; \} | [api.ts:25](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/api.ts#L25) |
+| `provider.getTimeout?` | `number` | [api.ts:27](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/api.ts#L27) |
+| `provider.name?` | `string` | [api.ts:26](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/api.ts#L26) |

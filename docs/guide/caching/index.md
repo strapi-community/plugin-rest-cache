@@ -45,6 +45,31 @@ For every request on a cached route, in this order:
 7. **Hand the response to anything waiting**, then decide whether it
    [can be stored](#what-is-never-stored), and write it.
 
+```mermaid
+flowchart TD
+    Req([GET on a cached route]) --> Key[Build the cache key]
+    Key --> Hitpass{hitpass?}
+    Hitpass -->|true| Origin2[Call the origin]
+    Origin2 --> Pass([X-Cache: HITPASS<br/>nothing stored])
+
+    Hitpass -->|false| Etag{ETag matches<br/>If-None-Match?}
+    Etag -->|yes| NotModified([304 Not Modified])
+    Etag -->|no| Lookup{Key in store?}
+
+    Lookup -->|hit| Hit([X-Cache: HIT<br/>origin never called])
+    Lookup -->|miss| InFlight{Same key<br/>already fetching?}
+
+    InFlight -->|yes| Wait[Wait for that request]
+    Wait --> Shared([X-Cache: MISS<br/>shared response])
+
+    InFlight -->|no| Origin[Call the origin]
+    Origin --> Publish[Release waiters]
+    Publish --> Cacheable{Storable?}
+    Cacheable -->|no| Skip([X-Cache: MISS<br/>not stored])
+    Cacheable -->|yes| Store[Write entry, and ETag]
+    Store --> Miss([X-Cache: MISS<br/>stored])
+```
+
 The write is awaited before the request finishes rather than fired and
 forgotten. An unawaited write outlives its request, so a purge triggered by a
 concurrent write could complete first and then be undone by the late write
@@ -198,6 +223,35 @@ start, immediately after a purge, and at `maxAge` expiry, which is to say at
 the moments the database is least able to absorb it.
 ([#130](https://github.com/strapi-community/plugin-rest-cache/issues/130))
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Request A
+    participant B as Request B
+    participant C as Request C
+    participant P as REST Cache
+    participant O as Strapi + database
+
+    A->>P: GET /api/articles
+    B->>P: GET /api/articles
+    C->>P: GET /api/articles
+
+    Note over P: All three miss on the same key
+
+    P->>O: One query
+    B-->>P: waits
+    C-->>P: waits
+
+    O-->>P: Response
+
+    P-->>A: 200
+    P-->>B: 200 (shared)
+    P-->>C: 200 (shared)
+
+    Note over P: Waiters released first,<br/>then the entry is written
+    P->>P: Store entry (and ETag)
+```
+
 Two details worth knowing:
 
 - **A failure is not shared.** If the leading request fails, the waiters do not
@@ -217,6 +271,35 @@ miss. A degraded store therefore costs you a cache, not a site.
 
 Writes are best-effort in the same spirit: a provider error while storing a
 response is logged and the response is still returned.
+
+## The life of an entry
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Absent
+    Absent --> Stored: a storable response
+    Stored --> Stored: served as a HIT
+    Stored --> Absent: removed
+```
+
+An entry has exactly two states, and only one of the transitions is
+interesting: what takes it out of the cache again.
+
+| Removed by | When |
+| --- | --- |
+| **Invalidation** | Content it depends on was written. This is the usual one. |
+| **`maxAge`** | The lifetime elapsed without anything writing. |
+| **A manual purge** | From the [admin panel](../admin/index.md), the API, or a service call. |
+| **Eviction** | The memory provider reached `maxSize` and dropped the least recently used entry. Redis-backed caches evict per your Redis `maxmemory-policy`. |
+
+A response that is never stored in the first place — bypassed by `hitpass`, or
+[refused as unstorable](#what-is-never-stored) — simply leaves the entry
+`Absent`; it is not a state of its own.
+
+An entry is only ever one write away from removal, which is what makes a long
+`maxAge` safe. It is an upper bound on staleness for changes nothing observed,
+not a promise to serve stale content for that long.
 
 ## Where entries live
 

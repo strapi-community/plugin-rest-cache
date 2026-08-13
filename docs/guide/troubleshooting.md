@@ -12,7 +12,7 @@ response header. It tells you which of three things is happening.
 `HITPASS` — the request bypassed the cache deliberately. The default `hitpass`
 does this for anything carrying an `authorization` or `cookie` header, which
 includes every request a browser makes while logged into the admin panel. Test
-with `curl`, or read [per-caller keys](./caching/keys.md#per-caller-keys).
+with `curl`, or read [per-caller keys](./caching/keys.md#useauth).
 
 `MISS` every time — the response is being refused. The plugin will not store a
 response that is empty, not `2xx`, a stream, sets a `Set-Cookie`, or says

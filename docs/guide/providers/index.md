@@ -116,5 +116,4 @@ One hour is `3600000`, not `3600`. A previous release multiplied the configured 
 ## Related
 
 - [Configuration reference](../reference/config.md) — every option, with defaults
-- [Configuration reference](../reference/config.md)
 - [Admin panel](../admin/index.md)

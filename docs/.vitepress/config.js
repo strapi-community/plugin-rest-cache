@@ -1,10 +1,14 @@
 import { createRequire } from 'module'
 import defineVersionedConfig from 'vitepress-versioning-plugin-patched'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 const require = createRequire(import.meta.url)
 const pkg = require('@strapi-community/plugin-rest-cache/package.json')
 
-export default defineVersionedConfig({
+// withMermaid wraps the resolved config rather than replacing defineVersionedConfig:
+// the versioning plugin needs __dirname and has to run first, and mermaid only
+// adds the renderer plugin and a client-side import on top of whatever it is given.
+export default withMermaid(defineVersionedConfig({
   title: "REST Cache",
   description: "Speed-up HTTP requests with LRU cache",
   base: "/plugin-rest-cache/",
@@ -12,6 +16,20 @@ export default defineVersionedConfig({
   versioning: {
     latestVersion: pkg.version,
   },
+  // mermaid reaches dayjs, which ships as UMD. Without pre-bundling it, Vite's
+  // dev server hands the page a module with no `default` export, the page
+  // bundle throws on load, and NOTHING hydrates - a blank docs site, not a
+  // missing diagram. `vitepress build` pre-bundles differently and is unaffected,
+  // so this only ever breaks `pnpm run docs:dev`.
+  vite: {
+    optimizeDeps: {
+      include: ['mermaid', 'dayjs'],
+    },
+    ssr: {
+      noExternal: ['mermaid'],
+    },
+  },
+
   themeConfig: {
     versionSwitcher: false,
     socialLinks: [
@@ -73,6 +91,19 @@ export default defineVersionedConfig({
             { text: 'Memory', link: '/guide/providers/memory' },
             { text: 'Redis, KeyDB & Valkey', link: '/guide/providers/redis' },
             { text: 'Custom provider', link: '/guide/providers/custom' },
+          ]
+        },
+        {
+          text: 'Recipes',
+          collapsible: true,
+          items: [
+            { text: 'Which recipe?', link: '/guide/recipes/' },
+            { text: 'Public content API', link: '/guide/recipes/public-content' },
+            { text: 'Authenticated responses', link: '/guide/recipes/authenticated' },
+            { text: 'Several instances', link: '/guide/recipes/multi-instance' },
+            { text: 'A few expensive routes', link: '/guide/recipes/expensive-routes' },
+            { text: 'Locales & query-heavy APIs', link: '/guide/recipes/i18n-and-query' },
+            { text: 'Previews & drafts', link: '/guide/recipes/previews-drafts' },
           ]
         },
         {
@@ -150,4 +181,4 @@ export default defineVersionedConfig({
       ]
     }
   }
-}, __dirname);
+}, __dirname));

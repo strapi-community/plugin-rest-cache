@@ -35,6 +35,23 @@ route it had been told about. It had to carry a hardcoded list of Strapi's
 content-manager routes, which drifts every time Strapi adds one, and it was
 structurally blind to everything in the second half of that list.
 
+```mermaid
+flowchart TD
+    W([A write, through any door above]) --> DS[[Document service]]
+    DS --> G{"A write action,<br/>on a cached content type?"}
+    G -->|no| Skip([Nothing to do])
+    G -->|yes| S{Document id known?}
+    S -->|yes| T[Purge that document's entries]
+    S -->|no| A[Purge every entry for the content type]
+    T --> R[/"clearRelatedCache widens this<br/>to related content types"/]
+    A --> R
+    R --> Done([Write returns])
+```
+
+The first box is the point. A route-based approach can only sit in front of the
+REST API; every other door in that list changes content without the cache
+noticing.
+
 ### The actions that count as writes
 
 `create`, `clone`, `update`, `delete`, `publish`, `unpublish`, `discardDraft`.
@@ -82,6 +99,20 @@ is now wrong.
 
 Related content types are purged wildcard-style, since there is no way to know
 which of their entries embedded the changed document.
+
+Given a fairly ordinary blog schema:
+
+```mermaid
+erDiagram
+    ARTICLE }o--|| CATEGORY : "relation"
+    ARTICLE }o--|| AUTHOR : "relation"
+    HOMEPAGE ||--o{ SEO_COMPONENT : "component"
+    SEO_COMPONENT }o--|| CATEGORY : "relation"
+```
+
+Writing to `CATEGORY` purges `CATEGORY`, and also `ARTICLE` — whose responses
+embed it — and `HOMEPAGE`, which reaches it through a component two steps away.
+The traversal runs to a fixed point, so depth is not a limit.
 
 ::: info This is why purges look wider than the write
 A content type is a member of its own related set, so with `clearRelatedCache`

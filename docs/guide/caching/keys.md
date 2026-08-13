@@ -24,6 +24,33 @@ when a part is empty:
 | `headersSuffix` | The named request headers, lower-cased | `useHeaders` |
 | `authSuffix` | The authenticated caller's identity | `useAuth` |
 
+```mermaid
+flowchart LR
+    subgraph Request
+        P["path<br/><code>/api/articles</code>"]
+        Q["query<br/><code>?populate=*</code>"]
+        H["headers<br/><code>accept-language: fr</code>"]
+        A["caller<br/><code>ctx.state.auth</code>"]
+    end
+
+    P --> N["normalise<br/>lower-case, strip trailing /"]
+    Q --> QP{useQueryParams}
+    H --> HP{useHeaders}
+    A --> AP{useAuth}
+
+    N --> K
+    QP -->|"true / whitelist"| K
+    HP -->|"named headers"| K
+    AP -->|"identity, e.g. up:12"| K
+
+    K["<code>path?query&headers&auth</code>"] --> S[(Store)]
+```
+
+The purge patterns are anchored on the path — `^/api/articles\?` — which is
+why the caller identity is **appended** rather than prefixed. Anything in front
+of the path would stop those patterns matching, and authenticated entries would
+survive every purge.
+
 With the defaults (`useQueryParams: true`, no headers, no auth), a request for
 `GET /api/articles?populate=*` stores under:
 

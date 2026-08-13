@@ -172,7 +172,7 @@ If the second request is also a `MISS`, see
 default `hitpass` does that for any request carrying an `authorization` or
 `cookie` header — including every request your browser makes while logged into
 the admin panel. Test with `curl`, or see
-[caching authenticated requests](./caching/keys.md#per-caller-keys).
+[caching authenticated requests](./caching/keys.md#useauth).
 :::
 
 ## Next

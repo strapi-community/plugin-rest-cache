@@ -11,6 +11,6 @@ type RoutePolicy =
 };
 ```
 
-Defined in: [routes.ts:4](https://github.com/strapi-community/plugin-rest-cache/blob/5c0a229485e8bf21c63fff8f88536d0ee05fc966/packages/plugin-rest-cache/server/src/types/routes.ts#L4)
+Defined in: [routes.ts:4](https://github.com/strapi-community/plugin-rest-cache/blob/5f9e4bf09e910e0b7ea821bf7a983bd8d0067ca2/packages/plugin-rest-cache/server/src/types/routes.ts#L4)
 
 A policy entry as Strapi accepts it on a route's config.
