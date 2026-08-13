@@ -215,8 +215,8 @@ Using REST Cache plugin with provider "mystore"
 
 The two shipped providers are small and are the best worked examples:
 
-- `packages/provider-rest-cache-memory/lib/MemoryCacheProvider.js` — the minimal case, plus an async factory because `quick-lru` is ESM-only
-- `packages/provider-rest-cache-redis/lib/RedisCacheProvider.js` — batch deletes, cluster handling, and cheap key enumeration
+- `packages/provider-rest-cache-memory/src/MemoryCacheProvider.ts` — the minimal case, plus an async factory because `quick-lru` is ESM-only
+- `packages/provider-rest-cache-redis/src/RedisCacheProvider.ts` — batch deletes, cluster handling, and cheap key enumeration
 
 ## Related
 
