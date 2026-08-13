@@ -37,11 +37,9 @@ export interface EditViewInfoDocumentPanelDescription {
  * the max age is what answers that. The panel previously rendered an empty
  * body under a hardcoded English title, which answered neither.
  */
-const EditViewInfoDocumentPanel = ({
-  model,
-}: EditViewInfoDocumentPanelProps): EditViewInfoDocumentPanelDescription | null => {
+const EditViewInfoDocumentPanel = (props: EditViewInfoDocumentPanelProps): EditViewInfoDocumentPanelDescription | null => {
   const { formatMessage } = useIntl();
-  const { isEligible, config } = useCachedDocument(model);
+  const { isEligible, config } = useCachedDocument(props);
 
   if (!isEligible) {
     return null;

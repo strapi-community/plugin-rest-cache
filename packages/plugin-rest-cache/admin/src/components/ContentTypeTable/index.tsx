@@ -20,7 +20,7 @@ import { useNotification } from '@strapi/strapi/admin';
 
 import { getTranslation } from '../../utils/getTranslation';
 import { formatDuration } from '../../utils/formatDuration';
-import { usePurgeCacheMutation } from '../../services/restCache';
+import { usePurgeCache } from '../../services/restCache';
 import type { ContentTypeStats } from '../../../../server/src/types/api';
 
 export interface ContentTypeTableProps {
@@ -32,14 +32,17 @@ export interface ContentTypeTableProps {
 const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => {
   const { formatMessage } = useIntl();
   const { toggleNotification } = useNotification();
-  const [purgeCache, { isLoading }] = usePurgeCacheMutation();
+  const purgeCache = usePurgeCache();
+  const [isLoading, setIsLoading] = useState(false);
   const [pendingUid, setPendingUid] = useState<string | null>(null);
 
   const handlePurge = async (uid: string) => {
+    setIsLoading(true);
+
     try {
       // Wildcard: the dashboard purges a whole content type, and its routes
       // carry params we cannot enumerate from here.
-      await purgeCache({ contentType: uid, params: {}, wildcard: true }).unwrap();
+      await purgeCache({ contentType: uid, params: {}, wildcard: true });
 
       toggleNotification({
         type: 'success',
@@ -57,6 +60,7 @@ const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => 
         }),
       });
     } finally {
+      setIsLoading(false);
       setPendingUid(null);
     }
   };

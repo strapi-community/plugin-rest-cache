@@ -1,14 +1,21 @@
 import { useIntl } from 'react-intl';
 import { Box, Flex, Grid, Typography } from '@strapi/design-system';
 import { EmptyDocuments } from '@strapi/icons/symbols';
-import { Layouts, Page, useRBAC } from '@strapi/strapi/admin';
+import { Layouts, Page } from '@strapi/strapi/admin';
 
 import StatCard from '../../components/StatCard';
 import ContentTypeTable from '../../components/ContentTypeTable';
 import { getTranslation } from '../../utils/getTranslation';
 import { formatDuration } from '../../utils/formatDuration';
-import { useGetCacheStatsQuery } from '../../services/restCache';
-import pluginPermissions from '../../permissions';
+import { useCacheStats } from '../../services/restCache';
+
+/**
+ * useFetchClient rejects with an axios error, which carries the HTTP status on
+ * `response.status`. A 403 here means this admin holds no
+ * `cache.read-strategy` permission; the server is the authority on that.
+ */
+const isForbidden = (error: unknown): boolean =>
+  (error as { response?: { status?: number } })?.response?.status === 403;
 
 const SettingsPage = () => {
   const { formatMessage } = useIntl();
@@ -16,15 +23,19 @@ const SettingsPage = () => {
   // One request for the whole page. The stats endpoint already folds in the
   // provider name and the strategy flags, so there is no reason to also fetch
   // /config/strategy and /config/provider here.
-  const { data, isLoading, error } = useGetCacheStatsQuery();
+  const { data, isLoading, error } = useCacheStats();
 
-  const {
-    isLoading: isLoadingPermissions,
-    allowedActions: { canPurge },
-  } = useRBAC({ purge: pluginPermissions.purge });
-
-  if (isLoading || isLoadingPermissions) {
+  if (isLoading) {
     return <Page.Loading />;
+  }
+
+  // The server is the authority on permissions, and it has just answered. A
+  // 403 means this admin may not read the strategy; anything else is a real
+  // failure. Deriving it from the response rather than from `useRBAC` is not
+  // only simpler - the Auth context is not reachable from a lazily-loaded
+  // plugin settings route in a production build. See pages/App.
+  if (isForbidden(error)) {
+    return <Page.NoPermissions />;
   }
 
   if (error || !data) {
@@ -37,6 +48,12 @@ const SettingsPage = () => {
       />
     );
   }
+
+  // Purging is a separate action from reading, so an admin who can see this
+  // page cannot necessarily clear it. The button is rendered optimistically
+  // and the server refuses with a 403 it surfaces as a notification, which is
+  // the same contract the content-manager contributions use.
+  const canPurge = true;
 
   const { provider, strategy, totals, contentTypes } = data;
 

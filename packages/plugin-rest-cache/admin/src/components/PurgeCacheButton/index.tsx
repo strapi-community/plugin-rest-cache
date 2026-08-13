@@ -5,7 +5,7 @@ import { ArrowsCounterClockwise } from '@strapi/icons';
 import { useNotification } from '@strapi/strapi/admin';
 
 import { getTranslation } from '../../utils/getTranslation';
-import { useGetCacheStrategyQuery, usePurgeCacheMutation } from '../../services/restCache';
+import { useCacheStrategy, usePurgeCache } from '../../services/restCache';
 import type { PurgeRequest } from '../../../../server/src/types/api';
 
 export interface PurgeCacheButtonProps {
@@ -63,18 +63,21 @@ const PurgeCacheButton = ({
 
   // Shared with every other subscriber to the strategy on the page - RTK Query
   // collapses them onto one request, and unsubscribing cancels it.
-  const { data } = useGetCacheStrategyQuery();
-  const [purgeCache, { isLoading }] = usePurgeCacheMutation();
+  const { data } = useCacheStrategy();
+  const purgeCache = usePurgeCache();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const toggleConfirmModal = () => setShowConfirmModal((prevState) => !prevState);
 
   const handleConfirmDelete = async () => {
+    setIsLoading(true);
+
     try {
       // `unwrap` so a failed request rejects rather than resolving with an
       // `{ error }` object that would otherwise be reported as a success.
-      await purgeCache({ contentType, params, wildcard }).unwrap();
+      await purgeCache({ contentType, params, wildcard });
 
       toggleNotification({
         type: 'success',

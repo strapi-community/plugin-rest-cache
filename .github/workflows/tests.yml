@@ -122,6 +122,41 @@ jobs:
         working-directory: playgrounds/memory
         run: pnpm run test:e2e
 
+  # Browser coverage for the admin panel. The jest suites boot Strapi in-process
+  # and never render anything, which is how the panel stayed broken for the
+  # whole Strapi 5 line without a red build.
+  #
+  # One Node version only: this builds the admin panel, which is minutes, and
+  # what it guards is browser behaviour rather than anything Node-version
+  # specific.
+  e2e_admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build:plugin:rest-cache
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run admin panel e2e tests
+        run: pnpm run test:admin
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-output
+          path: e2e/.output/
+          retention-days: 7
+
   e2e_redis:
     runs-on: ubuntu-latest
     strategy:
