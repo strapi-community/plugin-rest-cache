@@ -43,6 +43,12 @@ jobs:
 
       - run: pnpm run build:plugin:rest-cache
 
+      # The .mjs half of the dual package is never exercised by the e2e suite,
+      # which loads the CommonJS entry. A bare `require` surviving into it is a
+      # ReferenceError for anyone whose runtime takes the `import` branch, so
+      # assert against the built bundle rather than the source.
+      - run: pnpm run test:esm
+
       # Cluster safety is a provider concern and needs the built plugin types,
       # so it runs here rather than in the lint job.
       - run: pnpm run test:cluster

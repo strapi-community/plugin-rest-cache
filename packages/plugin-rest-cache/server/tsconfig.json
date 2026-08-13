@@ -1,0 +1,30 @@
+{
+  "extends": "@strapi/typescript-utils/tsconfigs/server",
+  "include": ["./src"],
+  "compilerOptions": {
+    "rootDir": "../",
+    "baseUrl": ".",
+
+    // Strapi's base config describes a CommonJS server. This source is ES
+    // modules bundled by @strapi/sdk-plugin (Vite), which emits both the .js
+    // and the .mjs halves of the exports map, so the module settings have to
+    // describe the source rather than either output.
+    //
+    // Without this, `import.meta.url` in bootstrap.ts is a compile error even
+    // though it is exactly what the ESM output needs.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
+    // Error's `cause` option is ES2022. bootstrap.ts relies on it to keep the
+    // underlying provider load failure attached to the message it wraps -
+    // dropping it is what made #128 hard to diagnose in the first place.
+    "lib": ["ES2022"],
+    "target": "ES2022",
+
+    // Check declaration emit here too. Without it `tsc --noEmit` is blind to
+    // TS4082 ("default export uses private name"), which only the build's
+    // declaration pass reports - so the typecheck script would pass on a tree
+    // that cannot actually be published.
+    "declaration": true
+  }
+}

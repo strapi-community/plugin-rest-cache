@@ -70,14 +70,14 @@
     },
     "./strapi-server": {
       "types": "./dist/server/src/index.d.ts",
-      "source": "./server/src/index.js",
+      "source": "./server/src/index.ts",
       "import": "./dist/server/index.mjs",
       "require": "./dist/server/index.js",
       "default": "./dist/server/index.js"
     },
     "./types": {
       "types": "./dist/server/src/types/index.d.ts",
-      "source": "./server/src/types/index.js",
+      "source": "./server/src/types/index.ts",
       "import": "./dist/types/index.mjs",
       "require": "./dist/types/index.js",
       "default": "./dist/types/index.js"
@@ -90,13 +90,14 @@
     "build": "strapi-plugin build",
     "watch": "strapi-plugin watch",
     "watch:link": "strapi-plugin watch:link",
-    "verify": "strapi-plugin verify"
+    "verify": "strapi-plugin verify",
+    "test:ts:back": "tsc -p server/tsconfig.json --noEmit",
+    "test:lint": "pnpm run test:ts:back"
   },
   "dependencies": {
     "@strapi-community/provider-rest-cache-memory": "workspace:*",
     "debug": "^4.4.1",
     "immer": "^9.0.21",
-    "lodash": "^4.17.21",
     "prop-types": "^15.8.1"
   },
   "devDependencies": {
@@ -104,6 +105,9 @@
     "@strapi/icons": "^2.0.0-rc",
     "@strapi/sdk-plugin": "^6.1.1",
     "@strapi/strapi": "^5.52.0",
+    "@strapi/typescript-utils": "^5.52.0",
+    "@types/koa": "^2.15.2",
+    "@types/node": "^22.20.1",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "prettier": "^3.4.2",
@@ -111,7 +115,8 @@
     "react-dom": "^18.0.0",
     "react-intl": "^6.4.1",
     "react-router-dom": "^6.0.0",
-    "styled-components": "^6.0.0"
+    "styled-components": "^6.0.0",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@strapi/design-system": "^2.0.0-rc",

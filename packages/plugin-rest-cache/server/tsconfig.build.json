@@ -1,26 +1,12 @@
 {
-  "//": [
-    "Emits .d.ts for the server bundle from the existing JSDoc annotations.",
-    "The source stays JavaScript - this is declaration emit only, not a",
-    "TypeScript migration. checkJs is off deliberately: the goal here is to",
-    "publish types for consumers, not to type-check the implementation. The",
-    "full rewrite is tracked in #140."
-  ],
+  "extends": "./tsconfig",
+  "include": ["./src"],
+  "exclude": ["**/*.test.ts"],
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false,
+    "rootDir": "../",
+    "baseUrl": ".",
+    "outDir": "./dist",
     "declaration": true,
-    "emitDeclarationOnly": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "bundler",
-    "module": "ESNext",
-    "target": "ES2022",
-    "strict": false,
-    "noEmitOnError": false,
-    "outDir": "../dist/server"
-  },
-  "include": ["./src/**/*.js"],
-  "exclude": ["node_modules"]
+    "emitDeclarationOnly": true
+  }
 }
