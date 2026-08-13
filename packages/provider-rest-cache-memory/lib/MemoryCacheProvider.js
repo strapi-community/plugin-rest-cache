@@ -85,12 +85,25 @@ class MemoryCacheProvider extends CacheProvider {
     return this.cache.del(key);
   }
 
+  /**
+   * @param {string[]} keys
+   */
+  async delMany(keys) {
+    if (!keys.length) return;
+
+    await this.cache.mdel(keys);
+  }
+
   async keys() {
     const keys = [];
     for await (const [key] of this.cache.stores[0].iterator({})) {
       keys.push(key);
     }
     return keys;
+  }
+
+  async clear() {
+    await this.cache.clear();
   }
 
   get ready() {

@@ -114,6 +114,37 @@ export default function createCacheStoreService({ strapi }) {
       }
     },
 
+    /**
+     * @param {string[]} keys
+     */
+    async delMany(keys) {
+      if (!initialized) {
+        strapi.log.error('REST Cache provider not initialized');
+        return null;
+      }
+
+      if (!this.ready) {
+        strapi.log.error('REST Cache provider not ready');
+        return null;
+      }
+
+      if (!keys.length) {
+        return null;
+      }
+
+      debug('strapi:plugin-rest-cache')(
+        `${colors.redBright('[PURGING]')}: ${keys.length} key(s)`
+      );
+
+      try {
+        return await provider.delMany(keys.map((key) => `${keysPrefix}${key}`));
+      } catch (error) {
+        strapi.log.error(`REST Cache provider errored:`);
+        strapi.log.error(error);
+        return null;
+      }
+    },
+
     async keys() {
       if (!initialized) {
         strapi.log.error('REST Cache provider not initialized');
@@ -154,7 +185,14 @@ export default function createCacheStoreService({ strapi }) {
       }
 
       try {
-        return this.keys().then((keys) => Promise.all(keys.map((key) => this.del(key))));
+        // A prefixed store shares its keyspace with other consumers, so only
+        // the keys belonging to this cache may be removed. Without a prefix the
+        // provider can flush everything it holds in one operation.
+        if (keysPrefix) {
+          return await this.delMany((await this.keys()) || []);
+        }
+
+        return await provider.clear();
       } catch (error) {
         strapi.log.error(`REST Cache provider errored:`);
         strapi.log.error(error);
@@ -182,12 +220,10 @@ export default function createCacheStoreService({ strapi }) {
        */
       const shouldDel = (key) => regExps.find((r) => r.test(key.replace(keysPrefix, '')));
 
-      /**
-       * @param {string} key
-       */
-      const del = (key) => this.del(key);
-
-      await Promise.all(keys.filter(shouldDel).map(del));
+      // One batched delete rather than an unbounded Promise.all of individual
+      // deletes, which on redis was a round trip per key and opened as many
+      // simultaneous operations as there were matches.
+      await this.delMany(keys.filter(shouldDel));
     },
 
     /**
