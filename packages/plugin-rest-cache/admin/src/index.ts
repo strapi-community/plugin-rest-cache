@@ -28,7 +28,7 @@ export default {
     //
     // The plugin had no settings entry at all before this: a HomePage existed
     // but nothing ever registered a route to it, so it was unreachable.
-    app.addSettingsLink(
+    app.createSettingSection(
       {
         id: pluginId,
         intlLabel: {
@@ -36,16 +36,18 @@ export default {
           defaultMessage: 'REST Cache',
         },
       },
-      {
-        id: `${pluginId}-overview`,
-        intlLabel: {
-          id: getTranslation('settings.page.label'),
-          defaultMessage: 'Overview',
+      [
+        {
+          id: `${pluginId}-overview`,
+          intlLabel: {
+            id: getTranslation('settings.page.label'),
+            defaultMessage: 'Overview',
+          },
+          to: pluginId,
+          Component: () => import('./pages/App'),
+          permissions: pluginPermissions.readStrategy,
         },
-        to: pluginId,
-        Component: () => import('./pages/App'),
-        permissions: pluginPermissions.readStrategy,
-      }
+      ]
     );
 
     app.widgets.register({

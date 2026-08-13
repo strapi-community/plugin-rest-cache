@@ -5,7 +5,7 @@ import { ArrowsCounterClockwise } from '@strapi/icons';
 import { useNotification } from '@strapi/strapi/admin';
 
 import { getTranslation } from '../../utils/getTranslation';
-import { usePurgeCacheMutation } from '../../services/restCache';
+import { usePurgeCache } from '../../services/restCache';
 import { useCachedDocument } from '../../hooks/useCachedDocument';
 import type { EditViewContext } from '../../types/contentManager';
 
@@ -57,13 +57,11 @@ const getErrorMessage = (error: unknown): string | undefined => {
  * content-manager's document action contract. Returning null withdraws the
  * action, which is what useCachedDocument decides.
  */
-const PurgeDocumentAction = ({
-  model,
-}: PurgeDocumentActionProps): PurgeDocumentActionDescription | null => {
+const PurgeDocumentAction = (props: PurgeDocumentActionProps): PurgeDocumentActionDescription | null => {
   const { toggleNotification } = useNotification();
   const { formatMessage } = useIntl();
-  const [purgeCache] = usePurgeCacheMutation();
-  const { isEligible, params, isSingleType } = useCachedDocument(model);
+  const purgeCache = usePurgeCache();
+  const { isEligible, params, isSingleType } = useCachedDocument(props);
 
   if (!isEligible) {
     return null;
@@ -97,7 +95,7 @@ const PurgeDocumentAction = ({
         try {
           // A single type has one entry and no route parameters to narrow by,
           // so its purge is a wildcard over the whole content type.
-          await purgeCache({ contentType: model, params, wildcard: isSingleType }).unwrap();
+          await purgeCache({ contentType: props.model, params, wildcard: isSingleType });
 
           toggleNotification({
             type: 'success',

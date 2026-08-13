@@ -3,7 +3,7 @@ import { Flex, Typography } from '@strapi/design-system';
 import { Widget } from '@strapi/strapi/admin';
 
 import { getTranslation } from '../../utils/getTranslation';
-import { useGetCacheStatsQuery } from '../../services/restCache';
+import { useCacheStats } from '../../services/restCache';
 
 /**
  * Homepage widget: how much is cached, and by what.
@@ -13,7 +13,7 @@ import { useGetCacheStatsQuery } from '../../services/restCache';
  */
 const CacheOverviewWidget = () => {
   const { formatMessage } = useIntl();
-  const { data, isLoading, error } = useGetCacheStatsQuery();
+  const { data, isLoading, error } = useCacheStats();
 
   if (isLoading) {
     return <Widget.Loading />;

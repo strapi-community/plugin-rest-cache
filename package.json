@@ -31,11 +31,14 @@
     "test:deps": "node scripts/check-undeclared-deps.cjs",
     "lint:workspaces": "pnpm -r run test:lint",
     "test:cluster": "node scripts/redis-cluster-check.cjs",
-    "test:esm": "node scripts/check-esm-bundle.cjs"
+    "test:esm": "node scripts/check-esm-bundle.cjs",
+    "test:admin": "playwright test -c e2e/playwright.config.ts",
+    "test:admin:ui": "playwright test -c e2e/playwright.config.ts --ui"
   },
   "license": "MIT",
   "devDependencies": {
     "0x": "^5.5.0",
+    "@playwright/test": "^1.62.1",
     "autocannon": "^7.7.1",
     "copyfiles": "^2.4.1",
     "cpy-cli": "^4.1.0",

@@ -9,7 +9,8 @@
     "build": "strapi build",
     "strapi": "strapi",
     "test": "run-s test:*",
-    "test:e2e": "jest --forceExit"
+    "test:e2e": "jest --forceExit",
+    "e2e:serve": "strapi build && strapi start"
   },
   "dependencies": {
     "@strapi/plugin-users-permissions": "5.52.0",

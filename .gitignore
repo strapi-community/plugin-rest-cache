@@ -120,3 +120,8 @@ build
 playgrounds/**/types/*
 # Playwright MCP scratch output
 .playwright-mcp/
+
+# Playwright
+e2e/.auth/
+e2e/.output/
+e2e/playwright-report/
