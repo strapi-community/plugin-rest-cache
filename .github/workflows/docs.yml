@@ -19,31 +19,26 @@ jobs:
           # fetch all commits to get last updated time or other git log info
           fetch-depth: 0
 
+      # Note: deliberately no `cache: pnpm`. setup-node keys the pnpm store
+      # cache on OS + lockfile hash only, with no Node version, so every matrix
+      # leg shares one store. That store holds compiled native addons, so a
+      # better-sqlite3 built under one Node ABI gets restored under another and
+      # crashes with "Assertion failed: (env) != nullptr". pnpm installs are
+      # fast enough that correctness is the better trade.
+      - uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # choose node.js version to use
-          node-version: '20'
+          # Strapi 5.52 cannot install below 22.13; docs share the lockfile.
+          node-version: '22'
 
-      # cache node_modules
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        id: yarn-cache
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      # install dependencies if the cache did not hit
       - name: Install dependencies
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
-        run: yarn --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       # run build script
       - name: Build VitePress site
-        run: yarn docs:build
+        run: pnpm run docs:build
 
       # please check out the docs of the workflow for more details
       # @see https://github.com/crazy-max/ghaction-github-pages

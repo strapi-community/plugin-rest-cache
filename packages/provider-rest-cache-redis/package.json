@@ -78,7 +78,7 @@
   },
   "devDependencies": {
     "@strapi-community/plugin-redis": "^2.0.0",
-    "@strapi-community/plugin-rest-cache": "5.0.0",
+    "@strapi-community/plugin-rest-cache": "workspace:*",
     "eslint": "^8.11.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-import": "^2.27.5",
@@ -86,7 +86,7 @@
     "prettier": "^2.6.0"
   },
   "peerDependencies": {
-    "@strapi-community/plugin-rest-cache": "5.0.0",
+    "@strapi-community/plugin-rest-cache": "workspace:^",
     "@strapi/strapi": "^5.0.0"
   },
   "engines": {

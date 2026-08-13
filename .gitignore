@@ -67,6 +67,7 @@ typings/
 
 # Yarn Integrity file
 .yarn-integrity
+pnpm-debug.log*
 
 # dotenv environment variables file
 .env

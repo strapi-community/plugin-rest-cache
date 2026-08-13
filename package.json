@@ -4,10 +4,6 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Speed-up HTTP requests with LRU cache",
-  "workspaces": [
-    "./packages/*",
-    "./playgrounds/*"
-  ],
   "scripts": {
     "postinstall": "run-s postinstall:*",
     "postinstall:memory": "cpy . ../playgrounds/memory/ --cwd=shared",
@@ -15,33 +11,27 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:serve": "vitepress serve docs",
-    "dev:memory": "yarn workspace @strapi-plugin-rest-cache/playground-memory develop",
-    "dev:redis": "yarn workspace @strapi-plugin-rest-cache/playground-redis develop",
-    "console:memory": "yarn workspace @strapi-plugin-rest-cache/playground-memory strapi console",
-    "console:redis": "yarn workspace @strapi-plugin-rest-cache/playground-redis strapi console",
+    "dev:memory": "pnpm --filter @strapi-plugin-rest-cache/playground-memory run develop",
+    "dev:redis": "pnpm --filter @strapi-plugin-rest-cache/playground-redis run develop",
+    "console:memory": "pnpm --filter @strapi-plugin-rest-cache/playground-memory run strapi console",
+    "console:redis": "pnpm --filter @strapi-plugin-rest-cache/playground-redis run strapi console",
     "profile:memory": "cd ./playgrounds/memory && 0x -o -D .profile -P 'autocannon --warmup [ -c 1 -d 3 ] -c 100 -p 10 -d 120 http://localhost:1337/api/homepage?populate=*' start-profiler.js",
     "profile:redis": "cd ./playgrounds/redis && 0x -o -D .profile -P 'autocannon --warmup [ -c 1 -d 3 ] -c 100 -p 10 -d 120 http://localhost:1337/api/homepage?populate=*' start-profiler.js",
-    "lint": "lerna run lint --stream",
+    "lint": "pnpm -r run lint",
     "test:lint": "run-s test:deps lint:workspaces",
     "test:e2e": "run-s test:e2e:*",
-    "test:e2e:memory": "yarn workspace @strapi-plugin-rest-cache/playground-memory test:e2e",
-    "test:e2e:redis": "yarn workspace @strapi-plugin-rest-cache/playground-redis test:e2e",
-    "build": "yarn build:plugin:rest-cache",
-    "build:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache build",
-    "verify:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin verify",
-    "watch:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache watch",
-    "watch:link:plugin:rest-cache": "yarn workspace @strapi-community/plugin-rest-cache strapi-plugin watch:link",
+    "test:e2e:memory": "pnpm --filter @strapi-plugin-rest-cache/playground-memory run test:e2e",
+    "test:e2e:redis": "pnpm --filter @strapi-plugin-rest-cache/playground-redis run test:e2e",
+    "build": "pnpm run build:plugin:rest-cache",
+    "build:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run build",
+    "verify:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run verify",
+    "watch:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run watch",
+    "watch:link:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run watch:link",
     "test:smoke": "node scripts/provider-smoke.cjs",
     "test:deps": "node scripts/check-undeclared-deps.cjs",
-    "lint:workspaces": "lerna run test:lint --stream"
+    "lint:workspaces": "pnpm -r run test:lint"
   },
   "license": "MIT",
-  "resolutions": {
-    "**/colors": "1.4.0",
-    "semver": "7.5.4",
-    "d3-color": "3.1.0",
-    "keyv": "^5.5.0"
-  },
   "devDependencies": {
     "0x": "^5.5.0",
     "autocannon": "^7.7.1",
@@ -66,5 +56,12 @@
     "docs/**/*.md": [
       "prettier --write"
     ]
+  },
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "overrides": {
+      "colors": "1.4.0",
+      "d3-color": "3.1.0"
+    }
   }
 }
