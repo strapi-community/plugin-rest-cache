@@ -95,6 +95,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The providers typecheck against the plugin's published type entry,
+      # which only exists once the plugin is built.
+      - run: pnpm run build
+
       - run: pnpm run test:lint
 
   e2e_memory:
