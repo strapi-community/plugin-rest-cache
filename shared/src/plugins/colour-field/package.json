@@ -1,0 +1,10 @@
+{
+  "name": "colour-field",
+  "version": "0.0.0",
+  "strapi": {
+    "kind": "plugin",
+    "name": "colour-field",
+    "displayName": "Colour Field",
+    "description": "Registers a custom field, to exercise plugin load ordering"
+  }
+}

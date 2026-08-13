@@ -1,6 +1,9 @@
 "use strict";
 
 module.exports = ({ env }) => ({
+  // Deliberately declared AFTER rest-cache below, reproducing the plugin
+  // ordering reported in
+  // https://github.com/strapi-community/plugin-rest-cache/issues/119
   "rest-cache": {
     enabled: env.bool("ENABLE_CACHE", true),
     config: {
@@ -19,5 +22,9 @@ module.exports = ({ env }) => ({
     config: {
       jwtSecret: env("JWT_SECRET", "b46375d2efd1c69d8efcdcb46d3acd67a"),
     },
+  },
+  "colour-field": {
+    enabled: true,
+    resolve: "./src/plugins/colour-field",
   },
 });
