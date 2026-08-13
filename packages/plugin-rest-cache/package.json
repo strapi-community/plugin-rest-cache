@@ -95,7 +95,7 @@
   "dependencies": {
     "@strapi-community/provider-rest-cache-memory": "workspace:*",
     "debug": "^4.4.1",
-    "immer": "^9.0.21",
+    "immer": "^11.1.16",
     "lodash": "^4.17.21",
     "prop-types": "^15.8.1"
   },
