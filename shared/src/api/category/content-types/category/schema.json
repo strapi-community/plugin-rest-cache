@@ -26,6 +26,10 @@
       "relation": "oneToMany",
       "target": "api::article.article",
       "mappedBy": "category"
+    },
+    "accent": {
+      "type": "string",
+      "customField": "plugin::colour-field.colour"
     }
   }
 }
