@@ -106,8 +106,8 @@
     "@strapi/sdk-plugin": "^6.1.1",
     "@strapi/strapi": "^5.52.0",
     "@strapi/typescript-utils": "^5.52.0",
-    "@types/koa": "^2.15.2",
-    "@types/node": "^22.20.1",
+    "@types/koa": "^3.0.3",
+    "@types/node": "^26.2.0",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "prettier": "^3.4.2",
@@ -116,7 +116,7 @@
     "react-intl": "^6.4.1",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "@strapi/design-system": "^2.0.0-rc",
