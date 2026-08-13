@@ -37,10 +37,13 @@ module.exports = ({ env }) => ({
     {
       contentType: "api::category.category",
       maxAge: 3600000,
+      // Caches authenticated requests, so the caller's identity has to be part
+      // of the key. See https://github.com/strapi-community/plugin-rest-cache/issues/113
       hitpass: false,
       keys: {
         useQueryParams: false,
         useHeaders: ["accept-encoding"],
+        useAuth: env.bool("CATEGORY_USE_AUTH", true),
       },
       routes: [
         // Deliberately configured for caching so the plugin's refusal to cache
