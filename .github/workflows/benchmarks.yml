@@ -93,7 +93,7 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Note: deliberately no `cache: pnpm`. setup-node keys the pnpm store
       # cache on OS + lockfile hash only, with no Node version, so every matrix
@@ -101,9 +101,9 @@ jobs:
       # better-sqlite3 built under one Node ABI gets restored under another and
       # crashes with "Assertion failed: (env) != nullptr". pnpm installs are
       # fast enough that correctness is the better trade.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -142,7 +142,7 @@ jobs:
           PROVIDER: ${{ matrix.provider }}
         run: cat "bench-$PROVIDER.md" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: benchmarks-${{ matrix.provider }}
           path: |
@@ -158,9 +158,9 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: benchmarks-*
           path: artifacts
