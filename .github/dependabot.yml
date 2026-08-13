@@ -89,6 +89,27 @@ updates:
       - dependency-name: "quick-lru"
         update-types: ["version-update:semver-major"]
 
+      # These are governed by Strapi's peer range, not by us. As of 5.52.0:
+      #   react, react-dom     ^17.0.0 || ^18.0.0
+      #   react-router-dom     ^6.30.3
+      # Offering a major only produces a PR that cannot be merged until Strapi
+      # widens its own range.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-router-dom"
+        update-types: ["version-update:semver-major"]
+
+      # @keyv/redis 5 swaps ioredis for @redis/client. The redis provider
+      # relies on that adapter's internals - _getNamespace(), namespace,
+      # opts.useRedisSets and the SADD/SREM tracking set - which is what makes
+      # the single-SMEMBERS enumeration in #131 and the cluster handling in
+      # #100 work. That upgrade needs its own branch with the provider tests
+      # and cluster check run against it, not a batched bump.
+      - dependency-name: "@keyv/redis"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
