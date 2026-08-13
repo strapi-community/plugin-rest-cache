@@ -125,3 +125,7 @@ playgrounds/**/types/*
 e2e/.auth/
 e2e/.output/
 e2e/playwright-report/
+
+# VitePress build output
+docs/.vitepress/dist/
+docs/.vitepress/cache/

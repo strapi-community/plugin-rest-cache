@@ -1,13 +1,13 @@
 ---
-title: Admin Routes
+title: Page moved
+head:
+  - - meta
+    - http-equiv: refresh
+      content: 0; url=/plugin-rest-cache/guide/reference/routes
 ---
 
-# Admin Routes
+# {{ $frontmatter.title }}
 
-This plugin exposes a few admin routes that can be used to interact with the cache from Strapi admin panel.
+This page has moved to [Routes reference](/guide/reference/routes).
 
-## [GET] /config/strategy
-
-## [GET] /config/provider
-
-## [POST] /purge
+If you are not redirected automatically, follow the link above.

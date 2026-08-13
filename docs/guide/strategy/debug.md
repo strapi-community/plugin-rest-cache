@@ -1,12 +1,13 @@
 ---
-title: Debug mode
+title: Page moved
+head:
+  - - meta
+    - http-equiv: refresh
+      content: 0; url=/plugin-rest-cache/guide/troubleshooting
 ---
 
-# Debug mode
+# {{ $frontmatter.title }}
 
-This plugins use [debug](https://www.npmjs.com/package/debug) module to log messages that can help during development.
-You can enable debug mode by setting the environment variable `DEBUG=strapi:plugin-rest-cache` before starting strapi.
+This page has moved to [Troubleshooting](/guide/troubleshooting).
 
-eg. `DEBUG=strapi:plugin-rest-cache yarn strapi develop`
-
-You can also enable debug mode by setting the [`config.strategy.debug`](./index.md#debug) configuration option to `true`.
+If you are not redirected automatically, follow the link above.
