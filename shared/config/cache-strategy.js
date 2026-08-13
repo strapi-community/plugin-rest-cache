@@ -42,6 +42,11 @@ module.exports = ({ env }) => ({
         useHeaders: ["accept-encoding"],
       },
       routes: [
+        // Deliberately configured for caching so the plugin's refusal to cache
+        // them is exercised, rather than assumed.
+        { path: "/api/categories/probe/raw", method: "GET" },
+        { path: "/api/categories/probe/stream", method: "GET" },
+        { path: "/api/categories/probe/with-cookie", method: "GET" },
         {
           path: "/api/categories/slug/:slug+",
           keys: {
