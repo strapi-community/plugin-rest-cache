@@ -1,0 +1,329 @@
+# Publishes to npm. Never automatically.
+#
+# There is no trigger here that fires on a merge, and there must never be one.
+# Every path requires a human: either pressing "Publish release" on a draft
+# Release, or dispatching this workflow, and then approving the deployment
+# environment.
+#
+# ---------------------------------------------------------------------------
+# Why this is split into two jobs
+# ---------------------------------------------------------------------------
+# npm trusted publishing is NOT branch-scoped. It validates the repository,
+# the workflow *filename*, and optionally the environment - it discards the
+# `@refs/heads/...` part of the ref entirely. And `workflow_dispatch` runs the
+# workflow file from the branch you select.
+#
+# So "dispatch this workflow on a feature branch" would hand that branch's own
+# YAML a publish-capable OIDC token, and `npm publish` defaults to `--tag
+# latest`. That is a real release published from unreviewed code.
+#
+# Instead: this workflow is only ever dispatched on the default branch, and the
+# branch to build is passed as an *input*. The build job checks out that branch
+# and has no id-token and no environment, so it cannot publish anything. The
+# publish job runs from this file, gated by an environment whose deployment
+# branch rule the dispatching ref actually satisfies.
+#
+# The version-shape assertion in the publish job is the other half: build-job
+# code is untrusted, so it could stamp `5.99.0` and have it resolve for
+# everyone on `^5.0.0` regardless of dist-tag. The assertion lives in the
+# publish job, whose YAML comes from the default branch.
+name: publish
+
+on:
+  # Fired when a maintainer presses "Publish release" on a draft Release that
+  # release-please prepared.
+  release:
+    types: [published]
+
+  # Label a pull request `publish-experimental` and it publishes an
+  # experimental build, republishing on every push to that PR.
+  #
+  # `pull_request_target`, not `pull_request`, and the difference is the whole
+  # security argument: `pull_request` would run the *PR branch's* copy of this
+  # file, with publish credentials in scope. `pull_request_target` runs this
+  # file as it exists on the default branch, so the environment gate and the
+  # version assertion below cannot be edited by the branch being published.
+  #
+  # The usual `pull_request_target` footgun - checking out untrusted code in a
+  # job that holds secrets - does not apply, because the build job below holds
+  # neither secrets nor an id-token.
+  pull_request_target:
+    types: [labeled, synchronize]
+
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: What to publish
+        type: choice
+        options: [latest, next, experimental]
+        default: experimental
+      target_branch:
+        description: Branch to build (experimental mode only)
+        type: string
+        required: false
+
+permissions: {}
+
+concurrency:
+  # Per pull request for labelled builds, so two PRs do not serialise behind
+  # each other; a single group for real releases, so they never overlap.
+  group: publish-${{ github.event.pull_request.number || github.event.inputs.mode || 'release' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and pack
+    runs-on: ubuntu-latest
+    # Never for forks: a fork PR must not be able to reach the publish job,
+    # and `pull_request_target` would otherwise run for one.
+    if: |
+      github.event_name != 'pull_request_target' || (
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        contains(github.event.pull_request.labels.*.name, 'publish-experimental')
+      )
+    # Deliberately minimal. This job may run code from an unreviewed branch.
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      version: ${{ steps.version.outputs.version }}
+      dist_tag: ${{ steps.plan.outputs.dist_tag }}
+    steps:
+      - name: Work out what is being published
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_MODE: ${{ github.event.inputs.mode }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
+        run: |
+          set -euo pipefail
+
+          case "$EVENT" in
+            release)
+              if [ "$IS_PRERELEASE" = "true" ]; then mode=next; else mode=latest; fi
+              ;;
+            pull_request_target)
+              # A labelled PR can only ever produce an experimental build.
+              mode=experimental
+              ;;
+            *)
+              mode="$INPUT_MODE"
+              ;;
+          esac
+
+          if [ "$mode" = "experimental" ] && [ "$EVENT" = "workflow_dispatch" ]; then
+            # Never interpolated into a shell or a ref without passing this.
+            # Branch names are attacker-chosen in the threat model this
+            # workflow exists for.
+            if ! printf '%s' "$TARGET_BRANCH" | grep -Eq '^[A-Za-z0-9._/-]{1,200}$'; then
+              echo "::error::target_branch is missing or has unexpected characters"
+              exit 1
+            fi
+            case "$TARGET_BRANCH" in
+              -*|*..*) echo "::error::target_branch rejected"; exit 1 ;;
+            esac
+          fi
+
+          {
+            echo "mode=$mode"
+            echo "dist_tag=$mode"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check out the release commit
+        if: steps.plan.outputs.mode != 'experimental'
+        uses: actions/checkout@v7
+
+      # Pinned to the exact head sha, not the branch name: a branch can move
+      # between the label event and the checkout.
+      - name: Check out the pull request
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Check out the branch under test
+        if: steps.plan.outputs.mode == 'experimental' && github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.target_branch }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          # npm >= 11.5.1 is required for trusted publishing, and no Node 22
+          # release ships one.
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Stamp an experimental version
+        if: steps.plan.outputs.mode == 'experimental'
+        env:
+          # The sha of the code actually being built. For a labelled PR that is
+          # the PR head, not github.sha - which under pull_request_target is the
+          # base branch, and would stamp a version nobody could correlate.
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/stamp-experimental-version.mjs
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Pack
+        id: pack
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          # `pnpm pack`, not `npm pack`: npm has no concept of the workspace:
+          # protocol and would publish `workspace:*` literally, producing a
+          # manifest nobody can install. pnpm rewrites it to a real range.
+          for dir in packages/*/; do
+            [ -f "$dir/package.json" ] || continue
+            (cd "$dir" && pnpm pack --pack-destination "$GITHUB_WORKSPACE/artifacts")
+          done
+          ls -1 artifacts
+
+      - name: Record the version
+        id: version
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./packages/plugin-rest-cache/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarballs
+          path: artifacts/*.tgz
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      # The only job with a publish-capable token.
+      id-token: write
+      contents: read
+      # To post the install instructions back onto a labelled pull request.
+      pull-requests: write
+    environment: npm-${{ needs.build.outputs.mode }}
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarballs
+          path: artifacts
+
+      - name: Check npm is new enough for trusted publishing
+        run: |
+          set -euo pipefail
+          installed=$(npm --version)
+          echo "npm $installed"
+          # Trusted publishing needs >= 11.5.1. Failing here with a clear
+          # message beats failing inside `npm publish` with an auth error.
+          required=11.5.1
+          lowest=$(printf '%s\n%s\n' "$installed" "$required" | sort -V | head -1)
+          if [ "$lowest" != "$required" ]; then
+            echo "::error::npm >= $required required for trusted publishing, found $installed"
+            exit 1
+          fi
+
+      - name: Assert the versions are the shape this mode allows
+        env:
+          MODE: ${{ needs.build.outputs.mode }}
+        run: |
+          set -euo pipefail
+          # The build job may have run unreviewed code, so nothing it produced
+          # is trusted - including the version it stamped. Without this, a
+          # poisoned build could publish 5.99.0, which every `^5.0.0` range
+          # would resolve no matter which dist-tag it carried.
+          fail=0
+          for tgz in artifacts/*.tgz; do
+            version=$(tar -xzOf "$tgz" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).version')
+            echo "$(basename "$tgz"): $version"
+            case "$MODE" in
+              experimental)
+                printf '%s' "$version" | grep -Eq '^0\.0\.0-experimental\.[0-9a-f]{40}$' || { echo "::error::$tgz is not an experimental version"; fail=1; } ;;
+              next)
+                printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z.-]+$' || { echo "::error::$tgz is not a prerelease version"; fail=1; } ;;
+              latest)
+                printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::$tgz is not a stable version"; fail=1; } ;;
+            esac
+          done
+          [ "$fail" -eq 0 ]
+
+      - name: Publish
+        env:
+          DIST_TAG: ${{ needs.build.outputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          # No NODE_AUTH_TOKEN: authentication is OIDC via trusted publishing,
+          # and provenance is generated automatically. publishConfig in each
+          # package.json also sets provenance, as insurance.
+          for tgz in artifacts/*.tgz; do
+            echo "publishing $(basename "$tgz") to @$DIST_TAG"
+            npm publish "$tgz" --tag "$DIST_TAG"
+          done
+
+      # Tells the PR author how to install what was just published. The
+      # experimental dist-tag is clobbered by the next build, so the comment
+      # gives the exact version, which is stable.
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request_target'
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        with:
+          script: |
+            const version = process.env.VERSION;
+            const marker = '<!-- experimental-build -->';
+            const body = [
+              marker,
+              '## Experimental build',
+              '',
+              '| | |',
+              '|---|---|',
+              '| **Version** | `' + version + '` |',
+              '| **Dist tag** | `experimental` |',
+              '| **Commit** | ' + context.payload.pull_request.head.sha.slice(0, 7) + ' |',
+              '',
+              '```bash',
+              'npm install @strapi-community/plugin-rest-cache@' + version,
+              '```',
+              '',
+              'Install by exact version. The `experimental` tag moves with every build.',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const existing = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const mine = existing.data.find((c) => c.body?.includes(marker));
+
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Summary
+        env:
+          MODE: ${{ needs.build.outputs.mode }}
+          DIST_TAG: ${{ needs.build.outputs.dist_tag }}
+        run: |
+          {
+            echo "### Published"
+            echo
+            echo "- mode: \`$MODE\`"
+            echo "- dist-tag: \`$DIST_TAG\`"
+            echo
+            echo 'Verify with `npm audit signatures` after installing.'
+          } >> "$GITHUB_STEP_SUMMARY"

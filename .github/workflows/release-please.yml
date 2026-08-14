@@ -1,0 +1,61 @@
+# Maintains a rolling "chore: release X.Y.Z" pull request and, when it is
+# merged, a DRAFT GitHub Release per package.
+#
+# This workflow never publishes anything. release-please has no publish code
+# path at all - that is why it was chosen. Publishing is `publish.yml`, and it
+# only ever runs when a human presses a button.
+#
+# The draft is deliberate and load-bearing. A Release created with the default
+# GITHUB_TOKEN does not trigger other workflows, so an auto-published release
+# would silently fail to publish to npm. Requiring a maintainer to press
+# "Publish release" both fixes that and is the first of the two human gates.
+name: release-please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The CLI rather than the action: googleapis/release-please-action has
+      # had no commits since 2026-05, while the CLI is current.
+      - name: Run release-please
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx --yes release-please@17 release-pr \
+            --token "$GITHUB_TOKEN" \
+            --repo-url "$GITHUB_REPOSITORY" \
+            --config-file release-please-config.json \
+            --manifest-file .release-please-manifest.json
+
+          npx --yes release-please@17 github-release \
+            --token "$GITHUB_TOKEN" \
+            --repo-url "$GITHUB_REPOSITORY" \
+            --config-file release-please-config.json \
+            --manifest-file .release-please-manifest.json
