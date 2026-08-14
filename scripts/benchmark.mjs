@@ -75,6 +75,27 @@ const SCENARIOS = [
     name: "Cache enabled, ETag on",
     env: { ENABLE_CACHE: "true", ENABLE_ETAG: "true" },
   },
+  {
+    id: "cache-conditional",
+    name: "Cache enabled, conditional requests (304)",
+    env: { ENABLE_CACHE: "true", ENABLE_ETAG: "true" },
+    // What a browser or CDN actually does on a revalidation: send the ETag
+    // and expect an empty 304. Measured separately because it skips both the
+    // body read from the store and the body write to the socket, so folding it
+    // into the ETag-on number would flatter that scenario.
+    conditional: true,
+    expectStatus: 304,
+  },
+  {
+    id: "cache-unique-keys",
+    name: "Cache enabled, every request a distinct key",
+    env: { ENABLE_CACHE: "true", ENABLE_ETAG: "false" },
+    // The honest downside. Query parameters are part of the cache key, so an
+    // API called with a different filter every time stores an entry per
+    // request and reads none of them back. This is the cost of caching when
+    // caching cannot help, and it is what a high-cardinality API looks like.
+    uniqueKeys: true,
+  },
 ];
 
 async function waitForServer(url, timeoutMs = 180000) {
@@ -136,6 +157,27 @@ function run(opts) {
   });
 }
 
+/**
+ * Fetch the ETag the server currently holds for a path.
+ *
+ * Used by the conditional scenario, which has to send a *matching*
+ * If-None-Match to exercise the 304 path. A made-up value would miss and
+ * measure an ordinary cache hit instead - the scenario would pass while
+ * measuring the wrong thing.
+ */
+async function currentEtag(url) {
+  const response = await fetch(url);
+  const etag = response.headers.get("etag");
+
+  if (!etag) {
+    throw new Error(
+      `expected an ETag from ${url} - is enableEtag on for this scenario?`
+    );
+  }
+
+  return etag;
+}
+
 async function benchmarkScenario(scenario, args) {
   const url = `http://127.0.0.1:${args.port}${args.path}`;
 
@@ -149,13 +191,53 @@ async function benchmarkScenario(scenario, args) {
     process.stdout.write(`[bench]   warmup ${args.warmup}s\n`);
     await run({ url, connections: 10, duration: args.warmup });
 
+    const extra = {};
+
+    if (scenario.conditional) {
+      const etag = await currentEtag(url);
+      process.stdout.write(`[bench]   revalidating against ${etag}\n`);
+      extra.headers = { "if-none-match": etag };
+      extra.expectBody = undefined;
+    }
+
+    if (scenario.uniqueKeys) {
+      // A distinct query parameter per request, so every one misses and stores
+      // a new entry.
+      //
+      // Not autocannon's `idReplacement`: that only substitutes inside the
+      // request *body*, so it left every request hitting the same URL. The
+      // scenario then measured cache hits and reported them as misses - it
+      // came out faster than the plain cache-on scenario, which is what gave
+      // it away.
+      const separator = args.path.includes("?") ? "&" : "?";
+      let counter = 0;
+
+      extra.requests = [
+        {
+          setupRequest(request) {
+            counter += 1;
+            return { ...request, path: `${args.path}${separator}bench=${counter}` };
+          },
+        },
+      ];
+    }
+
     process.stdout.write(`[bench]   measuring ${args.duration}s\n`);
     const result = await run({
       url,
       connections: args.connections,
       pipelining: args.pipelining,
       duration: args.duration,
+      ...extra,
     });
+
+    // A scenario that silently stopped exercising what it claims to is worse
+    // than no scenario. 304s report as non-2xx, so check them explicitly.
+    if (scenario.expectStatus === 304 && result.non2xx === 0) {
+      throw new Error(
+        `${scenario.id}: expected 304 responses, saw none - the conditional request is not revalidating`
+      );
+    }
 
     return {
       id: scenario.id,
@@ -223,7 +305,14 @@ function toMarkdown(results, args, meta) {
   );
   lines.push("");
 
-  const unreliable = results.filter((r) => r.errors + r.timeouts + r.non2xx > 0);
+  const expectedNon2xx = new Set(
+    SCENARIOS.filter((s) => s.expectStatus === 304).map((s) => s.id)
+  );
+  const unreliable = results.filter(
+    (r) =>
+      r.errors + r.timeouts > 0 ||
+      (r.non2xx > 0 && !expectedNon2xx.has(r.id))
+  );
   if (unreliable.length) {
     const baselineFailed = unreliable.some((r) => r.id === "cache-disabled");
     lines.push("> [!WARNING]");
@@ -323,7 +412,14 @@ async function main() {
   if (args.markdown) writeFileSync(args.markdown, `${markdown}\n`);
   if (!args.json && !args.markdown) process.stdout.write(`\n${markdown}\n`);
 
-  const failed = results.filter((r) => r.errors || r.timeouts || r.non2xx);
+  // A conditional request answers 304, which autocannon counts as non-2xx.
+  // Flagging it as a fault every run trains people to ignore the warning.
+  const expected304 = new Set(
+    SCENARIOS.filter((s) => s.expectStatus === 304).map((s) => s.id)
+  );
+  const failed = results.filter(
+    (r) => r.errors || r.timeouts || (r.non2xx && !expected304.has(r.id))
+  );
   if (failed.length) {
     for (const r of failed) {
       process.stdout.write(
