@@ -278,6 +278,7 @@ jobs:
           [ "$fail" -eq 0 ]
 
       - name: Publish
+        id: publish
         env:
           DIST_TAG: ${{ needs.build.outputs.dist_tag }}
         run: |
@@ -292,10 +293,20 @@ jobs:
           #   npm error git@github.com: Permission denied (publickey).
           # which reads like an auth failure and is nothing of the sort. A
           # leading ./ is what makes it unambiguously a path.
+          # Names are read back out of the tarballs rather than hardcoded, so
+          # the PR comment cannot drift when a package is added or renamed.
+          names=""
           for tgz in artifacts/*.tgz; do
             echo "publishing $(basename "$tgz") to @$DIST_TAG"
             npm publish "./$tgz" --tag "$DIST_TAG"
+            name=$(tar -xzOf "$tgz" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).name')
+            names="$names$name"$'\n'
           done
+          {
+            echo "packages<<EOF"
+            printf '%s' "$names"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
 
       # Tells the PR author how to install what was just published. The
       # experimental dist-tag is clobbered by the next build, so the comment
@@ -306,9 +317,13 @@ jobs:
         env:
           VERSION: ${{ needs.build.outputs.version }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          PACKAGES: ${{ steps.publish.outputs.packages }}
         with:
           script: |
             const version = process.env.VERSION;
+            const sha = version.replace(/^0\.0\.0-experimental\./, '');
+            const packages = process.env.PACKAGES.split('\n').filter(Boolean);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const marker = '<!-- experimental-build -->';
             const body = [
               marker,
@@ -318,13 +333,14 @@ jobs:
               '|---|---|',
               '| **Version** | `' + version + '` |',
               '| **Dist tag** | `experimental` |',
-              '| **Commit** | `' + version.replace(/^0\.0\.0-experimental\./, '').slice(0, 7) + '` |',
+              '| **Commit** | `' + sha.slice(0, 7) + '` |',
+              '| **Run** | [' + context.runId + '](' + runUrl + ') |',
               '',
-              '```bash',
-              'npm install @strapi-community/plugin-rest-cache@' + version,
-              '```',
+              'Published at this version:',
               '',
-              'Install by exact version. The `experimental` tag moves with every build.',
+              ...packages.map((name) => '- `' + name + '`'),
+              '',
+              'Install by exact version - the `experimental` tag moves with every build.',
               '',
               'The `publish-experimental` label has been removed. Add it again to publish another build.',
             ].join('\n');
