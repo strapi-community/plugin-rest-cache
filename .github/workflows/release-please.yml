@@ -79,30 +79,45 @@ jobs:
       # release-please regenerates both the branch and the notes on every run.
       # It is a no-op when nothing is duplicated, which is the normal case now
       # that pull requests are squash-merged.
-      - name: Deduplicate the release changelog
+      - name: Tidy the release changelog
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_BRANCH: release-please--branches--main
         run: |
           set -euo pipefail
 
           # Copied out of the working tree before anything is checked out. The
           # release branch is cut from whatever main was when release-please
           # first opened the pull request, so it does not necessarily contain
-          # this script - the first run failed with MODULE_NOT_FOUND on the
+          # these scripts - the first run failed with MODULE_NOT_FOUND on the
           # script's own path, immediately after checking out that branch.
-          SCRIPT="$RUNNER_TEMP/dedupe-changelog.mjs"
-          cp scripts/dedupe-changelog.mjs "$SCRIPT"
+          DEDUPE="$RUNNER_TEMP/dedupe-changelog.mjs"
+          FOLD="$RUNNER_TEMP/consolidate-prerelease-changelog.mjs"
+          cp scripts/dedupe-changelog.mjs "$DEDUPE"
+          cp scripts/consolidate-prerelease-changelog.mjs "$FOLD"
+
+          # Asked for rather than hardcoded. The branch name depends on the
+          # strategy's component, so it changed from
+          # `release-please--branches--main` to
+          # `release-please--branches--main--components--monorepo` when
+          # `separate-pull-requests: false` was removed - and a hardcoded name
+          # does not fail, it silently skips, leaving the changelog untidied.
+          RELEASE_BRANCH=$(gh pr list --state open --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("release-please--"))][0].headRefName // empty')
 
           # 1. The rolling release pull request.
-          if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
+          if [ -n "$RELEASE_BRANCH" ]; then
+            echo "release branch: $RELEASE_BRANCH"
             git fetch --quiet origin "$RELEASE_BRANCH"
             git checkout --quiet "$RELEASE_BRANCH"
-            node "$SCRIPT" CHANGELOG.md
+            # Fold first: a prerelease and the stable release that supersedes it
+            # can list the same change, and the deduplicator only compares
+            # within one section.
+            node "$FOLD" CHANGELOG.md
+            node "$DEDUPE" CHANGELOG.md
             if ! git diff --quiet -- CHANGELOG.md; then
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git commit -q -m "chore: drop duplicate changelog entries" -- CHANGELOG.md
+              git commit -q -m "chore: tidy the release changelog" -- CHANGELOG.md
               git push origin "$RELEASE_BRANCH"
             fi
             # Deliberately does not switch back. `git checkout -` aborts if
@@ -119,6 +134,6 @@ jobs:
           for tag in $(gh release list --limit 20 --json tagName,isDraft \
                         --jq '.[] | select(.isDraft) | .tagName'); do
             gh release view "$tag" --json body --jq .body > "$notes"
-            node "$SCRIPT" "$notes"
+            node "$DEDUPE" "$notes"
             gh release edit "$tag" --notes-file "$notes"
           done
