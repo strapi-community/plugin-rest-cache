@@ -2,21 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "release-type": "node",
   "separate-pull-requests": false,
-  "group-pull-request-title-pattern": "chore: release ${version}",
   "pull-request-title-pattern": "chore: release ${version}",
   "draft": true,
-  "prerelease-type": "beta",
-  "plugins": [
-    {
-      "type": "linked-versions",
-      "groupName": "rest-cache",
-      "components": [
-        "plugin-rest-cache",
-        "provider-rest-cache-memory",
-        "provider-rest-cache-redis"
-      ]
-    }
-  ],
   "changelog-sections": [
     {
       "type": "feat",
@@ -63,14 +50,29 @@
     }
   ],
   "packages": {
-    "packages/plugin-rest-cache": {
-      "component": "plugin-rest-cache"
-    },
-    "packages/provider-rest-cache-memory": {
-      "component": "provider-rest-cache-memory"
-    },
-    "packages/provider-rest-cache-redis": {
-      "component": "provider-rest-cache-redis"
+    ".": {
+      "component": "",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "packages/plugin-rest-cache/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/provider-rest-cache-memory/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/provider-rest-cache-redis/package.json",
+          "jsonpath": "$.version"
+        }
+      ],
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "versioning": "prerelease"
     }
   },
   "last-release-sha": "6407e61f4c89863c84e542bc2a92a07801ff4f9a"
