@@ -35,8 +35,14 @@ on:
   release:
     types: [published]
 
-  # Label a pull request `publish-experimental` and it publishes an
-  # experimental build, republishing on every push to that PR.
+  # Label a pull request `publish-experimental` and it publishes one
+  # experimental build, then removes the label again.
+  #
+  # The label is a one-shot request, not a mode the PR sits in. It used to also
+  # fire on `synchronize`, so every subsequent push republished silently for as
+  # long as the label happened to still be there. Taking the label off at the
+  # end of the run means each publish is a deliberate act: to cut another
+  # build, add the label again.
   #
   # `pull_request_target`, not `pull_request`, and the difference is the whole
   # security argument: `pull_request` would run the *PR branch's* copy of this
@@ -48,7 +54,7 @@ on:
   # job that holds secrets - does not apply, because the build job below holds
   # neither secrets nor an id-token.
   pull_request_target:
-    types: [labeled, synchronize]
+    types: [labeled]
 
   workflow_dispatch:
     inputs:
@@ -269,9 +275,16 @@ jobs:
           # No NODE_AUTH_TOKEN: authentication is OIDC via trusted publishing,
           # and provenance is generated automatically. publishConfig in each
           # package.json also sets provenance, as insurance.
+          # "./$tgz", never "$tgz". npm parses a bare relative path containing a
+          # slash as a GitHub shorthand - `owner/repo` - so `artifacts/x.tgz`
+          # sent it looking for a git remote instead of reading the tarball:
+          #   npm error command git ls-remote ssh://git@github.com/artifacts/x.tgz.git
+          #   npm error git@github.com: Permission denied (publickey).
+          # which reads like an auth failure and is nothing of the sort. A
+          # leading ./ is what makes it unambiguously a path.
           for tgz in artifacts/*.tgz; do
             echo "publishing $(basename "$tgz") to @$DIST_TAG"
-            npm publish "$tgz" --tag "$DIST_TAG"
+            npm publish "./$tgz" --tag "$DIST_TAG"
           done
 
       # Tells the PR author how to install what was just published. The
@@ -301,6 +314,8 @@ jobs:
               '```',
               '',
               'Install by exact version. The `experimental` tag moves with every build.',
+              '',
+              'The `publish-experimental` label has been removed. Add it again to publish another build.',
             ].join('\n');
 
             const { owner, repo } = context.repo;
@@ -327,3 +342,38 @@ jobs:
             echo
             echo 'Verify with `npm audit signatures` after installing.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Takes the trigger label back off, so the label always means "publish an
+  # experimental build now" rather than "this PR is in experimental mode".
+  #
+  # A separate job on purpose. It needs `pull-requests: write`, and the build
+  # job - the one that may run unreviewed code - must keep `contents: read` and
+  # nothing else. This job runs no checkout and no branch code, only this file
+  # from the default branch.
+  #
+  # `always()`: a failed publish must not leave the label behind, or the next
+  # person to add it sees nothing happen because it is already there.
+  unlabel:
+    name: Remove the trigger label
+    needs: [build, publish]
+    if: always() && github.event_name == 'pull_request_target' && needs.build.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            try {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: context.payload.pull_request.number,
+                name: 'publish-experimental',
+              });
+            } catch (error) {
+              // 404 means someone already took it off. That is the desired
+              // end state, so it is not a failure.
+              if (error.status !== 404) throw error;
+            }
