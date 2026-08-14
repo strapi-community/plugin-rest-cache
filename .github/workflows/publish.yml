@@ -61,8 +61,12 @@ on:
         type: choice
         options: [latest, next, experimental]
         default: experimental
+      version:
+        description: "Prerelease version for mode=next, e.g. 5.2.0-beta.0"
+        type: string
+        required: false
       target_branch:
-        description: Branch to build (experimental mode only)
+        description: Branch to build (next and experimental modes)
         type: string
         required: false
       sha:
@@ -103,6 +107,7 @@ jobs:
           TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
           INPUT_SHA: ${{ github.event.inputs.sha }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
 
@@ -114,6 +119,32 @@ jobs:
               mode="$INPUT_MODE"
               ;;
           esac
+
+          # A manually dispatched prerelease. release-please only ever proposes
+          # stable versions, so a beta is not something it can produce - the
+          # version is given here and stamped over what is committed.
+          #
+          # Refused for a `release` event: that path publishes the version
+          # release-please already wrote into package.json and tagged, and
+          # stamping something else over it would put a version on npm that no
+          # tag points at.
+          if [ "$mode" = "next" ] && [ "$EVENT" = "workflow_dispatch" ]; then
+            if ! printf '%s' "$INPUT_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z.-]+$'; then
+              echo "::error::mode=next requires a prerelease version such as 5.2.0-beta.0"
+              exit 1
+            fi
+            echo "stamp_version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+
+            # Same validation as the experimental path below.
+            if ! printf '%s' "${TARGET_BRANCH:-main}" | grep -Eq '^[A-Za-z0-9._/-]{1,200}$'; then
+              echo "::error::target_branch has unexpected characters"
+              exit 1
+            fi
+            case "${TARGET_BRANCH:-main}" in
+              -*|*..*) echo "::error::target_branch rejected"; exit 1 ;;
+            esac
+            echo "ref=${TARGET_BRANCH:-main}" >> "$GITHUB_OUTPUT"
+          fi
 
           if [ "$mode" = "experimental" ]; then
             # `sha` wins when both are given: experimental-dispatch.yml sends
@@ -151,12 +182,14 @@ jobs:
             echo "dist_tag=$mode"
           } >> "$GITHUB_OUTPUT"
 
+      # A release event checks out the tagged commit; anything with an explicit
+      # ref (experimental, or a manually dispatched prerelease) checks that out.
       - name: Check out the release commit
-        if: steps.plan.outputs.mode != 'experimental'
+        if: steps.plan.outputs.ref == ''
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check out the code under test
-        if: steps.plan.outputs.mode == 'experimental'
+        if: steps.plan.outputs.ref != ''
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ steps.plan.outputs.ref }}
@@ -184,7 +217,16 @@ jobs:
           # never built.
           SHA="$(git rev-parse HEAD)"
           echo "building $SHA"
-          SHA="$SHA" node scripts/stamp-experimental-version.mjs
+          SHA="$SHA" node scripts/stamp-version.mjs
+
+      # Only for a manual dispatch. A prerelease published from a GitHub Release
+      # already carries release-please's version, and stamp_version is empty
+      # there, so this step does not run.
+      - name: Stamp the prerelease version
+        if: steps.plan.outputs.stamp_version != ''
+        env:
+          VERSION: ${{ steps.plan.outputs.stamp_version }}
+        run: node scripts/stamp-version.mjs
 
       - name: Build
         run: pnpm run build

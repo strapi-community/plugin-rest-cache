@@ -1,7 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "release-type": "node",
-  "separate-pull-requests": false,
   "pull-request-title-pattern": "chore: release ${version}",
   "draft": true,
   "changelog-sections": [
@@ -69,10 +68,7 @@
           "path": "packages/provider-rest-cache-redis/package.json",
           "jsonpath": "$.version"
         }
-      ],
-      "prerelease": true,
-      "prerelease-type": "beta",
-      "versioning": "prerelease"
+      ]
     }
   },
   "last-release-sha": "6407e61f4c89863c84e542bc2a92a07801ff4f9a"
