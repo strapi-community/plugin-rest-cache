@@ -24,5 +24,13 @@ module.exports = {
       path: "/categories/probe/with-cookie",
       handler: "category.withCookie",
     },
+    // Fixture for a handler that sets Cache-Control itself, which the plugin
+    // must never overwrite. See
+    // https://github.com/strapi-community/plugin-rest-cache/issues/175
+    {
+      method: "GET",
+      path: "/categories/probe/cache-control",
+      handler: "category.withCacheControl",
+    },
   ],
 };
