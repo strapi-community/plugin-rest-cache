@@ -17,7 +17,16 @@ module.exports = ({ env }) => ({
             // since the cache keys are derived from the request path and are
             // identical across workers.
             // Redis only has 16 logical databases, so wrap.
-            db: env.int("JEST_WORKER_ID", 0) % 16,
+            //
+            // REDIS_DB overrides it for the benchmark harness, which runs no
+            // jest workers and so put every scenario on db 0. Redis outlives
+            // the server process, unlike the in-process memory provider, so
+            // the ETag-off scenario left entries stored without an ETag that
+            // the later conditional-request scenario read straight back:
+            //   expected an ETag ... - is enableEtag on for this scenario?
+            // It also meant redis started each scenario warm while memory
+            // started cold, which is not a comparison worth publishing.
+            db: env.int("REDIS_DB", env.int("JEST_WORKER_ID", 0)) % 16,
           },
           settings: {
             debug: false,

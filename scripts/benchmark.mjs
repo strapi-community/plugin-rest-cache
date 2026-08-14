@@ -178,11 +178,19 @@ async function currentEtag(url) {
   return etag;
 }
 
-async function benchmarkScenario(scenario, args) {
+async function benchmarkScenario(scenario, args, index) {
   const url = `http://127.0.0.1:${args.port}${args.path}`;
 
   process.stdout.write(`\n[bench] ${scenario.name}\n`);
-  const server = await startServer(args.provider, scenario.env, args.port);
+  // Every scenario gets its own redis logical database, so each starts from a
+  // cold cache exactly like the in-process memory provider does. Sharing db 0
+  // let the ETag-off scenario's entries be read back by the conditional
+  // scenario, which then found no ETag on them and failed outright.
+  const server = await startServer(
+    args.provider,
+    { ...scenario.env, REDIS_DB: String(index) },
+    args.port
+  );
 
   try {
     await waitForServer(`http://127.0.0.1:${args.port}/_health`);
@@ -232,10 +240,16 @@ async function benchmarkScenario(scenario, args) {
     });
 
     // A scenario that silently stopped exercising what it claims to is worse
-    // than no scenario. 304s report as non-2xx, so check them explicitly.
-    if (scenario.expectStatus === 304 && result.non2xx === 0) {
+    // than no scenario. 304s report as non-2xx, so check them explicitly - and
+    // by status code, not by `non2xx`, which would also be satisfied by a run
+    // that returned nothing but 500s.
+    const expected = scenario.expectStatus
+      ? result.statusCodeStats?.[scenario.expectStatus]?.count ?? 0
+      : 0;
+
+    if (scenario.expectStatus && expected === 0) {
       throw new Error(
-        `${scenario.id}: expected 304 responses, saw none - the conditional request is not revalidating`
+        `${scenario.id}: expected ${scenario.expectStatus} responses, saw none - the conditional request is not revalidating`
       );
     }
 
@@ -247,6 +261,10 @@ async function benchmarkScenario(scenario, args) {
       throughput: result.throughput,
       errors: result.errors,
       non2xx: result.non2xx,
+      // Non-2xx responses that were NOT the status this scenario exists to
+      // produce. Everything downstream treats these as failures; the expected
+      // ones are not failures and must not be counted as such.
+      unexpectedNon2xx: result.non2xx - expected,
       timeouts: result.timeouts,
     };
   } finally {
@@ -305,13 +323,8 @@ function toMarkdown(results, args, meta) {
   );
   lines.push("");
 
-  const expectedNon2xx = new Set(
-    SCENARIOS.filter((s) => s.expectStatus === 304).map((s) => s.id)
-  );
   const unreliable = results.filter(
-    (r) =>
-      r.errors + r.timeouts > 0 ||
-      (r.non2xx > 0 && !expectedNon2xx.has(r.id))
+    (r) => r.errors + r.timeouts + r.unexpectedNon2xx > 0
   );
   if (unreliable.length) {
     const baselineFailed = unreliable.some((r) => r.id === "cache-disabled");
@@ -340,7 +353,11 @@ function toMarkdown(results, args, meta) {
   );
   lines.push("|---|---:|---:|---:|---:|---:|");
   for (const r of results) {
-    const failed = r.errors + r.timeouts + r.non2xx;
+    // A 304 is the successful outcome for the conditional scenario, and
+    // autocannon counts it as non-2xx. Counting it here reported every
+    // revalidation as a failure - "**2416** ⚠️" against the one scenario that
+    // did exactly what it was asked to - which reads as a broken benchmark.
+    const failed = r.errors + r.timeouts + r.unexpectedNon2xx;
     const speedup =
       baseline && r.id !== "cache-disabled" && baseline.requests.average > 0
         ? `${(r.requests.average / baseline.requests.average).toFixed(1)}x`
@@ -402,8 +419,8 @@ async function main() {
   };
 
   const results = [];
-  for (const scenario of SCENARIOS) {
-    results.push(await benchmarkScenario(scenario, args));
+  for (const [index, scenario] of SCENARIOS.entries()) {
+    results.push(await benchmarkScenario(scenario, args, index));
   }
 
   const markdown = toMarkdown(results, args, meta);
@@ -414,16 +431,13 @@ async function main() {
 
   // A conditional request answers 304, which autocannon counts as non-2xx.
   // Flagging it as a fault every run trains people to ignore the warning.
-  const expected304 = new Set(
-    SCENARIOS.filter((s) => s.expectStatus === 304).map((s) => s.id)
-  );
   const failed = results.filter(
-    (r) => r.errors || r.timeouts || (r.non2xx && !expected304.has(r.id))
+    (r) => r.errors || r.timeouts || r.unexpectedNon2xx
   );
   if (failed.length) {
     for (const r of failed) {
       process.stdout.write(
-        `\n[bench] WARNING: "${r.name}" had ${r.errors} errors, ${r.timeouts} timeouts, ${r.non2xx} non-2xx\n`
+        `\n[bench] WARNING: "${r.name}" had ${r.errors} errors, ${r.timeouts} timeouts, ${r.unexpectedNon2xx} unexpected non-2xx\n`
       );
     }
     if (failed.some((r) => r.id === "cache-disabled")) {
