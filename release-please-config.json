@@ -51,8 +51,8 @@
   ],
   "packages": {
     ".": {
-      "component": "",
       "changelog-path": "CHANGELOG.md",
+      "include-component-in-tag": false,
       "extra-files": [
         {
           "type": "json",
