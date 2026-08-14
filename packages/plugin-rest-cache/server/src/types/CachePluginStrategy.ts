@@ -1,4 +1,5 @@
 import { CacheKeysConfig } from './CacheKeysConfig';
+import { CacheControlConfig } from './CacheControlConfig';
 import { CacheContentTypeConfig } from './CacheContentTypeConfig';
 import { ms } from './common';
 import type { Milliseconds } from './common';
@@ -31,6 +32,13 @@ export class CachePluginStrategy {
 
   keys: CacheKeysConfig;
 
+  /**
+   * Whether cached responses advertise their caching downstream.
+   *
+   * @see https://github.com/strapi-community/plugin-rest-cache/issues/175
+   */
+  cacheControl: CacheControlConfig;
+
   constructor(options: CachePluginStrategyInput = {}) {
     const {
       debug = false,
@@ -45,6 +53,7 @@ export class CachePluginStrategy {
       keysPrefix = '',
       contentTypes = [],
       keys = new CacheKeysConfig(),
+      cacheControl = new CacheControlConfig(),
     } = options;
 
     this.debug = debug;
@@ -59,5 +68,9 @@ export class CachePluginStrategy {
     this.keysPrefix = keysPrefix;
     this.contentTypes = contentTypes as CacheContentTypeConfig[];
     this.keys = keys instanceof CacheKeysConfig ? keys : new CacheKeysConfig(keys);
+    this.cacheControl =
+      cacheControl instanceof CacheControlConfig
+        ? cacheControl
+        : new CacheControlConfig(cacheControl);
   }
 }

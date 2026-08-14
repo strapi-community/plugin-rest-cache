@@ -3,6 +3,7 @@
 ## Classes
 
 - [CacheContentTypeConfig](classes/CacheContentTypeConfig.md)
+- [CacheControlConfig](classes/CacheControlConfig.md)
 - [CacheKeysConfig](classes/CacheKeysConfig.md)
 - [CachePluginStrategy](classes/CachePluginStrategy.md)
 - [CacheProvider](classes/CacheProvider.md)
@@ -11,6 +12,7 @@
 ## Interfaces
 
 - [CacheContentTypeConfigInput](interfaces/CacheContentTypeConfigInput.md)
+- [CacheControlConfigInput](interfaces/CacheControlConfigInput.md)
 - [CacheKeysConfigInput](interfaces/CacheKeysConfigInput.md)
 - [CachePluginStrategyInput](interfaces/CachePluginStrategyInput.md)
 - [CacheProviderConfig](interfaces/CacheProviderConfig.md)

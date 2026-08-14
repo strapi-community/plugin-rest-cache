@@ -9,6 +9,7 @@ import { etagGenerate } from '../utils/etags/etagGenerate';
 import { etagLookup } from '../utils/etags/etagLookup';
 import { etagMatch } from '../utils/etags/etagMatch';
 import { isCacheable } from '../utils/middlewares/isCacheable';
+import { buildCacheControl } from '../utils/middlewares/buildCacheControl';
 import type { CacheRouteConfig } from '../types';
 import type { CacheKey } from '../types/common';
 import type { RestCachePluginConfig } from '../types/config';
@@ -48,6 +49,37 @@ export default function createRecv(
   const { hitpass, maxAge, keys } = cacheRouteConfig;
   const { enableEtag = false, enableXCacheHeaders = false } = strategy;
 
+  // Fixed for the life of the route: it is derived from configuration alone.
+  // null means the feature is off and nothing is ever emitted for this route.
+  const cacheControl = buildCacheControl(strategy.cacheControl, cacheRouteConfig);
+
+  /**
+   * Advertise this route's caching to the caller.
+   *
+   * Only ever called for a response that is genuinely in, or on its way into,
+   * the cache. Callers must not invoke it for a hitpass, for a response
+   * isCacheable refused, or before that verdict is known: a Cache-Control the
+   * plugin emits early would then be read back by isCacheable as if a handler
+   * had set it, and `private` would make the plugin refuse to store its own
+   * response.
+   *
+   * @see https://github.com/strapi-community/plugin-rest-cache/issues/175
+   */
+  const setCacheControl = (ctx: Context): void => {
+    if (!cacheControl) {
+      return;
+    }
+
+    // A handler that stated its own policy has said something specific about
+    // this response, which outranks a blanket route setting - #133 relies on a
+    // handler's `no-store` being obeyed rather than replaced.
+    if (String(ctx.response.get('Cache-Control') || '') !== '') {
+      return;
+    }
+
+    ctx.set('Cache-Control', cacheControl);
+  };
+
   return async function recv(ctx: Context, next: Next): Promise<void> {
     // hash
     const cacheKey = generateCacheKey(ctx, keys);
@@ -67,6 +99,11 @@ export default function createRecv(
           if (enableXCacheHeaders) {
             ctx.set('X-Cache', 'HIT');
           }
+
+          // The entry is in the cache - an ETag is only stored alongside a body
+          // that was stored - so the freshness we advertise is real. A 304 may
+          // carry Cache-Control to refresh what the client already holds.
+          setCacheControl(ctx);
 
           // etag match -> send HTTP 304 Not Modified
           ctx.body = null;
@@ -94,6 +131,8 @@ export default function createRecv(
           ctx.set('ETag', `"${etagCached}"`);
         }
 
+        setCacheControl(ctx);
+
         ctx.status = 200;
         ctx.body = cacheEntry;
         return;
@@ -115,6 +154,12 @@ export default function createRecv(
             ctx.set('X-Cache', 'MISS');
           }
 
+          // Deliberately no Cache-Control here. We borrowed a body from the
+          // request that went to the origin and never saw its response headers,
+          // so we cannot know whether that request's response was stored or
+          // refused by isCacheable. Staying quiet costs one client one
+          // revalidation; guessing wrong tells a browser to cache something the
+          // plugin itself declined to.
           ctx.status = shared.status;
           ctx.body = shared.body;
           return;
@@ -185,6 +230,10 @@ export default function createRecv(
       );
       return;
     }
+
+    // Only now, past the verdict: this response is going into the cache, and
+    // isCacheable has already read whatever Cache-Control the handler set.
+    setCacheControl(ctx);
 
     {
       const writes: Array<Promise<unknown>> = [];

@@ -4,6 +4,7 @@ import type {
   HttpMethod,
   Milliseconds,
 } from './common';
+import type { CacheControlConfig } from './CacheControlConfig';
 import type { CacheKeysConfig } from './CacheKeysConfig';
 import type { CacheRouteConfig } from './CacheRouteConfig';
 import type { CacheContentTypeConfig } from './CacheContentTypeConfig';
@@ -16,6 +17,18 @@ import type { CacheContentTypeConfig } from './CacheContentTypeConfig';
  * the two is how `maxAge` ended up defaulting to the boolean `true` in one
  * constructor while being documented as milliseconds everywhere else.
  */
+
+export interface CacheControlConfigInput {
+  enabled?: boolean;
+  /**
+   * 'none' omits max-age, 'config' uses the route's maxAge, a number overrides
+   * it. The number is milliseconds - see CacheControlConfig.
+   */
+  maxAge?: 'none' | 'config' | Milliseconds | number;
+  scope?: 'public' | 'private';
+  /** Milliseconds, or null/undefined to omit the directive. */
+  staleWhileRevalidate?: Milliseconds | number | null;
+}
 
 export interface CacheKeysConfigInput {
   useHeaders?: string[];
@@ -57,6 +70,13 @@ export interface CachePluginStrategyInput {
   keysPrefix?: string;
   contentTypes?: Array<ContentTypeUID | string | CacheContentTypeConfigInput> | CacheContentTypeConfig[];
   keys?: CacheKeysConfig | CacheKeysConfigInput;
+  /**
+   * Whether to tell the caller about the caching, by emitting a Cache-Control
+   * header on responses this plugin cached. Off unless asked for.
+   *
+   * @see https://github.com/strapi-community/plugin-rest-cache/issues/175
+   */
+  cacheControl?: CacheControlConfig | CacheControlConfigInput;
   /**
    * The default hitpass for every content type and route that does not set its
    * own. The plugin ships one that bypasses the cache for any request carrying

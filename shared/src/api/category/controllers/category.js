@@ -33,6 +33,16 @@ module.exports = createCoreController(
       ctx.body = { cookie: true };
     },
 
+    /**
+     * A handler that states its own caching policy. `?value=` picks it, so one
+     * fixture covers both a directive that stops the plugin storing the
+     * response (`no-store`) and one that does not (`max-age=99`).
+     */
+    async withCacheControl(ctx) {
+      ctx.set("Cache-Control", String(ctx.query.value || "no-store"));
+      ctx.body = { handlerSetCacheControl: true };
+    },
+
     async findBySlug(ctx) {
       const { slug } = ctx.params;
       const { query } = ctx;

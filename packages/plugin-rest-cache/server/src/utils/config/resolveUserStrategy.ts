@@ -248,6 +248,34 @@ export const resolveUserStrategy = function (
     }
   }
 
+  // `cacheControl.scope: "public"` invites shared caches to reuse a response for
+  // anybody, which contradicts keying entries per caller. The emitter downgrades
+  // those routes to "private" itself - this is not something an operator gets to
+  // misconfigure into a leak - but say so at boot, because an unannounced
+  // downgrade otherwise shows up as a CDN that inexplicably declines to cache.
+  // See https://github.com/strapi-community/plugin-rest-cache/issues/175
+  if (
+    userOptions.cacheControl?.enabled &&
+    userOptions.cacheControl.scope === 'public'
+  ) {
+    for (const cacheConfig of cacheConfigs) {
+      const keyedPerCaller = cacheConfig.routes.filter(
+        (route) => route.keys?.useAuth === true
+      );
+
+      if (!keyedPerCaller.length) {
+        continue;
+      }
+
+      strapi.log.warn(
+        `REST Cache: cacheControl.scope is "public" but "${cacheConfig.contentType}" keys entries per caller ` +
+          `on ${keyedPerCaller.length} route(s) (keys.useAuth). Those responses are caller-specific, and a shared ` +
+          "cache told they are public could serve one caller's response to another. Emitting \"private\" for them " +
+          'instead.'
+      );
+    }
+  }
+
   return deepFreeze(
     new CachePluginStrategy({
       ...userOptions,
