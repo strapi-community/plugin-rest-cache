@@ -7,7 +7,15 @@
   "draft": true,
   "prerelease-type": "beta",
   "plugins": [
-    "node-workspace"
+    {
+      "type": "linked-versions",
+      "groupName": "rest-cache",
+      "components": [
+        "plugin-rest-cache",
+        "provider-rest-cache-memory",
+        "provider-rest-cache-redis"
+      ]
+    }
   ],
   "changelog-sections": [
     {
