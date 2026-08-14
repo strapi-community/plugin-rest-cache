@@ -92,8 +92,10 @@ jobs:
           # script's own path, immediately after checking out that branch.
           DEDUPE="$RUNNER_TEMP/dedupe-changelog.mjs"
           FOLD="$RUNNER_TEMP/consolidate-prerelease-changelog.mjs"
+          EXTRACT="$RUNNER_TEMP/extract-release-notes.mjs"
           cp scripts/dedupe-changelog.mjs "$DEDUPE"
           cp scripts/consolidate-prerelease-changelog.mjs "$FOLD"
+          cp scripts/extract-release-notes.mjs "$EXTRACT"
 
           # Asked for rather than hardcoded. The branch name depends on the
           # strategy's component, so it changed from
@@ -101,7 +103,9 @@ jobs:
           # `release-please--branches--main--components--monorepo` when
           # `separate-pull-requests: false` was removed - and a hardcoded name
           # does not fail, it silently skips, leaving the changelog untidied.
-          RELEASE_BRANCH=$(gh pr list --state open --json headRefName \
+          RELEASE_PR=$(gh pr list --state open --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("release-please--"))][0].number // empty')
+          RELEASE_BRANCH=$(gh pr list --state open --json number,headRefName \
             --jq '[.[] | select(.headRefName | startswith("release-please--"))][0].headRefName // empty')
 
           # 1. The rolling release pull request.
@@ -120,20 +124,46 @@ jobs:
               git commit -q -m "chore: tidy the release changelog" -- CHANGELOG.md
               git push origin "$RELEASE_BRANCH"
             fi
+            # 2. The pull request body. release-please writes it from the
+            #    commits since the *last* release, so once a prerelease is
+            #    folded into the changelog the body still lists only what came
+            #    after that prerelease - 4 entries against 38 for 5.1.0. The
+            #    body is what a reviewer reads, and github-release copies it
+            #    into the draft release, so it has to carry the whole release.
+            #
+            #    Only the text between release-please's `---` delimiters is
+            #    replaced. The structure around it is load-bearing:
+            #    github-release parses the body to find the release, and an
+            #    earlier hand-edit of it is why the 5.1.0-beta draft had to be
+            #    created by hand.
+            VERSION=$(node -p "require('./.release-please-manifest.json')['.']")
+            echo "release version: $VERSION"
+            body=$(mktemp)
+            gh pr view "$RELEASE_PR" --json body --jq .body > "$body"
+            node "$EXTRACT" CHANGELOG.md "$VERSION" --splice "$body"
+            gh pr edit "$RELEASE_PR" --body-file "$body"
+
             # Deliberately does not switch back. `git checkout -` aborts if
             # CHANGELOG.md is still dirty, and nothing below needs the working
-            # tree - step 2 runs entirely through the API, with the script
-            # already copied out to $RUNNER_TEMP.
+            # tree - it runs entirely through the API, with the scripts already
+            # copied out to $RUNNER_TEMP.
           fi
 
-          # 2. Any draft release. Its notes are stored separately from
-          #    CHANGELOG.md, so deduplicating one does not touch the other, and
-          #    the draft is what a maintainer actually reads before pressing
-          #    Publish.
+          # 3. Any draft release. Its notes are stored separately again, so
+          #    neither of the above touches it, and it is the last thing read
+          #    before pressing Publish.
           notes=$(mktemp)
           for tag in $(gh release list --limit 20 --json tagName,isDraft \
                         --jq '.[] | select(.isDraft) | .tagName'); do
-            gh release view "$tag" --json body --jq .body > "$notes"
-            node "$DEDUPE" "$notes"
+            version=${tag#v}
+            # Rebuild from the changelog when that release has a section there,
+            # so the draft matches what shipped. Otherwise deduplicate what
+            # release-please wrote.
+            if [ -n "$RELEASE_BRANCH" ] && node "$EXTRACT" CHANGELOG.md "$version" --body-only > "$notes" 2>/dev/null; then
+              echo "draft $tag: rebuilt from CHANGELOG.md"
+            else
+              gh release view "$tag" --json body --jq .body > "$notes"
+              node "$DEDUPE" "$notes"
+            fi
             gh release edit "$tag" --notes-file "$notes"
           done
