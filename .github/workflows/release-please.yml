@@ -86,18 +86,29 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Copied out of the working tree before anything is checked out. The
+          # release branch is cut from whatever main was when release-please
+          # first opened the pull request, so it does not necessarily contain
+          # this script - the first run failed with MODULE_NOT_FOUND on the
+          # script's own path, immediately after checking out that branch.
+          SCRIPT="$RUNNER_TEMP/dedupe-changelog.mjs"
+          cp scripts/dedupe-changelog.mjs "$SCRIPT"
+
           # 1. The rolling release pull request.
           if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
             git fetch --quiet origin "$RELEASE_BRANCH"
             git checkout --quiet "$RELEASE_BRANCH"
-            node scripts/dedupe-changelog.mjs CHANGELOG.md
+            node "$SCRIPT" CHANGELOG.md
             if ! git diff --quiet -- CHANGELOG.md; then
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
               git commit -q -m "chore: drop duplicate changelog entries" -- CHANGELOG.md
               git push origin "$RELEASE_BRANCH"
             fi
-            git checkout --quiet -
+            # Deliberately does not switch back. `git checkout -` aborts if
+            # CHANGELOG.md is still dirty, and nothing below needs the working
+            # tree - step 2 runs entirely through the API, with the script
+            # already copied out to $RUNNER_TEMP.
           fi
 
           # 2. Any draft release. Its notes are stored separately from
@@ -108,6 +119,6 @@ jobs:
           for tag in $(gh release list --limit 20 --json tagName,isDraft \
                         --jq '.[] | select(.isDraft) | .tagName'); do
             gh release view "$tag" --json body --jq .body > "$notes"
-            node scripts/dedupe-changelog.mjs "$notes"
+            node "$SCRIPT" "$notes"
             gh release edit "$tag" --notes-file "$notes"
           done
