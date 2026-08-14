@@ -57,6 +57,60 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
   `purge` and `purgeAdmin` middlewares are no longer injected, since the
   document service already covers every write
 
+## [5.1.0](https://github.com/strapi-community/plugin-rest-cache/compare/plugin-rest-cache-v5.0.1...plugin-rest-cache-v5.1.0) (2026-08-14)
+
+
+### Features
+
+* add a cache statistics endpoint for the admin dashboard ([594ba4a](https://github.com/strapi-community/plugin-rest-cache/commit/594ba4a77240803997eed8ee75656529cdeb3606))
+* add a cache statistics endpoint for the admin dashboard ([56aeae4](https://github.com/strapi-community/plugin-rest-cache/commit/56aeae42ec316c9c604f43626e6286f114b634fc))
+* add an opt-in content API purge endpoint ([59d1153](https://github.com/strapi-community/plugin-rest-cache/commit/59d1153c1ac85f6073624920dc5deced883f757f))
+* add an opt-in content API purge endpoint ([ed4f778](https://github.com/strapi-community/plugin-rest-cache/commit/ed4f778f71776cf2d5fe258af14997339623e528))
+* **admin:** rewrite the admin panel in TypeScript and add a dashboard ([#181](https://github.com/strapi-community/plugin-rest-cache/issues/181)) ([4db948f](https://github.com/strapi-community/plugin-rest-cache/commit/4db948fb1012be618a2bd647007db4aed5b8f0fc))
+* document service invalidation, custom route fix, and content type/API name mismatch fix ([a6a289a](https://github.com/strapi-community/plugin-rest-cache/commit/a6a289a044035158829d36e0edc0de43fd3e5afd))
+* emit Cache-Control headers on cached responses ([#201](https://github.com/strapi-community/plugin-rest-cache/issues/201)) ([ee75158](https://github.com/strapi-community/plugin-rest-cache/commit/ee7515812dc0b64e615df3a98627126cfb674e31))
+* invalidate cache from the document service ([2a6903a](https://github.com/strapi-community/plugin-rest-cache/commit/2a6903a8dfbbcb7db8b02b8d1412688cea4ccf02))
+* support caching authenticated requests ([23f84a4](https://github.com/strapi-community/plugin-rest-cache/commit/23f84a4dc1aafc384ab13dbdb2bc9833ff0683cb))
+* support caching authenticated requests ([155af0a](https://github.com/strapi-community/plugin-rest-cache/commit/155af0a2a420495345c9f9a212fa40c611ccfa72))
+
+
+### Bug Fixes
+
+* **admin:** make the panel work in a production build, and test it ([#184](https://github.com/strapi-community/plugin-rest-cache/issues/184)) ([5c0a229](https://github.com/strapi-community/plugin-rest-cache/commit/5c0a229485e8bf21c63fff8f88536d0ee05fc966))
+* await the cache purge instead of deferring it to onCommit ([9675095](https://github.com/strapi-community/plugin-rest-cache/commit/96750957feaffd5ac5152a26e37c5dbc1e58e6e4))
+* cache custom routes whose path ends in a repeatable param ([b38d827](https://github.com/strapi-community/plugin-rest-cache/commit/b38d827955252f5d9f6ec57fcb3987c4ab70cd98))
+* coalesce concurrent cache misses and stop racing the purge ([52b0b44](https://github.com/strapi-community/plugin-rest-cache/commit/52b0b4454f0ac1c1b2f91f745d18357eb3fcad09))
+* coalesce concurrent cache misses and stop racing the purge ([b51ee55](https://github.com/strapi-community/plugin-rest-cache/commit/b51ee55695e67a07062bb861f6c0f560d45b0958))
+* correct 1000x cache TTL inflation and purge on all admin write routes ([5dc7a20](https://github.com/strapi-community/plugin-rest-cache/commit/5dc7a20cf6a7dec6c8c5d9d8f62f2c4adf190c4b))
+* correct 1000x cache TTL inflation and purge on all admin write routes ([8197205](https://github.com/strapi-community/plugin-rest-cache/commit/8197205cce4abf1fc1b3b982186b9ddbaee2e85b))
+* load providers reliably across Node versions and module shapes ([ce7215a](https://github.com/strapi-community/plugin-rest-cache/commit/ce7215a13c99a3e150e7ebbab672edc849948859))
+* load providers reliably across Node versions and module shapes ([c403830](https://github.com/strapi-community/plugin-rest-cache/commit/c40383015846e4a80525f5aded07a741381541d3))
+* refuse to cache responses that cannot be safely replayed ([5ccde8a](https://github.com/strapi-community/plugin-rest-cache/commit/5ccde8a3cf83479a744f14e1e176aec2cb4b2ac8))
+* refuse to cache responses that cannot be safely replayed ([714f8f0](https://github.com/strapi-community/plugin-rest-cache/commit/714f8f0834153f6ec9a48783b453079c9a16587c))
+* resolve cache providers from the Strapi application root ([#197](https://github.com/strapi-community/plugin-rest-cache/issues/197)) ([691f3ff](https://github.com/strapi-community/plugin-rest-cache/commit/691f3ffef7711f91d6691d371d9e03ba0b1f8f0d))
+* resolve default routes from the API in the uid, not the singular name ([552763b](https://github.com/strapi-community/plugin-rest-cache/commit/552763b8da9af71b4a14324ff37bb408347e0638))
+* restore the lodash dependency and guard against undeclared imports ([566c841](https://github.com/strapi-community/plugin-rest-cache/commit/566c8410055d34f9e4b86ef03a50180675deb33a))
+
+
+### Performance
+
+* batch cache purges instead of one round trip per key ([2574d82](https://github.com/strapi-community/plugin-rest-cache/commit/2574d82d027241352cc2007cd5d32acfb084a3cf))
+* batch cache purges instead of one round trip per key ([face64d](https://github.com/strapi-community/plugin-rest-cache/commit/face64d8565a59938dbacb983b669077c71b3d8c))
+
+
+### Refactoring
+
+* drop chalk for node:util styleText, and make bad benchmarks visible ([b1e9216](https://github.com/strapi-community/plugin-rest-cache/commit/b1e9216bc71498b54a5efa96cd9d29ca864656ca))
+* drop chalk for node:util styleText, and make bad benchmarks visible ([e71f456](https://github.com/strapi-community/plugin-rest-cache/commit/e71f4562a37a4d1621b1b9158a522e0772722f52))
+* **plugin:** rewrite the server in TypeScript ([#179](https://github.com/strapi-community/plugin-rest-cache/issues/179)) ([586e681](https://github.com/strapi-community/plugin-rest-cache/commit/586e681df4ad28254805af437a93cba403e8b19c))
+
+
+### Documentation
+
+* give every published package a README ([#196](https://github.com/strapi-community/plugin-rest-cache/issues/196)) ([2f53e09](https://github.com/strapi-community/plugin-rest-cache/commit/2f53e0968eb4e151da0d89c949504568528ec1b1))
+* sync README with the published 5.0.1 and backfill changelogs ([380997c](https://github.com/strapi-community/plugin-rest-cache/commit/380997cad55e10db1e57e22ac31270cd17f534df))
+* sync README with the published 5.0.1 and backfill changelogs ([9878fbb](https://github.com/strapi-community/plugin-rest-cache/commit/9878fbb788335a68339344d2adeb9793c45deec8))
+
 ## 5.0.1
 
 ### Changed

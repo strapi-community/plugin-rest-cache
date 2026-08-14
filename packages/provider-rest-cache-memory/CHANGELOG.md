@@ -27,6 +27,34 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * `engines.node` (`>=20.0.0`) is declared, so an unsupported Node fails at
   install rather than mysteriously at boot
 
+## [5.1.0](https://github.com/strapi-community/plugin-rest-cache/compare/provider-rest-cache-memory-v5.0.0...provider-rest-cache-memory-v5.1.0) (2026-08-14)
+
+
+### Bug Fixes
+
+* correct 1000x cache TTL inflation and purge on all admin write routes ([5dc7a20](https://github.com/strapi-community/plugin-rest-cache/commit/5dc7a20cf6a7dec6c8c5d9d8f62f2c4adf190c4b))
+* correct 1000x cache TTL inflation and purge on all admin write routes ([8197205](https://github.com/strapi-community/plugin-rest-cache/commit/8197205cce4abf1fc1b3b982186b9ddbaee2e85b))
+* load providers reliably across Node versions and module shapes ([ce7215a](https://github.com/strapi-community/plugin-rest-cache/commit/ce7215a13c99a3e150e7ebbab672edc849948859))
+* load providers reliably across Node versions and module shapes ([c403830](https://github.com/strapi-community/plugin-rest-cache/commit/c40383015846e4a80525f5aded07a741381541d3))
+
+
+### Performance
+
+* batch cache purges instead of one round trip per key ([2574d82](https://github.com/strapi-community/plugin-rest-cache/commit/2574d82d027241352cc2007cd5d32acfb084a3cf))
+* batch cache purges instead of one round trip per key ([face64d](https://github.com/strapi-community/plugin-rest-cache/commit/face64d8565a59938dbacb983b669077c71b3d8c))
+
+
+### Refactoring
+
+* **providers:** convert both provider packages to TypeScript ([#188](https://github.com/strapi-community/plugin-rest-cache/issues/188)) ([c46540f](https://github.com/strapi-community/plugin-rest-cache/commit/c46540f6e8a599b92af948ff25075c8104ce1937))
+
+
+### Documentation
+
+* give every published package a README ([#196](https://github.com/strapi-community/plugin-rest-cache/issues/196)) ([2f53e09](https://github.com/strapi-community/plugin-rest-cache/commit/2f53e0968eb4e151da0d89c949504568528ec1b1))
+* sync README with the published 5.0.1 and backfill changelogs ([380997c](https://github.com/strapi-community/plugin-rest-cache/commit/380997cad55e10db1e57e22ac31270cd17f534df))
+* sync README with the published 5.0.1 and backfill changelogs ([9878fbb](https://github.com/strapi-community/plugin-rest-cache/commit/9878fbb788335a68339344d2adeb9793c45deec8))
+
 ## [4.2.4](https://github.com/strapi-community/strapi-plugin-rest-cache/compare/v4.2.3...v4.2.4) (2022-03-19)
 
 **Note:** Version bump only for package strapi-provider-rest-cache-memory

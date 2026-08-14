@@ -1,6 +1,6 @@
 {
   "name": "@strapi-community/plugin-rest-cache",
-  "version": "5.0.1",
+  "version": "5.1.0",
   "description": "Speed-up HTTP requests with LRU cache",
   "license": "MIT",
   "strapi": {

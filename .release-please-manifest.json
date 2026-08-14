@@ -1,5 +1,5 @@
 {
-  "packages/plugin-rest-cache": "5.0.1",
-  "packages/provider-rest-cache-memory": "5.0.0",
-  "packages/provider-rest-cache-redis": "5.0.0"
+  "packages/plugin-rest-cache": "5.1.0",
+  "packages/provider-rest-cache-memory": "5.1.0",
+  "packages/provider-rest-cache-redis": "5.1.0"
 }
