@@ -101,6 +101,38 @@ jobs:
 
       - run: pnpm run test:lint
 
+  # Boots each playground in a real child process.
+  #
+  # Every other suite boots Strapi inside jest, whose module resolver is far
+  # more permissive than Node's. The plugin resolves its cache provider by
+  # package name at boot, so a provider jest can find but Node cannot gives a
+  # completely green build for an application that cannot start. That is not
+  # hypothetical - it is how the redis provider became unresolvable under pnpm
+  # while e2e_redis stayed green.
+  boot_smoke:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: bitnami/redis:latest
+        env:
+          ALLOW_EMPTY_PASSWORD: yes
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - run: pnpm run test:boot
+
   e2e_memory:
     runs-on: ubuntu-latest
     strategy:

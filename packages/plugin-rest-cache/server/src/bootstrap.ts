@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi';
 import { createRequire } from 'module';
+import path from 'path';
 
 import colors from './utils/colors';
 import permissionsActions from './permissions-actions';
@@ -41,14 +42,29 @@ const createProvider = async (
 
   const packageName = `@strapi-community/provider-rest-cache-${providerName}`;
 
-  // Resolve and load through the same require.
+  // Resolve from the Strapi application first, then from this plugin.
   //
-  // This used to call the bare `require.resolve`, which survives verbatim into
-  // the ESM half of this dual package - and `require` does not exist in an ES
-  // module. The resulting ReferenceError carries no `code`, so the handler
-  // below rethrew it and the plugin failed to boot for anyone whose runtime
-  // took the `import` branch of the exports map.
-  const requireProvider = createRequire(import.meta.url);
+  // The application is where a provider is actually installed - users run
+  // `npm install @strapi-community/provider-rest-cache-redis` in their project,
+  // not inside this package. Resolving only from here happens to work under
+  // npm and yarn, whose flat node_modules hoists the provider somewhere a
+  // walk up from this file finds it. Under pnpm's strict layout it does not,
+  // and the plugin fails to boot with a MODULE_NOT_FOUND for a package that is
+  // plainly installed.
+  //
+  // The e2e suite cannot catch that: it boots Strapi inside jest, whose
+  // resolver is far more permissive than Node's. `scripts/boot-smoke.mjs`
+  // boots a real child process for exactly this reason.
+  //
+  // Note both of these are `createRequire`, not a bare `require.resolve`. The
+  // latter survives verbatim into the ESM half of this dual package, where
+  // `require` does not exist, and the resulting ReferenceError carries no
+  // `code`, so the handler below rethrew it - the plugin failed to boot for
+  // anyone whose runtime took the `import` branch of the exports map.
+  const requireFromPlugin = createRequire(import.meta.url);
+  const requireFromApp = strapi.dirs?.app?.root
+    ? createRequire(path.join(strapi.dirs.app.root, 'package.json'))
+    : requireFromPlugin;
 
   let modulePath: string;
   let resolved = false;
@@ -57,15 +73,26 @@ const createProvider = async (
      * @todo Allow custom providers installed from npm.
      * Right now it will only load providers from the `@strapi-community` namespace.
      */
-    modulePath = requireProvider.resolve(packageName);
+    modulePath = requireFromApp.resolve(packageName);
     resolved = true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND') {
+    if ((error as NodeJS.ErrnoException).code !== 'MODULE_NOT_FOUND') throw error;
+
+    try {
+      // The memory provider is a dependency of this plugin rather than of the
+      // application, so it resolves here and not above.
+      modulePath = requireFromPlugin.resolve(packageName);
+      resolved = true;
+    } catch (fallbackError) {
+      if ((fallbackError as NodeJS.ErrnoException).code !== 'MODULE_NOT_FOUND') throw fallbackError;
       modulePath = providerName;
-    } else {
-      throw error;
     }
   }
+
+  // Once resolved, modulePath is absolute and either require loads it. The bare
+  // provider name only survives when nothing resolved, and that escape hatch
+  // means a package the *application* installed.
+  const requireProvider = requireFromApp;
   try {
     provider = requireProvider(modulePath);
   } catch (err) {
