@@ -77,9 +77,17 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     strategy:
-      # Never run providers concurrently: they would compete for the same CPU
-      # and make the numbers meaningless.
-      max-parallel: 1
+      # Providers run concurrently. They used to be serialised, on the theory
+      # that they would otherwise compete for the same CPU - but matrix legs
+      # get a runner each, so they never shared one. The last serialised run
+      # put memory on runner 1000003579 and redis on 1000003580, back to back,
+      # for no benefit and twice the wall clock.
+      #
+      # Absolute throughput is not comparable across the two legs either way,
+      # which is why every scenario is measured against a cache-disabled
+      # baseline taken on its own runner, inside its own job.
+      #
+      # The workflow-level concurrency group still stops two *runs* overlapping.
       fail-fast: false
       matrix:
         provider: ${{ fromJSON(needs.plan.outputs.providers) }}
@@ -166,16 +174,21 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
       - name: Assemble BENCHMARKS.md
         run: |
-          {
-            for f in artifacts/bench-*.md; do
-              cat "$f"
-              echo
-            done
-          } > BENCHMARKS.md
+          set -euo pipefail
+          # Built from the per-provider JSON, not by concatenating their
+          # markdown. Concatenating produced one file with two `# Benchmarks`
+          # titles and two Context blocks, where the redis half read as a stray
+          # section of the memory report - and comparing one scenario across
+          # providers meant scrolling between two tables.
+          node scripts/assemble-benchmarks.mjs artifacts --out BENCHMARKS.md
           echo "--- assembled ---"
-          head -20 BENCHMARKS.md
+          grep -E '^#{1,2} ' BENCHMARKS.md
 
       - name: Open pull request
         env:

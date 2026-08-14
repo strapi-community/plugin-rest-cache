@@ -410,6 +410,11 @@ async function main() {
     generatedAt: new Date().toISOString(),
     commit: process.env.GITHUB_SHA || "local",
     runner: process.env.RUNNER_NAME || os.hostname(),
+    // Recorded rather than read at render time. BENCHMARKS.md is assembled in
+    // a separate job, where process.version is the assembler's Node, not the
+    // one the measurements were taken on.
+    nodeVersion: process.version,
+    cores: os.cpus().length,
     pluginVersion: require(
       path.join(ROOT, "packages/plugin-rest-cache/package.json")
     ).version,
