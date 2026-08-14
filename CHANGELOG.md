@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [5.1.0-beta.1](https://github.com/strapi-community/plugin-rest-cache/compare/v5.1.0-beta...v5.1.0-beta.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **admin:** stop the settings table logging a React error on every render ([#215](https://github.com/strapi-community/plugin-rest-cache/issues/215)) ([0e55c98](https://github.com/strapi-community/plugin-rest-cache/commit/0e55c98f213ecc07b3b960978f17ac324ec99aca))
+
+
+### Documentation
+
+* backfill 4.2.9, 5.0.0 and 5.0.1 into the changelog ([#213](https://github.com/strapi-community/plugin-rest-cache/issues/213)) ([65d4f1e](https://github.com/strapi-community/plugin-rest-cache/commit/65d4f1eec41a1e404c189aa925fa7cb8c16d0316))
+
 ## [5.1.0-beta](https://github.com/strapi-community/plugin-rest-cache/compare/v5.0.0...v5.1.0-beta) (2026-08-14)
 
 
