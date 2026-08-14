@@ -28,6 +28,7 @@
     "watch:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run watch",
     "watch:link:plugin:rest-cache": "pnpm --filter @strapi-community/plugin-rest-cache run watch:link",
     "test:smoke": "node scripts/provider-smoke.cjs",
+    "test:boot": "node scripts/boot-smoke.mjs",
     "test:deps": "node scripts/check-undeclared-deps.cjs",
     "lint:workspaces": "pnpm -r run test:lint",
     "test:cluster": "node scripts/redis-cluster-check.cjs",
