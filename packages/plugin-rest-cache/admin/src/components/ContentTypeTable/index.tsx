@@ -138,12 +138,20 @@ const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => 
                             'Responses are cached separately for each authenticated caller.',
                         })}
                       >
-                        <Badge>
-                          {formatMessage({
-                            id: getTranslation('contentTypes.authKeyed'),
-                            defaultMessage: 'Keyed per caller',
-                          })}
-                        </Badge>
+                        {/* The span is load-bearing. Tooltip clones its child
+                            through Radix's Slot to attach a ref, and Badge is a
+                            plain function component, so React logs "Function
+                            components cannot be given refs ... Check the render
+                            method of SlotClone" as an *error* on every render of
+                            this page in a production build. */}
+                        <span>
+                          <Badge>
+                            {formatMessage({
+                              id: getTranslation('contentTypes.authKeyed'),
+                              defaultMessage: 'Keyed per caller',
+                            })}
+                          </Badge>
+                        </span>
                       </Tooltip>
                     ) : null}
                     {sharesAuthenticatedEntries ? (
@@ -155,20 +163,23 @@ const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => 
                         })}
                       >
                         {/* Themed, not a hardcoded hex: the badge has to stay
-                            legible in dark mode and in every locale. */}
-                        <Badge
-                          backgroundColor="danger100"
-                          textColor="danger600"
-                          borderColor="danger200"
-                        >
-                          <Flex gap={1} alignItems="center">
-                            <WarningCircle />
-                            {formatMessage({
-                              id: getTranslation('contentTypes.authRisk'),
-                              defaultMessage: 'Shared across callers',
-                            })}
-                          </Flex>
-                        </Badge>
+                            legible in dark mode and in every locale. Wrapped for
+                            the same ref reason as the badge above. */}
+                        <span>
+                          <Badge
+                            backgroundColor="danger100"
+                            textColor="danger600"
+                            borderColor="danger200"
+                          >
+                            <Flex gap={1} alignItems="center">
+                              <WarningCircle />
+                              {formatMessage({
+                                id: getTranslation('contentTypes.authRisk'),
+                                defaultMessage: 'Shared across callers',
+                              })}
+                            </Flex>
+                          </Badge>
+                        </span>
                       </Tooltip>
                     ) : null}
                   </Flex>
