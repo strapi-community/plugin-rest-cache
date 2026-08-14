@@ -3,8 +3,7 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [5.1.0-beta](https://github.com/strapi-community/plugin-rest-cache/compare/v5.0.0...v5.1.0-beta) (2026-08-14)
-
+## [5.1.0](https://github.com/strapi-community/plugin-rest-cache/compare/v5.0.0...v5.1.0) (2026-08-14)
 
 ### Features
 
@@ -20,6 +19,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
+* **admin:** stop the settings table logging a React error on every render ([#215](https://github.com/strapi-community/plugin-rest-cache/issues/215)) ([0e55c98](https://github.com/strapi-community/plugin-rest-cache/commit/0e55c98f213ecc07b3b960978f17ac324ec99aca))
+* **release:** fold the beta changelog into the release that supersedes it ([#219](https://github.com/strapi-community/plugin-rest-cache/issues/219)) ([5ee1bae](https://github.com/strapi-community/plugin-rest-cache/commit/5ee1bae45ecf668ddabfadbed864d82a74d740d9))
+* **release:** rebuild the release PR body and draft notes from the changelog ([#221](https://github.com/strapi-community/plugin-rest-cache/issues/221)) ([9376586](https://github.com/strapi-community/plugin-rest-cache/commit/93765868d76837d46bb75b5e4743ff56e344859d))
+* **release:** stop the folded changelog rendering as two lists ([#220](https://github.com/strapi-community/plugin-rest-cache/issues/220)) ([3c68683](https://github.com/strapi-community/plugin-rest-cache/commit/3c68683ce95a508642b32c1782686808bea58cc3))
 * **admin:** make the panel work in a production build, and test it ([#184](https://github.com/strapi-community/plugin-rest-cache/issues/184)) ([5c0a229](https://github.com/strapi-community/plugin-rest-cache/commit/5c0a229485e8bf21c63fff8f88536d0ee05fc966))
 * await the cache purge instead of deferring it to onCommit ([9675095](https://github.com/strapi-community/plugin-rest-cache/commit/96750957feaffd5ac5152a26e37c5dbc1e58e6e4))
 * **bench:** combine the providers into one document, and run them in parallel ([#207](https://github.com/strapi-community/plugin-rest-cache/issues/207)) ([b470da6](https://github.com/strapi-community/plugin-rest-cache/commit/b470da675356573864b7f6c72ef9ee53b5f362cf))
@@ -53,10 +56,16 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Documentation
 
+* backfill 4.2.9, 5.0.0 and 5.0.1 into the changelog ([#213](https://github.com/strapi-community/plugin-rest-cache/issues/213)) ([65d4f1e](https://github.com/strapi-community/plugin-rest-cache/commit/65d4f1eec41a1e404c189aa925fa7cb8c16d0316))
 * give every published package a README ([#196](https://github.com/strapi-community/plugin-rest-cache/issues/196)) ([2f53e09](https://github.com/strapi-community/plugin-rest-cache/commit/2f53e0968eb4e151da0d89c949504568528ec1b1))
 * point the provider examples at their TypeScript sources ([#193](https://github.com/strapi-community/plugin-rest-cache/issues/193)) ([b4681d1](https://github.com/strapi-community/plugin-rest-cache/commit/b4681d1a28b4f145c19ce47e1b6a4ffdf375b166))
 * rewrite around tasks, generate the type reference, add a contributing guide ([#185](https://github.com/strapi-community/plugin-rest-cache/issues/185)) ([1e3ca6d](https://github.com/strapi-community/plugin-rest-cache/commit/1e3ca6da55438a172020ac7f6b560b2012663006))
 * sync README with the published 5.0.1 and backfill changelogs ([380997c](https://github.com/strapi-community/plugin-rest-cache/commit/380997cad55e10db1e57e22ac31270cd17f534df))
+
+
+### Chores
+
+* graduate to a stable release ([#218](https://github.com/strapi-community/plugin-rest-cache/issues/218)) ([9306961](https://github.com/strapi-community/plugin-rest-cache/commit/930696140b2e130c52020ba1a224e0b544b4be8f))
 
 ## 5.0.1 (2025-09-25)
 
