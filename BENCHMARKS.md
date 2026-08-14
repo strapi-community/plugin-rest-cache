@@ -6,7 +6,7 @@
 
 - Generated: `2026-08-14T02:09:00.521Z`
 - Commit: `ee7515812dc0b64e615df3a98627126cfb674e31`
-- Plugin version: `5.0.1`
+- Plugin version: `5.1.0`
 - Strapi version: `5.52.0`
 - Endpoint: `/api/homepage?populate=*`
 - Load: 50 connections, pipelining 1, 30s per scenario (5s warmup)
