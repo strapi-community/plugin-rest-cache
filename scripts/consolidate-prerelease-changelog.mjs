@@ -124,7 +124,13 @@ for (const section of sections.slice(0, 1)) {
     for (const group of splitSubsections(pre.body)) {
       const existing = groups.find((g) => g.name === group.name);
       if (existing) {
-        existing.entries = [...trimBlank(existing.entries), '', ...trimBlank(group.entries)];
+        // No separator between the two runs of entries. A blank line inside a
+        // markdown list ends it, so a separator here rendered every section as
+        // two lists with a gap down the middle instead of one list.
+        existing.entries = [
+          ...trimBlank(existing.entries).filter((line) => line.trim() !== ''),
+          ...trimBlank(group.entries).filter((line) => line.trim() !== ''),
+        ];
       } else {
         groups.push({ name: group.name, entries: trimBlank(group.entries) });
       }
