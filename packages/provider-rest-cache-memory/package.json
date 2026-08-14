@@ -1,6 +1,6 @@
 {
   "name": "@strapi-community/provider-rest-cache-memory",
-  "version": "5.1.0-beta",
+  "version": "5.1.0",
   "description": "Speed-up HTTP requests with LRU cache",
   "license": "MIT",
   "strapi": {
