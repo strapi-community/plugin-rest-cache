@@ -47,9 +47,14 @@ Users install with `npm install @strapi-community/plugin-rest-cache@next`.
 ## Experimental build from a pull request
 
 The easy path. Add the **`publish-experimental`** label to a pull request. It
-publishes `0.0.0-experimental.<pr head sha>` to the `experimental` dist-tag,
-republishes on every subsequent push to that PR, and keeps a comment on the PR
-with the exact install command.
+publishes `0.0.0-experimental.<pr head sha>` to the `experimental` dist-tag and
+comments on the PR with the exact install command.
+
+The workflow then **removes the label again**, including when the publish
+failed. The label is a one-shot request, not a mode: to cut another build after
+pushing more commits, add it back. It deliberately no longer fires on
+`synchronize`, which used to republish silently on every push for as long as
+the label happened to still be attached.
 
 Same-repo pull requests only; a fork PR never reaches the publish job.
 
