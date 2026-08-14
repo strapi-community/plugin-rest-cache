@@ -35,27 +35,25 @@ on:
   release:
     types: [published]
 
-  # Label a pull request `publish-experimental` and it publishes one
-  # experimental build, then removes the label again.
+  # There is deliberately no pull_request/pull_request_target trigger here.
   #
-  # The label is a one-shot request, not a mode the PR sits in. It used to also
-  # fire on `synchronize`, so every subsequent push republished silently for as
-  # long as the label happened to still be there. Taking the label off at the
-  # end of the run means each publish is a deliberate act: to cut another
-  # build, add the label again.
+  # npm's trusted publishing does not authenticate a run triggered by
+  # `pull_request_target`. It fails with a 404 on the PUT, which reads as "the
+  # package does not exist" and is really "these credentials are not accepted":
   #
-  # `pull_request_target`, not `pull_request`, and the difference is the whole
-  # security argument: `pull_request` would run the *PR branch's* copy of this
-  # file, with publish credentials in scope. `pull_request_target` runs this
-  # file as it exists on the default branch, so the environment gate and the
-  # version assertion below cannot be edited by the branch being published.
+  #   npm error 404 Not Found - PUT https://registry.npmjs.org/@strapi-community%2fplugin-rest-cache
   #
-  # The usual `pull_request_target` footgun - checking out untrusted code in a
-  # job that holds secrets - does not apply, because the build job below holds
-  # neither secrets nor an id-token.
-  pull_request_target:
-    types: [labeled]
-
+  # Everything else in the run works - the tarball is read, the version is
+  # right, provenance is signed and logged to Sigstore - and only the registry
+  # write is refused. See https://github.com/npm/cli/issues/8739.
+  #
+  # The label path still exists; `experimental-dispatch.yml` turns the label
+  # into a dispatch of this workflow, so the run that actually reaches npm is
+  # always a workflow_dispatch on the default branch.
+  #
+  # Note that Strapi's own experimental workflow does publish straight from a
+  # pull_request - it can, because it authenticates with a stored NPM_TOKEN
+  # rather than OIDC. That is the trade we are declining.
   workflow_dispatch:
     inputs:
       mode:
@@ -67,26 +65,27 @@ on:
         description: Branch to build (experimental mode only)
         type: string
         required: false
+      sha:
+        description: Exact commit to build (overrides target_branch)
+        type: string
+        required: false
+      pr_number:
+        description: Pull request to comment on with the install command
+        type: string
+        required: false
 
 permissions: {}
 
 concurrency:
   # Per pull request for labelled builds, so two PRs do not serialise behind
   # each other; a single group for real releases, so they never overlap.
-  group: publish-${{ github.event.pull_request.number || github.event.inputs.mode || 'release' }}
+  group: publish-${{ github.event.inputs.pr_number || github.event.inputs.mode || 'release' }}
   cancel-in-progress: false
 
 jobs:
   build:
     name: Build and pack
     runs-on: ubuntu-latest
-    # Never for forks: a fork PR must not be able to reach the publish job,
-    # and `pull_request_target` would otherwise run for one.
-    if: |
-      github.event_name != 'pull_request_target' || (
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        contains(github.event.pull_request.labels.*.name, 'publish-experimental')
-      )
     # Deliberately minimal. This job may run code from an unreviewed branch.
     permissions:
       contents: read
@@ -102,6 +101,8 @@ jobs:
           INPUT_MODE: ${{ github.event.inputs.mode }}
           IS_PRERELEASE: ${{ github.event.release.prerelease }}
           TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
+          INPUT_SHA: ${{ github.event.inputs.sha }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
           set -euo pipefail
 
@@ -109,26 +110,40 @@ jobs:
             release)
               if [ "$IS_PRERELEASE" = "true" ]; then mode=next; else mode=latest; fi
               ;;
-            pull_request_target)
-              # A labelled PR can only ever produce an experimental build.
-              mode=experimental
-              ;;
             *)
               mode="$INPUT_MODE"
               ;;
           esac
 
-          if [ "$mode" = "experimental" ] && [ "$EVENT" = "workflow_dispatch" ]; then
-            # Never interpolated into a shell or a ref without passing this.
-            # Branch names are attacker-chosen in the threat model this
-            # workflow exists for.
-            if ! printf '%s' "$TARGET_BRANCH" | grep -Eq '^[A-Za-z0-9._/-]{1,200}$'; then
-              echo "::error::target_branch is missing or has unexpected characters"
-              exit 1
+          if [ "$mode" = "experimental" ]; then
+            # `sha` wins when both are given: experimental-dispatch.yml sends
+            # the PR head sha, and a branch can move between the label and the
+            # checkout.
+            if [ -n "$INPUT_SHA" ]; then
+              if ! printf '%s' "$INPUT_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+                echo "::error::sha must be a full 40-character commit sha"
+                exit 1
+              fi
+              ref="$INPUT_SHA"
+            else
+              # Never interpolated into a shell or a ref without passing this.
+              # Branch names are attacker-chosen in the threat model this
+              # workflow exists for.
+              if ! printf '%s' "$TARGET_BRANCH" | grep -Eq '^[A-Za-z0-9._/-]{1,200}$'; then
+                echo "::error::target_branch is missing or has unexpected characters"
+                exit 1
+              fi
+              case "$TARGET_BRANCH" in
+                -*|*..*) echo "::error::target_branch rejected"; exit 1 ;;
+              esac
+              ref="$TARGET_BRANCH"
             fi
-            case "$TARGET_BRANCH" in
-              -*|*..*) echo "::error::target_branch rejected"; exit 1 ;;
-            esac
+            echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$PR_NUMBER" ] && ! printf '%s' "$PR_NUMBER" | grep -Eq '^[0-9]{1,10}$'; then
+            echo "::error::pr_number must be a number"
+            exit 1
           fi
 
           {
@@ -140,20 +155,11 @@ jobs:
         if: steps.plan.outputs.mode != 'experimental'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      # Pinned to the exact head sha, not the branch name: a branch can move
-      # between the label event and the checkout.
-      - name: Check out the pull request
-        if: github.event_name == 'pull_request_target'
+      - name: Check out the code under test
+        if: steps.plan.outputs.mode == 'experimental'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
-
-      - name: Check out the branch under test
-        if: steps.plan.outputs.mode == 'experimental' && github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.inputs.target_branch }}
+          ref: ${{ steps.plan.outputs.ref }}
           persist-credentials: false
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
@@ -169,12 +175,16 @@ jobs:
 
       - name: Stamp an experimental version
         if: steps.plan.outputs.mode == 'experimental'
-        env:
-          # The sha of the code actually being built. For a labelled PR that is
-          # the PR head, not github.sha - which under pull_request_target is the
-          # base branch, and would stamp a version nobody could correlate.
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/stamp-experimental-version.mjs
+        run: |
+          set -euo pipefail
+          # Read the sha back out of the checkout rather than using github.sha.
+          # This workflow always runs from the default branch, so github.sha is
+          # the tip of main - dispatching against any other branch would build
+          # that branch and stamp it with main's sha, naming a commit that was
+          # never built.
+          SHA="$(git rev-parse HEAD)"
+          echo "building $SHA"
+          SHA="$SHA" node scripts/stamp-experimental-version.mjs
 
       - name: Build
         run: pnpm run build
@@ -291,10 +301,11 @@ jobs:
       # experimental dist-tag is clobbered by the next build, so the comment
       # gives the exact version, which is stable.
       - name: Comment on the pull request
-        if: github.event_name == 'pull_request_target'
+        if: github.event.inputs.pr_number != ''
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           VERSION: ${{ needs.build.outputs.version }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
         with:
           script: |
             const version = process.env.VERSION;
@@ -307,7 +318,7 @@ jobs:
               '|---|---|',
               '| **Version** | `' + version + '` |',
               '| **Dist tag** | `experimental` |',
-              '| **Commit** | ' + context.payload.pull_request.head.sha.slice(0, 7) + ' |',
+              '| **Commit** | `' + version.replace(/^0\.0\.0-experimental\./, '').slice(0, 7) + '` |',
               '',
               '```bash',
               'npm install @strapi-community/plugin-rest-cache@' + version,
@@ -319,7 +330,7 @@ jobs:
             ].join('\n');
 
             const { owner, repo } = context.repo;
-            const issue_number = context.payload.pull_request.number;
+            const issue_number = Number(process.env.PR_NUMBER);
             const existing = await github.rest.issues.listComments({ owner, repo, issue_number });
             const mine = existing.data.find((c) => c.body?.includes(marker));
 
@@ -342,38 +353,3 @@ jobs:
             echo
             echo 'Verify with `npm audit signatures` after installing.'
           } >> "$GITHUB_STEP_SUMMARY"
-
-  # Takes the trigger label back off, so the label always means "publish an
-  # experimental build now" rather than "this PR is in experimental mode".
-  #
-  # A separate job on purpose. It needs `pull-requests: write`, and the build
-  # job - the one that may run unreviewed code - must keep `contents: read` and
-  # nothing else. This job runs no checkout and no branch code, only this file
-  # from the default branch.
-  #
-  # `always()`: a failed publish must not leave the label behind, or the next
-  # person to add it sees nothing happen because it is already there.
-  unlabel:
-    name: Remove the trigger label
-    needs: [build, publish]
-    if: always() && github.event_name == 'pull_request_target' && needs.build.result != 'skipped'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            try {
-              await github.rest.issues.removeLabel({
-                owner,
-                repo,
-                issue_number: context.payload.pull_request.number,
-                name: 'publish-experimental',
-              });
-            } catch (error) {
-              // 404 means someone already took it off. That is the desired
-              // end state, so it is not a failure.
-              if (error.status !== 404) throw error;
-            }

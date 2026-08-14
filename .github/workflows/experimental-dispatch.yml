@@ -1,0 +1,104 @@
+# Turns the `publish-experimental` label into a dispatch of `publish.yml`.
+#
+# ---------------------------------------------------------------------------
+# Why this file exists at all
+# ---------------------------------------------------------------------------
+# `publish.yml` used to carry the label trigger itself, on
+# `pull_request_target`. It cannot: npm's trusted publishing does not
+# authenticate a run triggered by `pull_request_target`. Everything else in
+# that run works - the tarball is read, the version is stamped correctly,
+# provenance is signed and logged to Sigstore - and the registry then refuses
+# the write with a 404 on the PUT, which reads as "no such package" and
+# actually means "these credentials are not accepted". The same code,
+# dispatched on the default branch, publishes all three packages.
+# See https://github.com/npm/cli/issues/8739.
+#
+# So the label event and the publish are separated. This workflow reacts to the
+# label and asks `publish.yml` to run; that dispatch is what talks to npm.
+#
+# GITHUB_TOKEN is enough to do it: `workflow_dispatch` and `repository_dispatch`
+# are the documented exceptions to the rule that a GITHUB_TOKEN-triggered event
+# does not start a new workflow run.
+#
+# ---------------------------------------------------------------------------
+# Why this is still `pull_request_target`
+# ---------------------------------------------------------------------------
+# Same reason as before: `pull_request` would run the *pull request branch's*
+# copy of this file, so the branch being published could rewrite the guard
+# below and dispatch whatever mode it liked. `pull_request_target` always runs
+# the copy on the default branch.
+#
+# The usual `pull_request_target` footgun - checking out untrusted code in a
+# job holding secrets - does not apply: nothing is checked out here at all.
+name: experimental dispatch
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions: {}
+
+concurrency:
+  group: experimental-dispatch-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Dispatch an experimental publish
+    runs-on: ubuntu-latest
+    # Same-repo pull requests only. A fork must not be able to reach the
+    # publish workflow, and `pull_request_target` runs for fork PRs too.
+    if: |
+      github.event.label.name == 'publish-experimental' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      # To start publish.yml.
+      actions: write
+      # To take the label back off.
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            // The exact commit, not the branch name. A branch can move between
+            // the label event and the checkout, and the published version
+            // names a sha - it has to name the one that was actually built.
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: 'publish.yml',
+              // Always the default branch. npm's trusted publishing discards
+              // the ref, so dispatching this on a feature branch would hand
+              // that branch's YAML a publish-capable token.
+              ref: context.payload.repository.default_branch,
+              inputs: {
+                mode: 'experimental',
+                sha: pr.head.sha,
+                pr_number: String(pr.number),
+              },
+            });
+
+      # The label is a request to publish one build, not a mode the pull
+      # request sits in. Taking it off here - rather than after the publish -
+      # keeps it correct even if the dispatched run fails, and means a second
+      # build is always an explicit second labelling.
+      - name: Remove the label
+        if: always()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            try {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: context.payload.pull_request.number,
+                name: 'publish-experimental',
+              });
+            } catch (error) {
+              // Already gone is the desired end state, not a failure.
+              if (error.status !== 404) throw error;
+            }
