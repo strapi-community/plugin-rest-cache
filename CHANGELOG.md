@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [5.1.0-beta](https://github.com/strapi-community/plugin-rest-cache/compare/monorepo-v5.0.1...monorepo-v5.1.0-beta) (2026-08-14)
+## [5.1.0-beta](https://github.com/strapi-community/plugin-rest-cache/compare/v5.0.0...v5.1.0-beta) (2026-08-14)
 
 
 ### Features
@@ -57,6 +57,41 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * point the provider examples at their TypeScript sources ([#193](https://github.com/strapi-community/plugin-rest-cache/issues/193)) ([b4681d1](https://github.com/strapi-community/plugin-rest-cache/commit/b4681d1a28b4f145c19ce47e1b6a4ffdf375b166))
 * rewrite around tasks, generate the type reference, add a contributing guide ([#185](https://github.com/strapi-community/plugin-rest-cache/issues/185)) ([1e3ca6d](https://github.com/strapi-community/plugin-rest-cache/commit/1e3ca6da55438a172020ac7f6b560b2012663006))
 * sync README with the published 5.0.1 and backfill changelogs ([380997c](https://github.com/strapi-community/plugin-rest-cache/commit/380997cad55e10db1e57e22ac31270cd17f534df))
+
+## 5.0.1 (2025-09-25)
+
+
+### Documentation
+
+* documentation only; no functional change. The published `dist/` output is byte-for-byte identical to `5.0.0`
+
+
+## [5.0.0](https://github.com/strapi-community/plugin-rest-cache/compare/v4.2.9...v5.0.0) (2025-09-17)
+
+
+### Features
+
+* Strapi 5 support ([#112](https://github.com/strapi-community/plugin-rest-cache/pull/112))
+
+
+### ⚠ BREAKING CHANGES
+
+* not compatible with Strapi 4; Strapi 5+ only. Strapi 4 support for the older packages is deprecated when Strapi 4 reaches EOL in April 2026
+* the Couchbase provider has been removed, for lack of accounts and playground testing
+* the packages were renamed:
+    * `strapi-plugin-rest-cache` → `@strapi-community/plugin-rest-cache`
+    * `strapi-provider-rest-cache-memory` → `@strapi-community/provider-rest-cache-memory`
+    * `strapi-provider-rest-cache-redis` → `@strapi-community/provider-rest-cache-redis`
+
+
+## [4.2.9](https://github.com/strapi-community/strapi-plugin-rest-cache/compare/v4.2.8...v4.2.9) (2024-03-24)
+
+
+### Bug Fixes
+
+* lowercase `useHeaders` entries ([7767dbd](https://github.com/strapi-community/plugin-rest-cache/commit/7767dbd))
+* always use posix paths rather than switching on the operating system ([f2c7c36](https://github.com/strapi-community/plugin-rest-cache/commit/f2c7c36))
+* return immediately if the client is ready ([4e43aa6](https://github.com/strapi-community/plugin-rest-cache/commit/4e43aa6))
 
 ## [4.2.8](https://github.com/strapi-community/strapi-plugin-rest-cache/compare/v4.2.7...v4.2.8) (2023-07-27)
 
