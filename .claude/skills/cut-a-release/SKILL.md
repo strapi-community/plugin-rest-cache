@@ -38,11 +38,33 @@ npm.
 
 ## Pre-release
 
-Same flow, but mark the GitHub Release as a pre-release before publishing it.
-`publish.yml` reads `github.event.release.prerelease` and switches to the
-`next` dist-tag and the `npm-prerelease` environment.
+release-please only ever proposes **stable** versions. A beta is not something
+it produces, and there is deliberately no prerelease mode in its config - that
+made every ordinary release a beta and left the repository unable to reach a
+stable version without a `Release-As:` override.
 
-Users install with `npm install @strapi-community/plugin-rest-cache@next`.
+So a beta is a manual dispatch. Run the **publish** workflow from the Actions
+tab, with the branch selector on **main**:
+
+- `mode`: `next`
+- `version`: the exact version, e.g. `5.2.0-beta.0`
+- `target_branch`: the branch to build, defaults to `main`
+
+It stamps that version across all three packages, builds, and publishes to the
+`next` dist-tag through the `npm-prerelease` environment. Users install it with
+`npm install @strapi-community/plugin-rest-cache@next`.
+
+`version` must carry a prerelease suffix. `scripts/stamp-version.mjs` refuses a
+stable version, so no dispatch can put one on npm - stable versions come only
+from release-please and the version already committed to `package.json`.
+
+Nothing is tagged and no GitHub Release is created: a dispatched beta is a
+build of a branch, not a point in the release history. The run summary records
+the commit.
+
+If a GitHub Release is marked as a pre-release and published, that also routes
+to `next` - `publish.yml` reads `github.event.release.prerelease`. That path
+publishes the version release-please committed, and never stamps over it.
 
 ## Experimental build from a pull request
 

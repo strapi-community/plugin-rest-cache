@@ -1,8 +1,17 @@
 #!/usr/bin/env node
 /**
- * Stamp every publishable package with an experimental version.
+ * Stamp every publishable package with a prerelease version.
  *
- * Version scheme: `0.0.0-experimental.<40-char sha>`.
+ * Two callers, both in publish.yml:
+ *
+ *   SHA=<40 hex>          an experimental build, stamped
+ *                         `0.0.0-experimental.<sha>`
+ *   VERSION=5.2.0-beta.0  a manually dispatched prerelease
+ *
+ * VERSION must carry a prerelease suffix. This script can therefore never
+ * stamp a stable version, so no manual dispatch can fabricate one - stable
+ * versions come only from release-please and the version already committed to
+ * package.json.
  *
  * The `0.0.0-` prefix is what actually protects users, not the dist-tag.
  * `^5.1.0` desugars to `>=5.1.0 <6.0.0`, and a major of 0 fails that lower
@@ -29,13 +38,27 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGES = join(ROOT, 'packages');
 
 const sha = process.env.SHA ?? '';
+const explicit = process.env.VERSION ?? '';
 
-if (!/^[0-9a-f]{40}$/.test(sha)) {
-  console.error(`SHA must be a full 40-character commit sha, got: ${JSON.stringify(sha)}`);
-  process.exit(1);
+let version;
+
+if (explicit) {
+  // Must be a prerelease. `5.2.0` would be selected by every `^5.x` range the
+  // moment it is published, with no review behind it.
+  if (!/^\d+\.\d+\.\d+-[0-9A-Za-z.-]+$/.test(explicit)) {
+    console.error(
+      `VERSION must be a prerelease such as 5.2.0-beta.0, got: ${JSON.stringify(explicit)}`
+    );
+    process.exit(1);
+  }
+  version = explicit;
+} else {
+  if (!/^[0-9a-f]{40}$/.test(sha)) {
+    console.error(`SHA must be a full 40-character commit sha, got: ${JSON.stringify(sha)}`);
+    process.exit(1);
+  }
+  version = `0.0.0-experimental.${sha}`;
 }
-
-const version = `0.0.0-experimental.${sha}`;
 
 const manifests = readdirSync(PACKAGES)
   .map((name) => join(PACKAGES, name, 'package.json'))
