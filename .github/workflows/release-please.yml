@@ -59,3 +59,55 @@ jobs:
             --repo-url "$GITHUB_REPOSITORY" \
             --config-file release-please-config.json \
             --manifest-file .release-please-manifest.json
+
+      # release-please lists the same change twice whenever a pull request was
+      # merged with a GitHub merge commit. The merge commit carries the pull
+      # request title in its body:
+      #
+      #   Merge pull request #171 from strapi-community/feat/cache-dashboard
+      #
+      #   feat: add a cache statistics endpoint for the admin dashboard
+      #
+      # and release-please parses every conventional commit it finds in a
+      # message, so that body line becomes an entry attributed to the merge
+      # commit, while the commit on the branch underneath produces an identical
+      # one. There is no setting for it: BEGIN_COMMIT_OVERRIDE is keyed on the
+      # pull request, so it would suppress both copies, and `changelog-type:
+      # github` discards the conventional-commit sections.
+      #
+      # This runs on every release rather than being hand-fixed once, because
+      # release-please regenerates both the branch and the notes on every run.
+      # It is a no-op when nothing is duplicated, which is the normal case now
+      # that pull requests are squash-merged.
+      - name: Deduplicate the release changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BRANCH: release-please--branches--main
+        run: |
+          set -euo pipefail
+
+          # 1. The rolling release pull request.
+          if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
+            git fetch --quiet origin "$RELEASE_BRANCH"
+            git checkout --quiet "$RELEASE_BRANCH"
+            node scripts/dedupe-changelog.mjs CHANGELOG.md
+            if ! git diff --quiet -- CHANGELOG.md; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git commit -q -m "chore: drop duplicate changelog entries" -- CHANGELOG.md
+              git push origin "$RELEASE_BRANCH"
+            fi
+            git checkout --quiet -
+          fi
+
+          # 2. Any draft release. Its notes are stored separately from
+          #    CHANGELOG.md, so deduplicating one does not touch the other, and
+          #    the draft is what a maintainer actually reads before pressing
+          #    Publish.
+          notes=$(mktemp)
+          for tag in $(gh release list --limit 20 --json tagName,isDraft \
+                        --jq '.[] | select(.isDraft) | .tagName'); do
+            gh release view "$tag" --json body --jq .body > "$notes"
+            node scripts/dedupe-changelog.mjs "$notes"
+            gh release edit "$tag" --notes-file "$notes"
+          done
