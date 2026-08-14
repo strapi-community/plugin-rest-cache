@@ -3,6 +3,7 @@ export { CacheRouteConfig } from './CacheRouteConfig';
 export { CacheProvider } from './CacheProvider';
 export { CacheContentTypeConfig } from './CacheContentTypeConfig';
 export { CacheKeysConfig } from './CacheKeysConfig';
+export { CacheControlConfig } from './CacheControlConfig';
 
 export * from './common';
 export type * from './inputs';

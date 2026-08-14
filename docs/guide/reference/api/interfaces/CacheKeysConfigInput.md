@@ -1,18 +1,11 @@
 # Interface: CacheKeysConfigInput
 
-Defined in: [inputs.ts:20](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L20)
-
-The shapes a user may write in config/plugins.
-
-Deliberately separate from the resolved classes: what someone writes is
-partial and loosely typed, what the plugin runs on is complete. Conflating
-the two is how `maxAge` ended up defaulting to the boolean `true` in one
-constructor while being documented as milliseconds everywhere else.
+Defined in: [inputs.ts:33](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L33)
 
 ## Properties
 
 | Property | Type | Defined in |
 | ------ | ------ | ------ |
-| <a id="useauth"></a> `useAuth?` | `boolean` | [inputs.ts:23](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L23) |
-| <a id="useheaders"></a> `useHeaders?` | `string`[] | [inputs.ts:21](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L21) |
-| <a id="usequeryparams"></a> `useQueryParams?` | `boolean` \| `string`[] | [inputs.ts:22](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L22) |
+| <a id="useauth"></a> `useAuth?` | `boolean` | [inputs.ts:36](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L36) |
+| <a id="useheaders"></a> `useHeaders?` | `string`[] | [inputs.ts:34](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L34) |
+| <a id="usequeryparams"></a> `useQueryParams?` | `boolean` \| `string`[] | [inputs.ts:35](https://github.com/strapi-community/plugin-rest-cache/blob/main/packages/plugin-rest-cache/server/src/types/inputs.ts#L35) |

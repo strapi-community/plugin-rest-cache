@@ -42,6 +42,18 @@ export default {
       // authentication and must be granted to the caller's role or API token.
       enableContentApiPurge: false,
       resetOnStartup: false,
+      // Emit Cache-Control on responses this plugin cached. Off, and meant to
+      // stay opt-in rather than merely default-off for upgrades: the header
+      // hands the caching decision to browsers and CDNs, which no purge can
+      // reach, so every max-age emitted is a window during which stale content
+      // is served whatever an admin does.
+      // See https://github.com/strapi-community/plugin-rest-cache/issues/175
+      cacheControl: {
+        enabled: false,
+        maxAge: 'config',
+        scope: 'private',
+        staleWhileRevalidate: null,
+      },
       clearRelatedCache: true,
       keysPrefix: '',
       keys: {

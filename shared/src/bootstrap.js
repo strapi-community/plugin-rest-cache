@@ -186,7 +186,15 @@ async function importSeedData() {
     global: ["find"],
     homepage: ["find"],
     article: ["find", "findOne"],
-    category: ["find", "findBySlug", "findOne", "raw", "stream", "withCookie"],
+    category: [
+      "find",
+      "findBySlug",
+      "findOne",
+      "raw",
+      "stream",
+      "withCookie",
+      "withCacheControl",
+    ],
     writer: ["find", "findOne"],
     "api::writer.editor": ["find", "findOne"],
   });

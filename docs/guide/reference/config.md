@@ -81,6 +81,7 @@ What to cache, for how long, and how to key it.
 | `keysPrefix` | `string` | `""` | Prefixes every stored key, so the cache can share a keyspace with other consumers. If your Redis uses a `keyPrefix`, match it here. |
 | `enableEtag` | `boolean` | `false` | Emit an `ETag` and answer `304 Not Modified` when it matches. |
 | `enableXCacheHeaders` | `boolean` | `false` | Emit `X-Cache: HIT \| MISS \| HITPASS`. Useful in development and for debugging a CDN in front. |
+| `cacheControl` | `object` | disabled — see [cacheControl](#cachecontrol) | Emit a `Cache-Control` header on responses this plugin cached. <Badge type="tip" text="since 5.1.0" /> |
 | `enableDocumentServiceMiddleware` | `boolean` | `true` | Invalidate from the document service rather than from HTTP routes. See [Invalidation](../invalidation/index.md). <Badge type="tip" text="since 5.1.0" /> |
 | `enableContentApiPurge` | `boolean` | `false` | Expose `POST /api/rest-cache/purge`. Off by default; see [Purging](../invalidation/purging.md). <Badge type="tip" text="since 5.1.0" /> |
 | `enableAdminCTBMiddleware` | `boolean` | `true` | Inject purge middleware into the content-manager's admin routes. Superseded by `enableDocumentServiceMiddleware` and ignored while that is on. |
@@ -156,6 +157,111 @@ whoever misses first decides what everybody else sees.
 
 The server logs a warning at boot when a content type sets `hitpass: false`
 without `keys.useAuth`.
+:::
+
+### cacheControl
+
+<Badge type="tip" text="since 5.1.0" />
+
+Tells the caller about the caching, by putting a `Cache-Control` header on
+responses this plugin served from, or just wrote to, its cache. Off by default,
+and worth leaving off until you have read the caveat below.
+
+Design and original implementation by
+[@pinkasey](https://github.com/pinkasey) in
+[#96](https://github.com/strapi-community/plugin-rest-cache/pull/96), carried
+forward by
+[#175](https://github.com/strapi-community/plugin-rest-cache/issues/175).
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | `boolean` | `false` | Emit the header at all. |
+| `maxAge` | `"none" \| "config" \| number` (ms) | `"config"` | `"none"` omits the `max-age` directive, `"config"` uses the route's resolved `maxAge`, and a number overrides it. **Milliseconds**, like every other duration here; the plugin converts to the seconds the header wants. |
+| `scope` | `"public" \| "private"` | `"private"` | `"private"` lets only the end client store the response. `"public"` also allows shared caches such as a CDN. |
+| `staleWhileRevalidate` | `number` (ms) \| `null` | `null` | Emits `stale-while-revalidate`, allowing a cache to serve the stale response while it refreshes. `null` omits the directive. |
+
+:::: code-group
+
+```js [JavaScript]
+// ./config/plugins.js
+module.exports = {
+  "rest-cache": {
+    config: {
+      strategy: {
+        maxAge: 3600000, // one hour, in milliseconds
+        cacheControl: {
+          enabled: true,
+          // The route is cached for an hour, so say so: "max-age=3600".
+          maxAge: "config",
+          scope: "public",
+          staleWhileRevalidate: 60000, // "stale-while-revalidate=60"
+        },
+        contentTypes: ["api::article.article"],
+      },
+    },
+  },
+};
+```
+
+```ts [TypeScript]
+// ./config/plugins.ts
+export default {
+  "rest-cache": {
+    config: {
+      strategy: {
+        maxAge: 3600000,
+        cacheControl: {
+          enabled: true,
+          // Or say something shorter than the server-side lifetime, so a purge
+          // is felt sooner downstream: "max-age=60".
+          maxAge: 60000,
+          scope: "private",
+        },
+        contentTypes: ["api::article.article"],
+      },
+    },
+  },
+};
+```
+
+::::
+
+The header is emitted only for a response the plugin actually cached. It is not
+emitted for a `hitpass`, for a response the plugin
+[refused to store](#what-is-never-cached), or when the handler already set a
+`Cache-Control` of its own — a handler that said `no-store` is giving an
+instruction, and it keeps winning.
+
+::: danger A purge cannot reach a browser or a CDN
+This is the whole trade. `POST /api/rest-cache/purge`, the admin button, and
+the automatic invalidation on write all empty **this** cache. None of them can
+reach a copy held by a browser or a CDN.
+
+So every `max-age` you emit is a window of guaranteed staleness: publish a
+correction, purge everything, and clients that already have the response will
+keep serving the old one until their copy expires. Choose a `max-age` you would
+be willing to be wrong for — `maxAge: "config"` on an hour-long cache means an
+hour.
+
+If your CDN supports it, purging the CDN belongs in the same operation as
+purging Strapi.
+:::
+
+::: warning `scope: "public"` and `keys.useAuth`
+Entries keyed per caller hold one caller's response. Advertising those as
+`public` would let a shared cache hand user A's data to user B, somewhere the
+server cannot see it happen or undo it.
+
+The plugin does not rely on you getting this right: a route whose
+[`keys.useAuth`](#keys) is set is emitted as `private` even when `scope` says
+`public`, and the server logs a warning at boot naming the content type.
+:::
+
+::: info Handler-set headers are not replayed from the cache
+The plugin caches the response body, not its headers. A handler that sets
+`Cache-Control: max-age=10` on a cacheable response keeps that header on the
+request it ran for, but a later cache HIT — where the handler does not run —
+carries whatever `cacheControl` is configured to emit for that route.
 :::
 
 ### hitpass
