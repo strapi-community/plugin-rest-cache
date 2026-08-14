@@ -26,20 +26,6 @@ module.exports = ({ env }) => ({
     Boolean(
       ctx.request.headers.authorization || ctx.request.headers.cookie
     ),
-  // Emit Cache-Control on responses this plugin cached. Off by default, as it
-  // ships. See https://github.com/strapi-community/plugin-rest-cache/issues/175
-  cacheControl: {
-    enabled: env.bool("CACHE_CONTROL_ENABLED", false),
-    // "none" | "config" | a number of MILLISECONDS, like every other duration
-    // in this plugin.
-    maxAge: /^\d+$/.test(env("CACHE_CONTROL_MAX_AGE", "config"))
-      ? env.int("CACHE_CONTROL_MAX_AGE", 3600000)
-      : env("CACHE_CONTROL_MAX_AGE", "config"),
-    scope: env("CACHE_CONTROL_SCOPE", "private"),
-    // Milliseconds. 0 means omit the directive.
-    staleWhileRevalidate:
-      env.int("CACHE_CONTROL_STALE_WHILE_REVALIDATE", 0) || null,
-  },
   contentTypes: [
     "api::article.article",
     // A content type whose singular name ("editor") differs from its parent
@@ -65,13 +51,6 @@ module.exports = ({ env }) => ({
         { path: "/api/categories/probe/raw", method: "GET" },
         { path: "/api/categories/probe/stream", method: "GET" },
         { path: "/api/categories/probe/with-cookie", method: "GET" },
-        {
-          // The handler sets its own Cache-Control, chosen by ?value=, so the
-          // query string has to be part of the key here.
-          path: "/api/categories/probe/cache-control",
-          method: "GET",
-          keys: { useQueryParams: true, useHeaders: [], useAuth: true },
-        },
         {
           path: "/api/categories/slug/:slug+",
           keys: {
