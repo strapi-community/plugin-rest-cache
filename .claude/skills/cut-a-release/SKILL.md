@@ -66,6 +66,28 @@ If a GitHub Release is marked as a pre-release and published, that also routes
 to `next` - `publish.yml` reads `github.event.release.prerelease`. That path
 publishes the version release-please committed, and never stamps over it.
 
+## Moving off a prerelease version
+
+If the last release was a prerelease, release-please will not graduate on its
+own. The default versioning strategy keeps the suffix, so `5.1.0-beta` plus a
+`fix:` becomes `5.1.1-beta`, not `5.1.0`.
+
+Land a commit on `main` whose message carries the version as a footer:
+
+```
+chore: graduate to a stable release
+
+Release-As: 5.1.0
+```
+
+It applies to that one release and leaves nothing behind in the config.
+
+Note **where** the footer has to be. GitHub builds a squash commit from the
+pull request title and body only when the branch has more than one commit; with
+a single commit it uses that commit's own message. A footer written in the pull
+request description is silently dropped in that case, and the next release
+comes out as another prerelease.
+
 ## Experimental build from a pull request
 
 The easy path. Add the **`publish-experimental`** label to a pull request. It
