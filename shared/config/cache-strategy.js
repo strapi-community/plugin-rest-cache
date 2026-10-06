@@ -48,6 +48,9 @@ module.exports = ({ env }) => ({
     "api::writer.editor",
     "api::global.global",
     "api::homepage.homepage",
+    // Reaches article only through a dynamic zone. See
+    // https://github.com/strapi-community/plugin-rest-cache/issues/232
+    "api::page.page",
     {
       contentType: "api::category.category",
       maxAge: 3600000,

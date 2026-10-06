@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pages",
+  "info": {
+    "singularName": "page",
+    "pluralName": "pages",
+    "displayName": "Page",
+    "name": "page",
+    "description": "Reaches article only through a dynamic zone. Regression fixture for https://github.com/strapi-community/plugin-rest-cache/issues/232"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "blocks": {
+      "type": "dynamiczone",
+      "components": ["sections.hero", "sections.highlight"]
+    }
+  }
+}

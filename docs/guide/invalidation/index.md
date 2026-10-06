@@ -91,8 +91,9 @@ cost nothing.
 related to the one that changed.
 
 The relation set is derived from your schemas at boot: everything reachable
-through **relations** and through **components**, following components into
-their own attributes until nothing new is found. If an article embeds a
+through **relations**, through **components** and through the components
+allowed in a **dynamic zone**, following components into their own attributes
+until nothing new is found. If an article embeds a
 component that relates to a category, purging the category also purges the
 article's cached responses — because that response contains category data and
 is now wrong.
