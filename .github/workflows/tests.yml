@@ -113,9 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       redis:
-        image: bitnami/redis:latest
-        env:
-          ALLOW_EMPTY_PASSWORD: yes
+        image: redis:8.10
         ports:
           - 6379:6379
     steps:
@@ -201,9 +199,7 @@ jobs:
         node: [22, 24, 26]
     services:
       redis:
-        image: bitnami/redis:latest
-        env:
-          ALLOW_EMPTY_PASSWORD: yes
+        image: redis:8.10
         ports:
           # Opens tcp port 6379 on the host and service container
           - 6379:6379
