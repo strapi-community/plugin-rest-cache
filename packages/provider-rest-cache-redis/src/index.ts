@@ -3,6 +3,7 @@ import {
   type RedisCacheProviderOptions,
   type RedisClient,
 } from './RedisCacheProvider';
+import type { NodeRedisClient } from './NodeRedisStore';
 
 /**
  * The Strapi global.
@@ -14,11 +15,41 @@ declare const strapi: {
   log: { info(message: string): void };
 };
 
+/** plugin-redis v3's connection service - the part this provider uses. */
+interface RedisConnectionService {
+  whenReady(
+    name: string
+  ): Promise<{ client: RedisClient; native: NodeRedisClient; type?: string }>;
+}
+
 /** Strapi as this provider needs to see it: whatever the redis plugin added. */
 interface StrapiWithRedis {
+  log: { info(message: string): void };
   redis?: {
     connections: Record<string, { client?: RedisClient } | undefined>;
   };
+  plugin?(name: string): { service?(name: string): unknown } | undefined;
+}
+
+/**
+ * plugin-redis v3's connection service, or undefined on v2.
+ *
+ * Detected by capability, not by version: v3 registers a `connection` service
+ * with `whenReady`, v2 registers none. The provider initialises in bootstrap,
+ * after every plugin's register, so the service exists by then if it ever will.
+ * See https://github.com/strapi-community/plugin-rest-cache/pull/239
+ */
+function v3ConnectionService(strapi: StrapiWithRedis): RedisConnectionService | undefined {
+  try {
+    const service = strapi.plugin?.('redis')?.service?.('connection') as
+      | Partial<RedisConnectionService>
+      | undefined;
+    return typeof service?.whenReady === 'function'
+      ? (service as RedisConnectionService)
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function waitForRedis(client: RedisClient): Promise<void> {
@@ -60,6 +91,28 @@ export = {
     }
 
     const connectionName = options.connection || 'default';
+
+    // plugin-redis v3: wait through its own service, which rejects rather than
+    // hanging, and run on the node-redis client. Its ioredis shim is kept as
+    // `provider.client` only, for anyone typed against it.
+    const connections = v3ConnectionService(strapi);
+    if (connections) {
+      let connection: Awaited<ReturnType<RedisConnectionService['whenReady']>>;
+      try {
+        connection = await connections.whenReady(connectionName);
+      } catch (error) {
+        throw new Error(
+          `Could not initialize REST Cache provider "redis": ${(error as Error)?.message}`
+        );
+      }
+
+      strapi.log.info('REST Cache provider "redis": connection established');
+      return new RedisCacheProvider(connection.client, options, {
+        client: connection.native,
+        isCluster: connection.type === 'cluster',
+      });
+    }
+
     const { client } = strapi.redis.connections[connectionName] ?? {};
 
     if (!client) {

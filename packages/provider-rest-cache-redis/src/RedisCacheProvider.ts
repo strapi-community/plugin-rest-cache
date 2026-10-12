@@ -2,6 +2,8 @@ import { createCache, type Cache } from 'cache-manager';
 import { CacheProvider } from '@strapi-community/plugin-rest-cache/types';
 import type { CacheKey, Milliseconds } from '@strapi-community/plugin-rest-cache/types';
 
+import { NodeRedisStore, type NodeRedisClient } from './NodeRedisStore';
+
 // keyv 4 exports the constructor directly, keyv 5 exports it as `.default`, and
 // @keyv/redis exposes only `.default` from its CJS build. Accept either shape:
 // which one we get depends on what else in the host application's dependency
@@ -71,6 +73,24 @@ interface KeyvRedisStore {
 const redisStoreOf = (cache: Cache): KeyvRedisStore =>
   cache.stores[0].opts.store as unknown as KeyvRedisStore;
 
+/** The store, when the cache runs on plugin-redis v3's node-redis client. */
+const nodeRedisStoreOf = (cache: Cache): NodeRedisStore | undefined => {
+  const store: unknown = cache.stores[0].opts.store;
+  return store instanceof NodeRedisStore ? store : undefined;
+};
+
+/**
+ * plugin-redis v3's node-redis connection, `connections[name].native`.
+ *
+ * When given, the cache runs on it through NodeRedisStore. Without it the
+ * provider runs on @keyv/redis 3 and the ioredis client, as on plugin-redis v2.
+ * See https://github.com/strapi-community/plugin-rest-cache/pull/239
+ */
+export interface NativeRedisConnection {
+  client: NodeRedisClient;
+  isCluster: boolean;
+}
+
 /** Everything accepted under `provider.options` in the plugin configuration. */
 export interface RedisCacheProviderOptions {
   /** Name of a connection declared on the redis plugin. */
@@ -85,7 +105,17 @@ export class RedisCacheProvider extends CacheProvider {
 
   private readonly cache: Cache;
 
-  constructor(client: RedisClient, options: RedisCacheProviderOptions) {
+  /**
+   * @param client the ioredis client: plugin-redis v2's connection, or v3's
+   *   deprecated ioredis-compatible shim. Kept as `client` for anyone typed
+   *   against it; with `native` given it is never used.
+   * @param native plugin-redis v3's node-redis connection, when there is one.
+   */
+  constructor(
+    client: RedisClient,
+    options: RedisCacheProviderOptions,
+    native?: NativeRedisConnection
+  ) {
     super();
 
     const { ttl, ...adapterOptions } = options;
@@ -95,7 +125,12 @@ export class RedisCacheProvider extends CacheProvider {
       ttl,
       stores: [
         new Keyv({
-          store: new KeyvRedis(client, adapterOptions),
+          store: native
+            ? new NodeRedisStore(native.client, {
+                isCluster: native.isCluster,
+                useRedisSets: adapterOptions.useRedisSets !== false,
+              })
+            : new KeyvRedis(client, adapterOptions),
         }),
       ],
     });
@@ -124,6 +159,16 @@ export class RedisCacheProvider extends CacheProvider {
 
   async delMany(keys: Array<CacheKey | string>): Promise<void> {
     if (!keys.length) return;
+
+    const nodeStore = nodeRedisStoreOf(this.cache);
+    if (nodeStore?.opts.useRedisSets && nodeStore.namespace) {
+      await nodeStore.unlinkTracked(keys.map((key) => `${nodeStore.namespace}:${key}`));
+      return;
+    }
+    if (nodeStore) {
+      await this.cache.mdel(keys as string[]);
+      return;
+    }
 
     const store = redisStoreOf(this.cache);
     const namespace = store._getNamespace?.();
@@ -189,6 +234,15 @@ export class RedisCacheProvider extends CacheProvider {
     // trip here.
     //
     // See https://github.com/strapi-community/plugin-rest-cache/issues/131
+    const nodeStore = nodeRedisStoreOf(this.cache);
+    if (nodeStore) {
+      // The same tracking set, read the same way, as on @keyv/redis below -
+      // including reading it when redis sets are off, where it is empty.
+      const prefix = `${nodeStore.namespace}:`;
+      const members = await nodeStore.trackedKeys();
+      return members.map((key) => (key.startsWith(prefix) ? key.slice(prefix.length) : key));
+    }
+
     const store = redisStoreOf(this.cache);
     const namespace = store._getNamespace?.();
 
@@ -222,6 +276,12 @@ export class RedisCacheProvider extends CacheProvider {
   }
 
   async clear(): Promise<void> {
+    // NodeRedisStore.clear() is already slot-safe on a cluster.
+    if (nodeRedisStoreOf(this.cache)) {
+      await this.cache.clear();
+      return;
+    }
+
     const store = redisStoreOf(this.cache);
 
     // @keyv/redis's clear() unlinks every key in a single multi-key command,
@@ -237,6 +297,11 @@ export class RedisCacheProvider extends CacheProvider {
   }
 
   get ready(): boolean {
+    const nodeStore = nodeRedisStoreOf(this.cache);
+    if (nodeStore) {
+      return nodeStore.ready;
+    }
+
     const client = redisStoreOf(this.cache).redis;
     return client.status === 'ready';
   }

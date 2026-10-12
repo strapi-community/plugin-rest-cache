@@ -6,7 +6,6 @@ module.exports = ({ env }) => ({
   // https://github.com/strapi-community/plugin-rest-cache/issues/119
   redis: {
     config: {
-      debug: true,
       connections: {
         default: {
           connection: {
