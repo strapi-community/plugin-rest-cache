@@ -97,13 +97,13 @@ describe("listed routes inherit their content type's options", () => {
   });
 });
 
-describe("the hitpass warning", () => {
+describe("a content type that does not key on the caller", () => {
   let bootLog = "";
 
   beforeAll(async () => {
     process.env.KEYS_PREFIX = undefined;
-    // Leaves category caching authenticated requests with nothing keying on
-    // the caller - the configuration the warning exists for.
+    // category keeps hitpass: false but nothing keys on the caller, so an
+    // authenticated response would be shared by everyone who asks.
     process.env.CATEGORY_USE_AUTH = "false";
     process.env.STRAPI_LOG_LEVEL = "warn";
 
@@ -126,11 +126,32 @@ describe("the hitpass warning", () => {
     await teardown();
   });
 
-  // Named per route, from what each route resolved to, so a listed route is
-  // reported alongside the injected ones.
-  it("names the listed routes that cache authenticated requests without useAuth", () => {
+  beforeEach(() => strapi.plugin("rest-cache").service("cacheStore").reset());
+
+  // Listed routes used to get the strategy's hitpass, which bypasses anything
+  // with an authorization or cookie header. Inheriting hitpass: false here
+  // would start sharing those responses, so the bypass stays.
+  it("keeps the strategy's bypass on a listed route", async () => {
+    const res = await agent().get(ROUTE).set("Cookie", "a=1");
+
+    expect(res.status).toBe(200);
+    expect(res.get("x-cache")).toBe("HITPASS");
+  });
+
+  it("still caches anonymous requests on that route", async () => {
+    const first = await agent().get(ROUTE);
+    const second = await agent().get(ROUTE);
+
+    expect(first.get("x-cache")).toBe("MISS");
+    expect(second.get("x-cache")).toBe("HIT");
+  });
+
+  // Named per route: the injected core routes really do cache authenticated
+  // requests unkeyed here; the listed routes, which keep the bypass, do not.
+  it("warns about the routes that cache authenticated requests unkeyed, and only those", () => {
     expect(bootLog).toMatch(/hitpass disabled but keys\.useAuth is not set/);
-    expect(bootLog).toContain(ROUTE);
-    expect(bootLog).toContain("/api/categories/slug/:slug+");
+    expect(bootLog).toContain("/api/categories/:id");
+    expect(bootLog).not.toContain(ROUTE);
+    expect(bootLog).not.toContain("/api/categories/slug/:slug+");
   });
 });

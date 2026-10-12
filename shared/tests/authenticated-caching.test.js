@@ -68,6 +68,7 @@ describe("authenticated caching", () => {
     for (const action of [
       "api::category.category.find",
       "api::category.category.findBySlug",
+      "api::category.category.inherits",
       "api::article.article.find",
     ]) {
       await strapi.query("plugin::users-permissions.permission").create({
@@ -108,12 +109,31 @@ describe("authenticated caching", () => {
     expect(forBob.get("x-cache")).toBe("MISS");
   });
 
-  // /api/categories/slug/:slug+ is listed with keys of its own that do not
-  // mention useAuth, and inherits the content type's hitpass: false. Its keys
-  // must still pick up the content type's useAuth: true, or every caller shares
-  // whichever response missed first. See
+  // A listed route takes its content type's hitpass: false only when its keys
+  // identify the caller. /api/categories/probe/inherits has no keys of its
+  // own, so it gets the content type's useAuth: true. See
   // https://github.com/strapi-community/plugin-rest-cache/issues/230
-  it("does not serve one user's entry to another on a listed route with keys of its own", async () => {
+  it("caches a listed route per caller when it inherits hitpass: false", async () => {
+    const route = "/api/categories/probe/inherits";
+    const forAlice = await agent().get(route).set("Authorization", `Bearer ${alice.jwt}`);
+    const againForAlice = await agent()
+      .get(route)
+      .set("Authorization", `Bearer ${alice.jwt}`);
+    const forBob = await agent().get(route).set("Authorization", `Bearer ${bob.jwt}`);
+
+    expect(forAlice.status).toBe(200);
+    expect(forAlice.get("x-cache")).toBe("MISS");
+    expect(againForAlice.get("x-cache")).toBe("HIT");
+    // Bob must not inherit Alice's entry.
+    expect(forBob.get("x-cache")).toBe("MISS");
+  });
+
+  // /api/categories/slug/:slug+ sets keys of its own without useAuth, so its
+  // entries would be shared by every caller. It must keep bypassing
+  // authenticated requests, as it always has, rather than take the content
+  // type's hitpass: false. See
+  // https://github.com/strapi-community/plugin-rest-cache/issues/230
+  it("keeps bypassing authenticated requests on a listed route whose keys do not identify the caller", async () => {
     const forAlice = await agent()
       .get("/api/categories/slug/news")
       .set("Authorization", `Bearer ${alice.jwt}`);
@@ -122,8 +142,8 @@ describe("authenticated caching", () => {
       .set("Authorization", `Bearer ${bob.jwt}`);
 
     expect(forAlice.status).toBe(200);
-    expect(forAlice.get("x-cache")).toBe("MISS");
-    expect(forBob.get("x-cache")).toBe("MISS");
+    expect(forAlice.get("x-cache")).toBe("HITPASS");
+    expect(forBob.get("x-cache")).toBe("HITPASS");
   });
 
   it("does not serve an authenticated entry to an anonymous caller", async () => {
