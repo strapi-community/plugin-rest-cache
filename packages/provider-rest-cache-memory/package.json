@@ -70,7 +70,7 @@
   },
   "dependencies": {
     "cache-manager": "^7.1.1",
-    "keyv": "^5.5.0",
+    "keyv": "^6.1.0",
     "quick-lru": "7.3.0"
   },
   "devDependencies": {

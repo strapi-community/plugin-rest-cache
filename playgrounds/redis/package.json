@@ -12,8 +12,8 @@
     "test:e2e": "jest --forceExit"
   },
   "dependencies": {
-    "@strapi/plugin-users-permissions": "5.52.0",
-    "@strapi/strapi": "5.52.0",
+    "@strapi/plugin-users-permissions": "5.57.0",
+    "@strapi/strapi": "5.57.0",
     "@strapi-community/plugin-redis": "^2.0.0",
     "@strapi-community/plugin-rest-cache": "workspace:*",
     "@strapi-community/provider-rest-cache-redis": "workspace:*",
