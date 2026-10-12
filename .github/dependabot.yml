@@ -123,6 +123,17 @@ updates:
       - dependency-name: "@keyv/redis"
         update-types: ["version-update:semver-major"]
 
+      # keyv has to move with cache-manager and @keyv/redis, not ahead of them.
+      # Both providers hand their Keyv stores to cache-manager's createCache,
+      # and cache-manager 7.2.9 (the latest) still depends on keyv ^5.6, while
+      # @keyv/redis 6 peers on keyv ^6.1. Bumping keyv alone to 6.1.0 left the
+      # redis provider reading `cache.stores[0].opts.store`, which keyv 6 no
+      # longer populates, so every purge failed with "Cannot read properties of
+      # undefined (reading 'store')" (#234). Revisit with the @keyv/redis
+      # major above once cache-manager supports keyv 6.
+      - dependency-name: "keyv"
+        update-types: ["version-update:semver-major"]
+
       # react-intl is governed by the admin runtime, not by us. The plugin peers
       # on ^6.0.0 and @strapi/admin bundles 6.6.2, so a major only produces an
       # unmergeable PR - the same situation as react and react-router-dom above.
