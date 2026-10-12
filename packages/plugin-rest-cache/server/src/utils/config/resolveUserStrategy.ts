@@ -110,8 +110,17 @@ export const resolveUserStrategy = function (
               param.replace(':', '')
             ),
             ...value,
+            // A route's own keys replace its content type's, except that a
+            // route which says nothing about useAuth keeps the content type's.
+            // It inherits the content type's hitpass, so dropping useAuth here
+            // would cache authenticated responses under one key shared by
+            // every caller. See
+            // https://github.com/strapi-community/plugin-rest-cache/issues/230
             keys: value.keys
-              ? new CacheKeysConfig(value.keys)
+              ? new CacheKeysConfig({
+                  useAuth: contentTypeKeys?.useAuth,
+                  ...value.keys,
+                })
               : new CacheKeysConfig(contentTypeKeys),
           })
         );

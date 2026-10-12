@@ -65,7 +65,11 @@ describe("authenticated caching", () => {
       .query("plugin::users-permissions.role")
       .findOne({ where: { type: "authenticated" } });
 
-    for (const action of ["api::category.category.find", "api::article.article.find"]) {
+    for (const action of [
+      "api::category.category.find",
+      "api::category.category.findBySlug",
+      "api::article.article.find",
+    ]) {
       await strapi.query("plugin::users-permissions.permission").create({
         data: { action, role: role.id },
       });
@@ -101,6 +105,24 @@ describe("authenticated caching", () => {
 
     expect(forAlice.get("x-cache")).toBe("MISS");
     // Bob must not inherit Alice's entry.
+    expect(forBob.get("x-cache")).toBe("MISS");
+  });
+
+  // /api/categories/slug/:slug+ is listed with keys of its own that do not
+  // mention useAuth, and inherits the content type's hitpass: false. Its keys
+  // must still pick up the content type's useAuth: true, or every caller shares
+  // whichever response missed first. See
+  // https://github.com/strapi-community/plugin-rest-cache/issues/230
+  it("does not serve one user's entry to another on a listed route with keys of its own", async () => {
+    const forAlice = await agent()
+      .get("/api/categories/slug/news")
+      .set("Authorization", `Bearer ${alice.jwt}`);
+    const forBob = await agent()
+      .get("/api/categories/slug/news")
+      .set("Authorization", `Bearer ${bob.jwt}`);
+
+    expect(forAlice.status).toBe(200);
+    expect(forAlice.get("x-cache")).toBe("MISS");
     expect(forBob.get("x-cache")).toBe("MISS");
   });
 

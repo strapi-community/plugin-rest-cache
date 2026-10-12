@@ -89,16 +89,48 @@ describe("listed routes inherit their content type's options", () => {
     expect(third.get("x-cache")).toBe("MISS");
   });
 
-  // /api/categories/slug/:slug+ sets keys of its own without useAuth. Now that
-  // it inherits the content type's hitpass: false it caches authenticated
-  // requests under a key that does not identify the caller, and the content
-  // type's own useAuth: true must not hide that.
-  it("warns about a listed route that caches authenticated requests without useAuth", () => {
-    expect(bootLog).toContain("/api/categories/slug/:slug+");
-    expect(bootLog).toMatch(/hitpass disabled but keys\.useAuth is not set/);
+  // Every category route keys on the caller: the core routes and the probe
+  // through the content type's keys, /api/categories/slug/:slug+ because its
+  // own keys keep the content type's useAuth. Nothing to warn about.
+  it("does not warn when every route keys on the caller", () => {
+    expect(bootLog).not.toMatch(/hitpass disabled but keys\.useAuth is not set/);
+  });
+});
+
+describe("the hitpass warning", () => {
+  let bootLog = "";
+
+  beforeAll(async () => {
+    process.env.KEYS_PREFIX = undefined;
+    // Leaves category caching authenticated requests with nothing keying on
+    // the caller - the configuration the warning exists for.
+    process.env.CATEGORY_USE_AUTH = "false";
+    process.env.STRAPI_LOG_LEVEL = "warn";
+
+    const write = process.stdout.write.bind(process.stdout);
+    const spy = jest
+      .spyOn(process.stdout, "write")
+      .mockImplementation((chunk, ...rest) => {
+        bootLog += String(chunk);
+        return write(chunk, ...rest);
+      });
+    try {
+      await setup();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  afterAll(async () => {
+    delete process.env.CATEGORY_USE_AUTH;
+    delete process.env.STRAPI_LOG_LEVEL;
+    await teardown();
   });
 
-  it("does not warn about routes that do key on the caller", () => {
-    expect(bootLog).not.toContain(ROUTE);
+  // Named per route, from what each route resolved to, so a listed route is
+  // reported alongside the injected ones.
+  it("names the listed routes that cache authenticated requests without useAuth", () => {
+    expect(bootLog).toMatch(/hitpass disabled but keys\.useAuth is not set/);
+    expect(bootLog).toContain(ROUTE);
+    expect(bootLog).toContain("/api/categories/slug/:slug+");
   });
 });

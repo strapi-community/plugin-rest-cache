@@ -264,8 +264,8 @@ export default {
 ::: warning
 `hitpass: false` without `keys.useAuth` means every authorised caller shares one
 entry. The server logs a warning at boot naming the content type and the routes
-affected. A route listed in `routes` inherits the content type's `hitpass`, so a
-route that sets its own `keys` needs `useAuth: true` in them as well. See
+affected. A route listed in `routes` inherits the content type's `hitpass`, and
+its `keys.useAuth` too unless it sets one itself. See
 [Cache keys](./keys.md#useauth).
 :::
 

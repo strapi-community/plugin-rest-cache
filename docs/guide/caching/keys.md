@@ -168,7 +168,10 @@ export default {
 
 `keys` is replaced wholesale, not merged field by field: a route that sets
 `keys` gets the defaults for anything it leaves out, not the content type's
-values.
+values. The one exception is [`useAuth`](#useauth). A route that does not set
+it keeps its content type's, because the route also inherits the content type's
+`hitpass`. Falling back to `false` there would share one entry between every
+authenticated caller.
 
 ## useQueryParams
 
