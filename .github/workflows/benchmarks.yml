@@ -94,9 +94,7 @@ jobs:
 
     services:
       redis:
-        image: bitnami/redis:latest
-        env:
-          ALLOW_EMPTY_PASSWORD: yes
+        image: redis:8.10
         ports:
           - 6379:6379
 
