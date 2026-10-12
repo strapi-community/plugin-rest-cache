@@ -123,14 +123,21 @@ updates:
       - dependency-name: "@keyv/redis"
         update-types: ["version-update:semver-major"]
 
-      # keyv has to move with cache-manager and @keyv/redis, not ahead of them.
-      # Both providers hand their Keyv stores to cache-manager's createCache,
-      # and cache-manager 7.2.9 (the latest) still depends on keyv ^5.6, while
-      # @keyv/redis 6 peers on keyv ^6.1. Bumping keyv alone to 6.1.0 left the
-      # redis provider reading `cache.stores[0].opts.store`, which keyv 6 no
-      # longer populates, so every purge failed with "Cannot read properties of
-      # undefined (reading 'store')" (#234). Revisit with the @keyv/redis
-      # major above once cache-manager supports keyv 6.
+      # keyv has to move with cache-manager, @keyv/redis and the redis plugin,
+      # not ahead of them. Both providers hand their Keyv stores to
+      # cache-manager's createCache, and cache-manager 7.2.9 (the latest) still
+      # depends on keyv ^5.6. Bumped alone to 6.1.0, keyv broke every redis
+      # purge (#234): it has no `opts` at all, so the provider's
+      # `cache.stores[0].opts.store` threw "Cannot read properties of undefined
+      # (reading 'store')".
+      #
+      # Fixing that accessor is not the port. keyv 6 wraps @keyv/redis 3 in a
+      # bridge adapter and no longer defaults the "keyv" namespace, so the
+      # SMEMBERS enumeration (#131) and cluster-safe delete (#100) would be
+      # skipped and purges would quietly match `undefined:*` instead of
+      # failing. The @keyv/redis that supports keyv 6 also swaps ioredis for
+      # @redis/client, and the redis plugin that supplies our client is being
+      # rewritten - do the three together, once cache-manager supports keyv 6.
       - dependency-name: "keyv"
         update-types: ["version-update:semver-major"]
 
@@ -143,6 +150,16 @@ updates:
       # jest majors are already ignored, so jest-cli must be too. Letting it
       # advance alone pairs jest-cli 30 with jest 29.
       - dependency-name: "jest-cli"
+        update-types: ["version-update:semver-major"]
+
+      # mermaid 12 makes ELK and a new look the defaults, and renders our
+      # flowchart labels with their second line clipped ("GET on a cached
+      # route" becomes "GET on a cached"); `look: 'classic'` restores most of
+      # it but still clips. vitepress-plugin-mermaid also only declares
+      # support for mermaid 10 || 11. Nothing in CI renders the docs, so this
+      # can only be checked by eye in a browser. Revisit when the plugin
+      # supports 12.
+      - dependency-name: "mermaid"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
