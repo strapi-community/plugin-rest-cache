@@ -58,9 +58,9 @@ which is the quickest way to confirm what a content type actually has.
 ## Purging clears more than I expected
 
 `clearRelatedCache` is on by default: purging a content type also purges those
-related to it through relations and components, transitively. The dashboard
-shows the count per row ("Also purges 4 related types"). Turn it off if you
-would rather accept staleness in related responses.
+related to it through relations, components and dynamic zones, transitively.
+The dashboard shows the count per row ("Also purges 4 related types"). Turn it
+off if you would rather accept staleness in related responses.
 
 ## Redis: entries are written but never purged
 

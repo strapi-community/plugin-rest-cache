@@ -202,9 +202,9 @@ application down at register time with "Cannot read properties of undefined".
 ## Related content types
 
 While resolving your configuration the plugin walks each content type's
-schema and records everything it can reach through **relations** and through
-**components**, following components into their own attributes until nothing
-new is found. That set is what `clearRelatedCache` uses: purging a content type
+schema and records everything it can reach through **relations**, through
+**components** and through the components allowed in a **dynamic zone**,
+following components into their own attributes until nothing new is found. That set is what `clearRelatedCache` uses: purging a content type
 also purges the cached entries of the content types related to it.
 
 You do not configure this list — it is derived from your schemas — but it is

@@ -6,8 +6,8 @@ import type { ContentTypeUID } from '../../types/common';
  * The parts of a schema this traversal actually reads.
  *
  * Typed structurally rather than as Strapi's own Schema, because that type
- * models every attribute kind and only two of them - relation and component -
- * can carry a dependency from one model to another.
+ * models every attribute kind and only three of them - relation, component and
+ * dynamiczone - can carry a dependency from one model to another.
  */
 interface TraversableAttribute {
   type: string;
@@ -15,6 +15,13 @@ interface TraversableAttribute {
   target?: string;
   /** Set on component attributes: the uid of the embedded component. */
   component?: string;
+  /**
+   * Set on dynamiczone attributes: the uids of the components it allows.
+   * Missing these left a content type that reaches another only through a
+   * dynamic zone stale. See
+   * https://github.com/strapi-community/plugin-rest-cache/issues/232
+   */
+  components?: string[];
 }
 
 interface TraversableSchema {
@@ -41,9 +48,9 @@ export const getRelatedModelsUid = function (
   }
 
   // Strapi models an attribute as a discriminated union covering every kind,
-  // and `target` / `component` live on only two of its members. Projecting to
-  // TraversableSchema states plainly which two this traversal cares about
-  // instead of narrowing the union at each of the four access sites.
+  // and `target` / `component` / `components` live on only three of its
+  // members. Projecting to TraversableSchema states plainly which three this
+  // traversal cares about instead of narrowing the union at each access site.
   const allComponents = Object.values(strapi.components) as unknown as TraversableSchema[];
   const allContentTypes = Object.values(
     strapi.contentTypes
@@ -60,7 +67,9 @@ export const getRelatedModelsUid = function (
   /** Whether this attribute reaches something already known to be related. */
   const reachesKnown = (attribute: TraversableAttribute): boolean =>
     (attribute.type === 'relation' && contentTypeUids.has(attribute.target)) ||
-    (attribute.type === 'component' && componentUids.has(attribute.component));
+    (attribute.type === 'component' && componentUids.has(attribute.component)) ||
+    (attribute.type === 'dynamiczone' &&
+      (attribute.components ?? []).some((c) => componentUids.has(c)));
 
   for (;;) {
     const knownBefore = contentTypeUids.size + componentUids.size;

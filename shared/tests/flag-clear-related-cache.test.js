@@ -65,3 +65,39 @@ describe("clearRelatedCache: false", () => {
     expect(homepageAfter.get("x-cache")).toBe("HIT");
   });
 });
+
+describe("clearRelatedCache: true", () => {
+  beforeAll(async () => {
+    process.env.KEYS_PREFIX = undefined;
+    process.env.CLEAR_RELATED_CACHE = "true";
+    await setup();
+  });
+  afterAll(async () => {
+    delete process.env.CLEAR_RELATED_CACHE;
+    await teardown();
+  });
+
+  beforeEach(() => strapi.plugin("rest-cache").service("cacheStore").reset());
+
+  // page reaches article only through a component inside a dynamic zone.
+  // See https://github.com/strapi-community/plugin-rest-cache/issues/232
+  it("purges a content type related through a dynamic zone", async () => {
+    const pageFirst = await agent().get("/api/pages");
+    const pageSecond = await agent().get("/api/pages");
+    expect(pageFirst.status).toBe(200);
+    expect(pageFirst.get("x-cache")).toBe("MISS");
+    expect(pageSecond.get("x-cache")).toBe("HIT");
+
+    const [article] = await strapi
+      .documents(ARTICLE)
+      .findMany({ status: "published", limit: 1 });
+
+    await strapi.documents(ARTICLE).update({
+      documentId: article.documentId,
+      data: { title: "Related caches must be purged" },
+    });
+
+    const pageAfter = await agent().get("/api/pages");
+    expect(pageAfter.get("x-cache")).toBe("MISS");
+  });
+});

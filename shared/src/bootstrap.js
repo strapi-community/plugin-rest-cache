@@ -197,6 +197,7 @@ async function importSeedData() {
     ],
     writer: ["find", "findOne"],
     "api::writer.editor": ["find", "findOne"],
+    page: ["find"],
   });
 
   // Create all entries
