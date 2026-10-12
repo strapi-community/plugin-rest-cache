@@ -135,9 +135,12 @@ updates:
       # bridge adapter and no longer defaults the "keyv" namespace, so the
       # SMEMBERS enumeration (#131) and cluster-safe delete (#100) would be
       # skipped and purges would quietly match `undefined:*` instead of
-      # failing. The @keyv/redis that supports keyv 6 also swaps ioredis for
-      # @redis/client, and the redis plugin that supplies our client is being
-      # rewritten - do the three together, once cache-manager supports keyv 6.
+      # failing. Port it deliberately once cache-manager supports keyv 6.
+      #
+      # This does not hold up the move to node-redis: @keyv/redis 4 and 5
+      # already use @redis/client and still peer on keyv ^5, so that migration
+      # (#239, with the plugin-redis v3 rewrite) can land on keyv 5. Only
+      # @keyv/redis 6 needs keyv 6.
       - dependency-name: "keyv"
         update-types: ["version-update:semver-major"]
 
