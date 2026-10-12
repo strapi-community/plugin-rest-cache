@@ -76,6 +76,13 @@ export const resolveUserStrategy = function (
     // Object
     const routes: CacheRouteConfig[] = [];
     const contentTypeKeys = contentTypeOption?.keys ?? defaultModelConfig.keys;
+    // Listed routes inherit from their content type, which inherits from the
+    // strategy - as keys already did, and as the injected core routes do.
+    // Taking these straight from the strategy stored a content type's 10
+    // minute maxAge for an hour and never applied its hitpass. See
+    // https://github.com/strapi-community/plugin-rest-cache/issues/230
+    const contentTypeMaxAge = contentTypeOption.maxAge ?? defaultModelConfig.maxAge;
+    const contentTypeHitpass = contentTypeOption.hitpass ?? defaultModelConfig.hitpass;
 
     (
       contentTypeOption.routes as Array<string | CacheRouteConfigInput> | undefined
@@ -86,8 +93,8 @@ export const resolveUserStrategy = function (
             path: value,
             method: 'GET',
             keys: new CacheKeysConfig(contentTypeKeys),
-            maxAge: defaultModelConfig.maxAge,
-            hitpass: defaultModelConfig.hitpass,
+            maxAge: contentTypeMaxAge,
+            hitpass: contentTypeHitpass,
             paramNames: (value.match(routeParamNameRegex) ?? []).map((param) =>
               param.replace(':', '')
             ),
@@ -97,8 +104,8 @@ export const resolveUserStrategy = function (
         // @TODO get the route of the value maby replace route with handler.
         acc.push(
           new CacheRouteConfig({
-            maxAge: defaultModelConfig.maxAge,
-            hitpass: defaultModelConfig.hitpass,
+            maxAge: contentTypeMaxAge,
+            hitpass: contentTypeHitpass,
             paramNames: (value.path.match(routeParamNameRegex) ?? []).map((param) =>
               param.replace(':', '')
             ),
@@ -234,16 +241,29 @@ export const resolveUserStrategy = function (
   // carrying an authorization or cookie header - so warn rather than refuse,
   // but warn loudly and name the content type.
   // See https://github.com/strapi-community/plugin-rest-cache/issues/113
+  //
+  // Checked per route, on the values each route actually resolved to. A listed
+  // route can set keys of its own while inheriting hitpass: false, and a check
+  // on the content type alone both missed that and warned for content types
+  // whose own hitpass no route used.
+  // See https://github.com/strapi-community/plugin-rest-cache/issues/230
   for (const cacheConfig of cacheConfigs) {
-    const cachesAuthenticated = cacheConfig.hitpass === false;
-    const keysAuthIdentity = cacheConfig.keys?.useAuth === true;
+    const unkeyedPaths = cacheConfig.routes
+      .filter(
+        (route) =>
+          route.method === 'GET' &&
+          route.hitpass === false &&
+          route.keys?.useAuth !== true
+      )
+      .map((route) => route.path);
 
-    if (cachesAuthenticated && !keysAuthIdentity) {
+    if (unkeyedPaths.length) {
       strapi.log.warn(
-        `REST Cache: "${cacheConfig.contentType}" has hitpass disabled but keys.useAuth is not set. ` +
+        `REST Cache: "${cacheConfig.contentType}" has hitpass disabled but keys.useAuth is not set ` +
+          `on ${unkeyedPaths.join(', ')}. ` +
           'Authenticated responses will be cached under a key that does not identify the caller, ' +
-          "so one user's response can be served to another. Set keys: { useAuth: true } for this " +
-          'contentType, or leave hitpass enabled.'
+          "so one user's response can be served to another. Set keys: { useAuth: true } on these " +
+          'routes, or leave hitpass enabled.'
       );
     }
   }
