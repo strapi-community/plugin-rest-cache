@@ -7,6 +7,13 @@ module.exports = {
       path: "/categories/slug/:slug+",
       handler: "category.findBySlug",
     },
+    // Fixture for a custom route whose configured path has upper-case
+    // characters. Cache keys are lower-cased; purge patterns must match them.
+    {
+      method: "GET",
+      path: "/categories/bySlug/:slug",
+      handler: "category.findBySlug",
+    },
     // Fixtures for responses the cache must refuse to buffer. See
     // https://github.com/strapi-community/plugin-rest-cache/issues/133
     {

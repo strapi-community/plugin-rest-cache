@@ -81,6 +81,10 @@ module.exports = ({ env }) => ({
           method: "GET",
           keys: { useQueryParams: true, useHeaders: [], useAuth: true },
         },
+        // Opt-in fixture: an upper-case custom route path.
+        ...(env.bool("CASE_ROUTE", false)
+          ? [{ path: "/api/categories/bySlug/:slug", method: "GET" }]
+          : []),
         {
           path: "/api/categories/slug/:slug+",
           keys: {

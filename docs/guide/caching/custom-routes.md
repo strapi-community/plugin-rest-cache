@@ -170,6 +170,12 @@ it was given:
   resolve `/api/categories/slug/:slug` — nothing tells it which slug that
   document has — so that pattern is dropped rather than guessed at.
 
+Patterns are matched the way keys are built: the route path and any parameter
+values are lower-cased, because the [cache key's path is](./keys.md#the-details-that-matter),
+so a route written as `/api/categories/bySlug/:slug` is purged like any other.
+Parameter values are matched literally — a slug of `c++` purges the entry for
+`c++` and nothing else.
+
 In practice this rarely bites, because `clearRelatedCache` is on by default and
 a content type belongs to its own related set: purging it also issues a
 wildcard purge for itself, which does cover parameterised custom routes. Turn
