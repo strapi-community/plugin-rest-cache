@@ -164,11 +164,40 @@ the patterns a purge matches against. A purge can only fill in the parameters
 it was given:
 
 - **Wildcard purges** replace every parameter with a match-anything pattern, so
-  they clear the route regardless of its parameters.
+  they clear the route regardless of its parameters. The pattern follows the
+  parameter's form:
+
+  | Parameter | A wildcard purge matches |
+  | --- | --- |
+  | `:slug` | one path segment |
+  | `:slug+` | one or more segments — `/slug/a` and `/slug/a/b` |
+  | `:slug?` | the bare path or one segment — `/maybe` and `/maybe/x` |
+  | `:slug*` | the bare path or any number of segments |
+  | `:id(\d+)` | what the constraint accepts |
+
 - **Targeted purges** substitute the parameters they were handed. A purge
   carrying `{ id: "abc123" }` can resolve `/api/categories/:id`, but it cannot
   resolve `/api/categories/slug/:slug` — nothing tells it which slug that
-  document has — so that pattern is dropped rather than guessed at.
+  document has — so that pattern is dropped rather than guessed at. An
+  optional parameter given as `""` resolves to the bare path.
+
+Patterns are matched the way keys are built: the route path and any parameter
+values are lower-cased, because the [cache key's path is](./keys.md#the-details-that-matter),
+so a route written as `/api/categories/bySlug/:slug` is purged like any other.
+Parameter values are matched literally — a slug of `c++` purges the entry for
+`c++` and nothing else.
+
+A key holds the request path as it arrived, still percent-encoded, so values
+are encoded the way a browser or `fetch` sends them before they are matched.
+Pass the value you have: `{ slug: "café" }` purges the entry stored as
+`caf%c3%a9`, and `{ slug: "a b" }` the one stored as `a%20b`. Two details:
+
+- A value that already contains `%XX` sequences is taken as encoded and left
+  as it is, so `{ slug: "caf%C3%A9" }` also works.
+- Characters a URL path can carry as they are — letters, digits, `-._~`,
+  `!$&'()*+,;=:@` and `/` — are matched only as written. If your client
+  encodes one of them (`encodeURIComponent("c++")` sends `c%2B%2B`), pass the
+  value encoded the same way.
 
 In practice this rarely bites, because `clearRelatedCache` is on by default and
 a content type belongs to its own related set: purging it also issues a

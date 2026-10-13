@@ -196,6 +196,7 @@ async function importSeedData() {
       "throwingBody",
       "withCacheControl",
       "inherits",
+      "echo",
       "vary",
     ],
     writer: ["find", "findOne"],

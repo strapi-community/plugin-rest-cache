@@ -122,6 +122,18 @@ module.exports = ({ env }) => ({
           method: "GET",
           keys: { useQueryParams: true, useHeaders: [], useAuth: true },
         },
+        // Opt-in fixtures for purge patterns: an upper-case route path, and
+        // one route per parameter form a purge pattern has to resolve.
+        ...(env.bool("PURGE_ROUTE_FIXTURES", false)
+          ? [
+              { path: "/api/categories/bySlug/:slug", method: "GET" },
+              { path: "/api/categories/echo/one/:slug", method: "GET" },
+              { path: "/api/categories/echo/many/:slug+", method: "GET" },
+              { path: "/api/categories/echo/maybe/:slug?", method: "GET" },
+              { path: "/api/categories/echo/num/:id(\\d+)", method: "GET" },
+              { path: "/api/categories/echo/code/:code(\\D+)", method: "GET" },
+            ]
+          : []),
         {
           // Keyed on a query param and two headers, so every separator in a
           // cache key is reachable from a request.
