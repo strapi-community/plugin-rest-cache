@@ -158,10 +158,10 @@ The plugin passes an explicit lifetime on every write, taken from `strategy.maxA
 
 ### Other options
 
-Anything else in `options` is forwarded to [`@keyv/redis`](https://github.com/jaredwray/keyv/tree/main/packages/redis#options) untouched — `namespace`, `useRedisSets`, and so on.
+On plugin-redis v2, anything else in `options` is forwarded to [`@keyv/redis`](https://github.com/jaredwray/keyv/tree/main/packages/redis#options) untouched — `namespace`, `useRedisSets`, and so on. On [plugin-redis v3](#plugin-redis-v3) the provider runs on its own store, which honours `useRedisSets` and ignores the rest.
 
 ::: warning
-Leave `useRedisSets` enabled. The provider relies on the key-tracking set that `@keyv/redis` maintains, both to enumerate keys efficiently and to purge correctly on a cluster. With it disabled the provider falls back to `SCAN`, which is far slower and, on a cluster, incomplete — see below.
+Leave `useRedisSets` enabled. The provider lists keys for every pattern purge, and with the key-tracking set that is a single `SMEMBERS`. With it disabled there is no set to read, so the provider finds its entries with `SCAN` instead — on every master of a cluster, so purges are still complete, but each listing walks the whole keyspace of every node, which is far slower on a large or shared database.
 :::
 
 ## Key prefixes
@@ -239,11 +239,21 @@ Two things differ when clustered, and both are handled for you:
 
   Without a `MULTI`, a purge and a response being cached for the same key can interleave, so the provider removes a key from the tracking set _before_ deleting the entry. The other way round, a write landing between the two left a live entry outside the set, which no purge could find until it expired. The trade-off is on the failure path: if Redis fails the delete after the entry has been untracked, the entry stays cached, out of reach of purges, until its `maxAge`.
 
-- **Key listing does not use `SCAN`.** `SCAN` addresses one node, so on a cluster it returns only the portion of the keyspace that node holds — a purge built on it silently misses everything on the other nodes. Reading the tracking set avoids that entirely, because the set is one key and therefore complete.
+- **Key listing reads the tracking set.** The set is one key, and therefore complete wherever it lives. `SCAN` addresses one node, so on a cluster it returns only the portion of the keyspace that node holds.
 
-::: warning
-This is the concrete reason not to disable `useRedisSets` on a cluster: doing so drops the provider onto the `SCAN` fallback, and purges will quietly under-delete.
-:::
+  With `useRedisSets` disabled there is no set, so the provider sends `SCAN` to every master and combines the results ([#245](https://github.com/strapi-community/plugin-rest-cache/pull/245)). Purges are complete either way; the tracking set is just much cheaper to read.
+
+## plugin-redis v3
+
+[`@strapi-community/plugin-redis`](https://github.com/strapi-community/plugin-redis) v3 moves from ioredis to node-redis. The provider supports v2 and v3 alike — its peer range is `^2.0.0 || ^3.0.0-0` — and needs no configuration change for either:
+
+- **Detection.** The provider checks for v3's `connection` service at bootstrap, by what it can do rather than by version number. If it is there, the provider waits on `whenReady(connection)`, which rejects with the reason rather than hanging when the connection cannot be established. Otherwise it runs exactly as on v2.
+- **Client.** On v3 the provider runs on the connection's node-redis client, `.native`. v3 also offers an ioredis-compatible `.client`, but that is deprecated and removed in v4, so the provider only keeps it on `provider.client` for code typed against it and never sends a command through it.
+- **Client swap.** v3 replaces the node-redis client of a cluster or sentinel connection that has to reconnect from scratch. The provider reads `.native` for every command instead of keeping the client it started with, so it follows the swap.
+- **Same data.** Entries are stored exactly as on v2 — the same key names, the same tracking set, lifetimes in milliseconds — so entries cached before an upgrade are still read and purged after it, and after a rollback. Cluster deletes, key listing without `useRedisSets` and the tracking-set prune behave as described above.
+- **Shared connection.** The client belongs to the redis plugin and other plugins may use it. The provider never closes it.
+
+Node.js 20 is not supported by plugin-redis v3. On Node 20, stay on plugin-redis v2: the provider keeps working on it as before.
 
 ## KeyDB
 
