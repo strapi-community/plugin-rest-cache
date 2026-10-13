@@ -85,7 +85,7 @@ What to cache, for how long, and how to key it.
 | `enableDocumentServiceMiddleware` | `boolean` | `true` | Invalidate from the document service rather than from HTTP routes. See [Invalidation](../invalidation/index.md). <Badge type="tip" text="since 5.1.0" /> |
 | `enableContentApiPurge` | `boolean` | `false` | Expose `POST /api/rest-cache/purge`. Off by default; see [Purging](../invalidation/purging.md). <Badge type="tip" text="since 5.1.0" /> |
 | `enableAdminCTBMiddleware` | `boolean` | `true` | Inject purge middleware into the content-manager's admin routes. Superseded by `enableDocumentServiceMiddleware` and ignored while that is on. |
-| `clearRelatedCache` | `boolean` | `true` | When a content type is purged, also purge content types related to it through relations and components, transitively. Also applies when the written content type is not cached itself: the cached types that embed it are still purged. |
+| `clearRelatedCache` | `boolean` | `true` | When a content type is purged, also purge content types related to it through relations and components, transitively. Also applies when the written content type is not cached itself: the cached types that embed it through non-private relations are still purged, one wildcard purge per write. See [Uncached content types](../invalidation/index.md#uncached-content-types). |
 | `resetOnStartup` | `boolean` | `false` | Empty the cache when Strapi boots. |
 | `debug` | `boolean` | `false` | Enable the plugin's `debug` logging namespace. See [Debugging](../troubleshooting.md). |
 

@@ -77,6 +77,17 @@ export const registerDocumentServiceMiddleware = function (strapi: Core.Strapi):
    * written uid, because the schema cannot change after boot and most uncached
    * content types are never written to; an empty list keeps a write to an
    * uncached type nobody embeds as cheap as it was.
+   *
+   * Private attributes are skipped. Every content type has createdBy/updatedBy
+   * relations to admin::user, and the admin types relate to one another, so
+   * otherwise a document-service write to admin::user, role, permission,
+   * api-token or api-token-permission reached every cached type and flushed
+   * the whole cache. Those relations are private - createdBy/updatedBy unless
+   * the schema sets `options.populateCreatorFields`, admin::user.roles always -
+   * and the content-API sanitizer removes private attributes, so they never
+   * put admin data into a cached response. With populateCreatorFields the
+   * creator fields are public, and an admin user write still purges that type.
+   * The cached path keeps its own related set, unchanged.
    */
   const embeddedIn = new Map<string, string[]>();
 
@@ -85,7 +96,7 @@ export const registerDocumentServiceMiddleware = function (strapi: Core.Strapi):
 
     if (!uids) {
       const cacheConfig = strapi.plugin('rest-cache').service('cacheConfig');
-      uids = getRelatedModelsUid(strapi, uid).filter(
+      uids = getRelatedModelsUid(strapi, uid, { ignorePrivate: true }).filter(
         (relatedUid) => relatedUid !== uid && cacheConfig.isCached(relatedUid)
       );
       embeddedIn.set(uid, uids);

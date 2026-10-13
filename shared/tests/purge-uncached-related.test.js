@@ -118,3 +118,130 @@ describe("purge on writes to an uncached type with clearRelatedCache: false", ()
     expect(after.get("x-cache")).toBe("HIT");
   });
 });
+
+/**
+ * Every content type has createdBy/updatedBy relations to admin::user, and the
+ * admin types relate to each other (role.users, permission.role,
+ * api-token.adminUserOwner, api-token-permission.token). Followed naively, a
+ * write to any of them reaches every cached type: a full flush.
+ *
+ * Those relations never reach a content-API response. createdBy/updatedBy are
+ * `private` unless the schema sets `options.populateCreatorFields`, and the
+ * content-API sanitizer removes private attributes, so the relations that
+ * carry admin data into cached types are skipped. Strapi itself writes these
+ * types through strapi.db.query, which this middleware does not see; this
+ * covers third-party code calling strapi.documents('admin::...').
+ */
+const ADMIN_UIDS = [
+  "admin::user",
+  "admin::role",
+  "admin::permission",
+  "admin::api-token",
+  "admin::api-token-permission",
+];
+
+/**
+ * A document-service write that changes nothing but still runs the
+ * middleware. Rows are created below the document service, so creating them
+ * purges nothing.
+ */
+async function touch(uid) {
+  let [row] = await strapi.db.query(uid).findMany({ limit: 1 });
+  if (!row && uid === "admin::api-token") {
+    row = await strapi.db.query(uid).create({
+      data: {
+        documentId: "purgeuncachedtoken",
+        name: "purge-uncached-related",
+        description: "",
+        type: "read-only",
+        accessKey: "purge-uncached-related",
+      },
+    });
+  }
+  if (!row && uid === "admin::api-token-permission") {
+    const token = await touch("admin::api-token");
+    row = await strapi.db.query(uid).create({
+      data: {
+        documentId: "purgeuncachedtokenperm",
+        action: "api::article.article.find",
+        token: token.id,
+      },
+    });
+  }
+  await strapi.documents(uid).update({ documentId: row.documentId, data: {} });
+  return row;
+}
+
+describe("purge on writes to admin content types", () => {
+  beforeAll(async () => {
+    process.env.KEYS_PREFIX = undefined;
+    await setup();
+  });
+  afterAll(async () => await teardown());
+
+  beforeEach(() => strapi.plugin("rest-cache").service("cacheStore").reset());
+
+  it.each(ADMIN_UIDS)("leaves cached content alone on a write to %s", async (uid) => {
+    await warm("/api/articles");
+    await warm("/api/editors");
+
+    await touch(uid);
+
+    expect((await agent().get("/api/articles")).get("x-cache")).toBe("HIT");
+    expect((await agent().get("/api/editors")).get("x-cache")).toBe("HIT");
+  });
+});
+
+describe("purge on writes to admin users with populateCreatorFields", () => {
+  beforeAll(async () => {
+    process.env.KEYS_PREFIX = undefined;
+    process.env.POPULATE_CREATOR_FIELDS = "true";
+    await setup();
+    // An editor created by the admin user, below the document service so
+    // creating it purges nothing.
+    const [admin] = await strapi.db.query("admin::user").findMany({ limit: 1 });
+    await strapi.db.query("api::writer.editor").create({
+      data: {
+        documentId: "purgeuncachedcreator",
+        name: "Created by an admin",
+        publishedAt: new Date(),
+        createdBy: admin.id,
+      },
+    });
+  });
+  afterAll(async () => {
+    delete process.env.POPULATE_CREATOR_FIELDS;
+    await teardown();
+  });
+
+  beforeEach(() => strapi.plugin("rest-cache").service("cacheStore").reset());
+
+  // The option makes createdBy/updatedBy public, so an admin user's name is in
+  // the editor's responses and a write to that user must purge them. This is
+  // why admin content types are not simply excluded.
+  it("purges a cached type that exposes its creator fields", async () => {
+    // The premise: the fixture really puts createdBy in the response.
+    const populated = await agent().get("/api/editors?populate=createdBy");
+    expect(populated.status).toBe(200);
+    expect(populated.body.data[0].createdBy).toMatchObject({ firstname: "admin" });
+
+    await warm("/api/editors");
+    await warm("/api/articles");
+
+    await touch("admin::user");
+
+    expect((await agent().get("/api/editors")).get("x-cache")).toBe("MISS");
+    // Articles keep their creator fields private.
+    expect((await agent().get("/api/articles")).get("x-cache")).toBe("HIT");
+  });
+
+  // A role is reachable from a user only through the private `roles`
+  // relation, so no response that carries a user carries its roles.
+  it("leaves it alone on a write to a role", async () => {
+    await warm("/api/editors");
+
+    await touch("admin::role");
+
+    expect((await agent().get("/api/editors")).get("x-cache")).toBe("HIT");
+  });
+});
