@@ -62,6 +62,27 @@ async function allKeys(cluster) {
   return per.flat().sort();
 }
 
+/**
+ * Its own cluster connection, with a few milliseconds of jitter on every
+ * command a write, a delete or a prune issues - as a busy network would add.
+ * Locally a round trip is far shorter than the gaps the races below need.
+ */
+async function jittered() {
+  const client = new Redis.Cluster(NODES);
+  await new Promise((resolve, reject) => {
+    client.once('ready', resolve);
+    client.once('error', reject);
+  });
+  for (const command of ['set', 'sadd', 'srem', 'unlink', 'exists', 'sscan']) {
+    const send = client[command].bind(client);
+    client[command] = async (...args) => {
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 3));
+      return send(...args);
+    };
+  }
+  return client;
+}
+
 (async () => {
   const cluster = new Redis.Cluster(NODES);
   await new Promise((resolve, reject) => {
@@ -115,6 +136,122 @@ async function allKeys(cluster) {
     await provider.clear();
     noStoreErrors();
     assert.deepStrictEqual(await allKeys(cluster), []);
+  });
+
+  // A purge racing a response being cached for the same key. On a cluster
+  // neither is one MULTI, so they interleave. With the purge unlinking first,
+  // UNLINK (purge) -> SET, SADD (write) -> SREM (purge) left a live entry
+  // missing from the tracking set: invisible to keys(), so no later purge could
+  // find it and it was served stale until maxAge. Every live entry must stay
+  // reachable through keys().
+  await check('delMany() racing set() never leaves a live entry keys() cannot see', async () => {
+    await flushAll(cluster);
+    const keys = Array.from({ length: 200 }, (_, i) => `/api/articles?page=${i}&`);
+    for (let round = 0; round < 20; round++) {
+      await Promise.all(keys.map((key) => provider.set(key, 'old', MAX_AGE)));
+      await Promise.all([
+        provider.delMany(keys),
+        ...keys.map((key) => provider.set(key, 'new', MAX_AGE)),
+      ]);
+    }
+    noStoreErrors();
+    const listed = new Set(await provider.keys());
+    const unseen = (await allKeys(cluster))
+      .filter((key) => key.startsWith('keyv:'))
+      .map((key) => key.slice('keyv:'.length))
+      .filter((key) => !listed.has(key));
+    assert.deepStrictEqual(unseen.length, 0, `${unseen.length} live entries missing from keys(), e.g. ${unseen[0]}`);
+  });
+
+  // The same race through del(), which goes through the cluster-safe delete.
+  // Locally a round trip is far shorter than the gap between a delete's two
+  // commands on a loaded network, so the race almost never shows. Here the
+  // deleting and the writing instance each get their own connection and a few
+  // milliseconds of jitter per command, as a busy network would add.
+  await check('del() racing set() never leaves a live entry keys() cannot see', async () => {
+    await flushAll(cluster);
+    const clients = [await jittered(), await jittered()];
+    const [deleter, writer] = clients.map((client) => {
+      const instance = new RedisCacheProvider(client, {});
+      instance.cache.stores[0].on('error', (error) => storeErrors.push(error.message));
+      return instance;
+    });
+    try {
+      const keys = Array.from({ length: 200 }, (_, i) => `/api/articles?page=${i}&`);
+      for (let round = 0; round < 20; round++) {
+        await Promise.all(keys.map((key) => provider.set(key, 'old', MAX_AGE)));
+        await Promise.all(
+          keys.flatMap((key) => [deleter.del(key), writer.set(key, 'new', MAX_AGE)])
+        );
+      }
+    } finally {
+      for (const client of clients) client.disconnect();
+    }
+    noStoreErrors();
+    const listed = new Set(await provider.keys());
+    const unseen = (await allKeys(cluster))
+      .filter((key) => key.startsWith('keyv:'))
+      .map((key) => key.slice('keyv:'.length))
+      .filter((key) => !listed.has(key));
+    assert.deepStrictEqual(unseen.length, 0, `${unseen.length} live entries missing from keys(), e.g. ${unseen[0]}`);
+  });
+
+  // An entry that expires is removed by Redis, but its tracking-set member is
+  // not: @keyv/redis only SREMs on an explicit delete, and the set itself has
+  // no lifetime. keys() reported the dead entry, and the set grew forever.
+  // keys() lists what the set holds; the prune is what removes such members.
+  await check('prune() untracks expired entries', async () => {
+    await flushAll(cluster);
+    await provider.set('/api/short', { short: true }, 50);
+    await provider.set('/api/long', { long: true }, MAX_AGE);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await provider.prune();
+    const listed = await provider.keys();
+    assert.deepStrictEqual(listed, ['/api/long'], `keys() returned ${JSON.stringify(listed)}`);
+    const tracked = await cluster.smembers('namespace:keyv');
+    assert.deepStrictEqual(tracked, ['keyv:/api/long'], `tracking set holds ${JSON.stringify(tracked)}`);
+    assert.deepStrictEqual(await provider.get('/api/long'), { long: true });
+  });
+
+  // The prune checks a member, SREMs it if its entry is gone, then checks
+  // again and re-adds any that came back. A response cached for that key
+  // between the first check and the SREM is untracked by the SREM, and only the
+  // re-check keeps it findable by purges. Responses here are cached for keys
+  // whose entries have expired - exactly the members a prune removes - while
+  // it runs.
+  await check('prune() racing set() never leaves a live entry keys() cannot see', async () => {
+    await flushAll(cluster);
+    const clients = [await jittered(), await jittered()];
+    const [pruner, writer] = clients.map((client) => {
+      const instance = new RedisCacheProvider(client, {});
+      instance.cache.stores[0].on('error', (error) => storeErrors.push(error.message));
+      return instance;
+    });
+    try {
+      const keys = Array.from({ length: 300 }, (_, i) => `/api/articles?page=${i}&`);
+      for (let round = 0; round < 10; round++) {
+        await flushAll(cluster);
+        // Tracked, with nothing behind them: entries that have expired.
+        await cluster.sadd('namespace:keyv', ...keys.map((key) => `keyv:${key}`));
+        // Writes spread over the few milliseconds the prune spends between
+        // its check and its SREM, rather than all landing before the check.
+        const later = (key) =>
+          new Promise((resolve) => setTimeout(resolve, Math.random() * 10)).then(() =>
+            writer.set(key, 'new', MAX_AGE)
+          );
+        await Promise.all([pruner.prune(), ...keys.map(later)]);
+        await writer.prune();
+      }
+    } finally {
+      for (const client of clients) client.disconnect();
+    }
+    noStoreErrors();
+    const listed = new Set(await provider.keys());
+    const unseen = (await allKeys(cluster))
+      .filter((key) => key.startsWith('keyv:'))
+      .map((key) => key.slice('keyv:'.length))
+      .filter((key) => !listed.has(key));
+    assert.deepStrictEqual(unseen.length, 0, `${unseen.length} live entries missing from keys(), e.g. ${unseen[0]}`);
   });
 
   // Without redis sets there is no tracking set to read, so keys() has to find

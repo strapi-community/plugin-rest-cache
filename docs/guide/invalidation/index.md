@@ -185,6 +185,19 @@ That race pre-dates this design and applies equally to the route middleware it
 replaced.
 ([#132](https://github.com/strapi-community/plugin-rest-cache/issues/132))
 
+**A purge wins against a read already in progress.** A cache miss that was
+reading the database when the write landed holds data from before the write.
+That response is still returned to whoever asked for it, but it is not stored
+and carries no `Cache-Control` or `ETag`, and requests that arrive after the
+purge do not wait on it. They read the database themselves. A response whose
+store was still being written when the purge listed the keys is removed again
+once the write lands. Only purges that match the in-progress request's key
+count, so writes to unrelated content types never stop a response from being
+cached. This tracking is per process: a purge on another instance can't see
+reads in progress here. A read that outlasts more than 1000 purges in the
+process is treated as purged; see
+[A purge ends the wait](../caching/index.md#a-purge-ends-the-wait).
+
 **A failed purge never fails the write.** If the provider is down or errors,
 the error is logged and the write completes. The cost is a stale entry until
 `maxAge`; the alternative — refusing writes because a cache is unwell — is
@@ -193,7 +206,10 @@ worse.
 ## What invalidation cannot see
 
 - **Writes that bypass the document service**, such as `strapi.db.query(...)`
-  or raw SQL. Nothing observes those.
+  or raw SQL, on your own content types. Nothing observes those. Cached
+  content types owned by a plugin are the exception: their `strapi.db.query`
+  writes do purge, because the plugins themselves write that way. See
+  [Plugin routes](../caching/custom-routes.md#how-plugin-routes-are-invalidated).
 - **Changes made outside this Strapi process**: another service writing to the
   same database, a restore from backup, a manual edit.
 - **Other instances, when using the memory provider.** Each instance caches and

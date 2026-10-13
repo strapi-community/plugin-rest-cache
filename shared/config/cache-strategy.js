@@ -41,7 +41,17 @@ module.exports = ({ env }) => ({
       env.int("CACHE_CONTROL_STALE_WHILE_REVALIDATE", 0) || null,
   },
   contentTypes: [
-    "api::article.article",
+    // An entry whose maxAge / hitpass are present but undefined, as
+    // `maxAge: env.int("SOME_UNSET_VAR")` produces. They must inherit exactly
+    // like omitted keys. Opt-in, so the other specs see the plain entry.
+    env.bool("ARTICLE_EXPLICIT_UNDEFINED", false)
+      ? {
+          contentType: "api::article.article",
+          maxAge: undefined,
+          hitpass: undefined,
+          injectDefaultRoutes: undefined,
+        }
+      : "api::article.article",
     // A content type whose singular name ("editor") differs from its parent
     // API ("writer"). See
     // https://github.com/strapi-community/plugin-rest-cache/issues/125
@@ -51,6 +61,29 @@ module.exports = ({ env }) => ({
     // Reaches article only through a dynamic zone. See
     // https://github.com/strapi-community/plugin-rest-cache/issues/232
     "api::page.page",
+    // A plugin-owned content type with a listed route, as documented in
+    // docs/guide/caching/custom-routes.md ("Plugin routes"). Opt-in so it does
+    // not change what the other specs see.
+    ...(env.bool("CACHE_PLUGIN_USERS", false)
+      ? [
+          {
+            contentType: "plugin::users-permissions.user",
+            injectDefaultRoutes: false,
+            routes: ["/api/users"],
+          },
+        ]
+      : []),
+    // Same, for a plugin that writes its content type through strapi.db.query
+    // only, never through the document service.
+    ...(env.bool("CACHE_PLUGIN_UPLOAD", false)
+      ? [
+          {
+            contentType: "plugin::upload.file",
+            injectDefaultRoutes: false,
+            routes: ["/api/upload/files"],
+          },
+        ]
+      : []),
     {
       contentType: "api::category.category",
       // Overridable so a test can tell it apart from the strategy's maxAge.
@@ -70,16 +103,43 @@ module.exports = ({ env }) => ({
         { path: "/api/categories/probe/raw", method: "GET" },
         { path: "/api/categories/probe/stream", method: "GET" },
         { path: "/api/categories/probe/with-cookie", method: "GET" },
+        { path: "/api/categories/probe/throwing-body", method: "GET" },
         // No maxAge, hitpass or keys of its own: all three must come from
         // this content type, not from the strategy. See
         // https://github.com/strapi-community/plugin-rest-cache/issues/230
-        { path: "/api/categories/probe/inherits", method: "GET" },
+        {
+          path: "/api/categories/probe/inherits",
+          method: "GET",
+          // Same switch: a listed route's undefined options inherit too.
+          ...(env.bool("ARTICLE_EXPLICIT_UNDEFINED", false)
+            ? { maxAge: undefined, hitpass: undefined }
+            : {}),
+        },
         {
           // The handler sets its own Cache-Control, chosen by ?value=, so the
           // query string has to be part of the key here.
           path: "/api/categories/probe/cache-control",
           method: "GET",
           keys: { useQueryParams: true, useHeaders: [], useAuth: true },
+        },
+        // Opt-in fixtures for purge patterns: an upper-case route path, and
+        // one route per parameter form a purge pattern has to resolve.
+        ...(env.bool("PURGE_ROUTE_FIXTURES", false)
+          ? [
+              { path: "/api/categories/bySlug/:slug", method: "GET" },
+              { path: "/api/categories/echo/one/:slug", method: "GET" },
+              { path: "/api/categories/echo/many/:slug+", method: "GET" },
+              { path: "/api/categories/echo/maybe/:slug?", method: "GET" },
+              { path: "/api/categories/echo/num/:id(\\d+)", method: "GET" },
+              { path: "/api/categories/echo/code/:code(\\D+)", method: "GET" },
+            ]
+          : []),
+        {
+          // Keyed on a query param and two headers, so every separator in a
+          // cache key is reachable from a request.
+          path: "/api/categories/probe/vary",
+          method: "GET",
+          keys: { useQueryParams: ["q"], useHeaders: ["x-a", "x-b"], useAuth: true },
         },
         {
           path: "/api/categories/slug/:slug+",
