@@ -40,8 +40,20 @@ function recordingClient({ isCluster }) {
   const client = {
     isCluster,
     issued,
+    // Enough of an ioredis client for @keyv/redis' constructor, so del() can
+    // run through the real adapter and makeClusterSafe.
+    options: {},
+    on() {},
     async smembers() {
       return [...members];
+    },
+    async sscan(_set, cursor, _count, size) {
+      // Pages of `size`, cursor = offset: enough to drive a multi-page pass.
+      const all = [...members];
+      const start = Number(cursor);
+      const next = start + Number(size);
+      client.issued.push({ cmd: 'sscan', cursor, keys: [] });
+      return [next >= all.length ? '0' : String(next), all.slice(start, next)];
     },
     async unlink(...keys) {
       issued.push({ cmd: 'unlink', keys: keys.flat() });
@@ -57,8 +69,12 @@ function recordingClient({ isCluster }) {
     },
     async srem(_set, ...keys) {
       issued.push({ cmd: 'srem', keys: keys.flat() });
-      for (const key of keys.flat()) members.delete(key);
+      // Runs before the members are removed: it stands for a write that
+      // landed between the prune's check and its SREM, whose SADD the SREM
+      // then undoes. Running it after would re-add the member itself, and the
+      // tests built on it would pass whatever the prune did.
       if (client.onSrem) client.onSrem();
+      for (const key of keys.flat()) members.delete(key);
       return keys.flat().length;
     },
     async sadd(_set, ...keys) {
@@ -212,23 +228,100 @@ async function check(name, fn) {
     assert.ok(keys.every((k) => !k.startsWith('keyv:')), 'keys should be unqualified');
   });
 
-  // Expiry removes an entry but not its tracking-set member, so keys() has to
-  // check what is still alive - and on a cluster the entries span hash slots,
-  // so each EXISTS must address one key.
-  await check('cluster: keys() drops expired entries, checking key by key', async () => {
+  // keys() is what every pattern purge runs on, on every content save. It
+  // used to check each tracking-set member with EXISTS before answering, which
+  // at 100k members turned a 60ms SMEMBERS into seconds. It must answer from
+  // SMEMBERS alone, whatever the background prune is doing.
+  await check('keys() answers from SMEMBERS without waiting on the prune', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    client.expire(qualified[0]);
+    // A prune that never gets past its first SSCAN.
+    client.sscan = () => {
+      client.issued.push({ cmd: 'sscan', keys: [] });
+      return new Promise(() => {});
+    };
+    const provider = makeProvider(client);
+
+    // A keys() that waited on the prune would never settle here.
+    const keys = await Promise.race([
+      provider.keys(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('keys() waited on the prune')), 1000)
+      ),
+    ]);
+    assert.strictEqual(keys.length, KEYS.length, `listed ${keys.length} of ${KEYS.length} members`);
+    const exists = client.issued.filter((c) => c.cmd === 'exists');
+    assert.strictEqual(exists.length, 0, `keys() issued ${exists.length} EXISTS`);
+  });
+
+  // The prune is triggered by keys() and set(), so it has to be rate limited
+  // or it would run on every purge anyway, just out of sight.
+  await check('keys() starts at most one prune per interval', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    const provider = makeProvider(client);
+
+    const passes = () => client.issued.filter((c) => c.cmd === 'sscan' && c.cursor === '0').length;
+    // Each pass here finishes within a turn of the event loop, so this also
+    // checks that a pass that has finished still counts against the interval.
+    for (let i = 0; i < 5; i++) {
+      await provider.keys();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.ok(passes() >= 1, 'keys() never started a prune');
+    assert.strictEqual(passes(), 1, `keys() started ${passes()} passes`);
+
+    // An explicit prune() runs regardless, and restarts the interval.
+    await provider.prune();
+    await provider.keys();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(passes(), 2, `${passes()} passes after an explicit prune()`);
+  });
+
+  // A background pass may already have scanned past a member, so prune() must
+  // not settle for it: it is what a caller awaits to get an exact set.
+  await check('prune() makes a pass of its own after one already running', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    const sscan = client.sscan;
+    let release;
+    // The background pass sees an empty first and only page, and waits.
+    client.sscan = (...args) => {
+      client.sscan = sscan;
+      client.issued.push({ cmd: 'sscan', cursor: '0', keys: [] });
+      return new Promise((resolve) => {
+        release = () => resolve(['0', []]);
+      });
+    };
+    const provider = makeProvider(client);
+
+    await provider.keys();
+    client.expire(qualified[0]);
+    const pruned = provider.prune();
+    release();
+    await pruned;
+    assert.ok(!(await client.smembers()).includes(qualified[0]), 'prune() reused the stale pass');
+  });
+
+  // Expiry removes an entry but not its tracking-set member, so the prune has
+  // to check what is still alive - and on a cluster the entries span hash
+  // slots, so each EXISTS must address one key.
+  await check('cluster: prune() untracks expired entries, checking key by key', async () => {
     const client = recordingClient({ isCluster: true });
     client.seed(qualified);
     client.expire(qualified[0]);
     const provider = makeProvider(client);
 
+    await provider.prune();
     const keys = await provider.keys();
-    assert.ok(!keys.includes(KEYS[0]), 'listed an expired entry');
+    assert.ok(!keys.includes(KEYS[0]), 'listed an expired entry after a prune');
     assert.strictEqual(keys.length, KEYS.length - 1, `listed ${keys.length} of ${KEYS.length - 1} live entries`);
 
     const offending = client.issued.filter(
       (c) => MULTI_KEY.has(c.cmd) && c.keys.length > 1
     );
-    assert.deepStrictEqual(offending, [], 'keys() issued a multi-key command');
+    assert.deepStrictEqual(offending, [], 'the prune issued a multi-key command');
     assert.strictEqual(
       client.issued.some((c) => c.cmd === 'multi'),
       false,
@@ -240,10 +333,10 @@ async function check(name, fn) {
     );
   });
 
-  // keys() checks a member, then untracks it. A response cached for that key
-  // in between - SET then SADD - must not end up untracked, or it is a live
-  // entry no purge can find.
-  await check('cluster: keys() keeps an entry written while it was being pruned', async () => {
+  // The prune checks a member, then untracks it. A response cached for that
+  // key in between - SET then SADD - must not end up untracked, or it is a
+  // live entry no purge can find.
+  await check('cluster: prune() keeps an entry written while it was being pruned', async () => {
     const client = recordingClient({ isCluster: true });
     client.seed(qualified);
     client.expire(qualified[0]);
@@ -253,12 +346,90 @@ async function check(name, fn) {
     };
     const provider = makeProvider(client);
 
-    const keys = await provider.keys();
-    assert.ok(keys.includes(KEYS[0]), 'the rewritten entry was not listed');
+    await provider.prune();
     assert.ok(
       (await client.smembers()).includes(qualified[0]),
       'the rewritten entry was left out of the tracking set'
     );
+  });
+
+  // After the SREM, a member is only safe again once the re-check and the
+  // re-add have both succeeded. If either fails, the prune cannot know whether
+  // a write landed in between, so it has to put every member it removed back
+  // - and it must never throw, because it runs behind purges and writes.
+  await check('prune() re-tracks what it removed when the re-check fails', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    client.expire(qualified[0]);
+    client.expire(qualified[1]);
+    client.onSrem = () => {
+      client.onSrem = null;
+      client.seed([qualified[0]]);
+      client.exists = async () => {
+        throw new Error('connection lost');
+      };
+    };
+    const provider = makeProvider(client);
+
+    await provider.prune();
+    const tracked = await client.smembers();
+    assert.ok(tracked.includes(qualified[0]), 'a possibly-live member was left untracked');
+  });
+
+  await check('prune() retries a failed re-add and never throws', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    client.expire(qualified[0]);
+    client.onSrem = () => {
+      client.onSrem = null;
+      client.seed([qualified[0]]);
+    };
+    const sadd = client.sadd;
+    let failures = 1;
+    client.sadd = async (...args) => {
+      if (failures-- > 0) throw new Error('connection lost');
+      return sadd(...args);
+    };
+    const provider = makeProvider(client);
+
+    await provider.prune();
+    assert.ok(
+      (await client.smembers()).includes(qualified[0]),
+      'the rewritten entry was left out of the tracking set'
+    );
+  });
+
+  await check('a prune that fails outright never reaches keys() or prune()', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    client.sscan = async () => {
+      throw new Error('connection lost');
+    };
+    const provider = makeProvider(client);
+
+    await provider.prune();
+    assert.strictEqual((await provider.keys()).length, KEYS.length);
+  });
+
+  // makeClusterSafe replaces @keyv/redis' delete(), which provider.del() goes
+  // through. It must untrack before it unlinks for the same reason delMany
+  // does: UNLINK (delete) -> SET, SADD (write) -> SREM (delete) leaves a live
+  // entry outside the tracking set. Asserted on the commands, rather than only
+  // by the live race in redis-cluster-live.cjs, which may not hit the window.
+  await check('cluster: del() untracks before it unlinks', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    const provider = new RedisCacheProvider(client, {});
+
+    await provider.del(KEYS[0]);
+
+    const order = client.issued.map((c) => c.cmd).filter((cmd) => cmd === 'srem' || cmd === 'unlink');
+    assert.deepStrictEqual(order, ['srem', 'unlink'], `issued ${order.join(' -> ')}`);
+    assert.ok(
+      client.issued.every((c) => !c.keys.length || c.keys.includes(qualified[0])),
+      `addressed the wrong key: ${JSON.stringify(client.issued)}`
+    );
+    assert.ok(!(await client.smembers()).includes(qualified[0]), 'still tracked after del()');
   });
 
   await check('standalone: delMany still batches into MULTI', async () => {
