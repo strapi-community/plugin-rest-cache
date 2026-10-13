@@ -146,12 +146,16 @@ replaced.
 
 **A purge wins against a read already in progress.** A cache miss that was
 reading the database when the write landed holds data from before the write.
-That response is still returned to whoever asked for it, but it is not stored,
-and requests that arrive after the purge do not wait on it. They read the
-database themselves. Only purges that match the in-progress request's key count,
-so writes to unrelated content types never stop a response from being cached.
-This tracking is per process: a purge on another instance can't see reads in
-progress here.
+That response is still returned to whoever asked for it, but it is not stored
+and carries no `Cache-Control` or `ETag`, and requests that arrive after the
+purge do not wait on it. They read the database themselves. A response whose
+store was still being written when the purge listed the keys is removed again
+once the write lands. Only purges that match the in-progress request's key
+count, so writes to unrelated content types never stop a response from being
+cached. This tracking is per process: a purge on another instance can't see
+reads in progress here. A read that outlasts more than 1000 purges in the
+process is treated as purged; see
+[A purge ends the wait](../caching/index.md#a-purge-ends-the-wait).
 
 **A failed purge never fails the write.** If the provider is down or errors,
 the error is logged and the write completes. The cost is a stale entry until
