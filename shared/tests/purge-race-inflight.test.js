@@ -35,6 +35,9 @@ const titles = (body) => body.data.map((a) => a.title);
 describe("purge racing an in-flight miss", () => {
   beforeAll(async () => {
     process.env.KEYS_PREFIX = undefined;
+    // On, so a response that wrongly heads for the cache is visible on the
+    // wire: Cache-Control is only emitted for responses being stored (#175).
+    process.env.CACHE_CONTROL_ENABLED = "true";
     await setup();
 
     await new Promise((resolve) => strapi.server.httpServer.listen(0, resolve));
@@ -48,7 +51,10 @@ describe("purge racing an in-flight miss", () => {
       return result;
     });
   });
-  afterAll(async () => await teardown());
+  afterAll(async () => {
+    delete process.env.CACHE_CONTROL_ENABLED;
+    await teardown();
+  });
 
   beforeEach(async () => {
     await strapi.plugin("rest-cache").service("cacheStore").reset();
@@ -62,7 +68,10 @@ describe("purge racing an in-flight miss", () => {
 
     slowReads = true;
     // A: misses, reads the origin, then stalls before storing.
-    const inFlight = fetch(`${baseUrl}/api/articles`).then((r) => r.json());
+    const inFlight = fetch(`${baseUrl}/api/articles`).then(async (r) => ({
+      headers: r.headers,
+      body: await r.json(),
+    }));
     await sleep(300);
 
     // The write (and its awaited purge) completes while A is still in flight.
@@ -142,6 +151,96 @@ describe("purge racing an in-flight miss", () => {
       await inFlight;
     } finally {
       store.set = set;
+    }
+
+    const later = await agent().get("/api/articles");
+    expect(titles(later.body)).toContain(newTitle);
+  });
+
+  // The post-store delete above would clean up after a raced body that was
+  // stored anyway, so a later read alone cannot tell whether the body was kept
+  // out of the cache or stored and then removed. In between, it was a HIT for
+  // anyone, and the raced response itself went out with Cache-Control and an
+  // ETag, telling browsers and CDNs to keep pre-write data where no purge can
+  // reach it (#175). Only the check before the store prevents both.
+  it("neither stores nor advertises a body read before the purge", async () => {
+    const store = strapi.plugin("rest-cache").service("cacheStore");
+    const set = store.set;
+    const stored = [];
+    store.set = (key, ...rest) => {
+      stored.push(key);
+      return set.call(store, key, ...rest);
+    };
+
+    let leader;
+    try {
+      const { inFlight } = await writeDuringInFlightRead(
+        `unadvertised-${Date.now()}`
+      );
+      leader = await inFlight;
+    } finally {
+      store.set = set;
+    }
+
+    expect(leader.headers.get("x-cache")).toBe("MISS");
+    expect({
+      cacheControl: leader.headers.get("cache-control"),
+      etag: leader.headers.get("etag"),
+    }).toEqual({ cacheControl: null, etag: null });
+    expect(stored.filter((key) => key.startsWith("/api/articles"))).toEqual([]);
+
+    // Control: an unraced miss on the same route does carry both, so their
+    // absence above is the guard and not the configuration.
+    const unraced = await agent().get("/api/articles");
+    expect(unraced.get("x-cache")).toBe("MISS");
+    expect(unraced.get("cache-control")).toBeDefined();
+    expect(unraced.get("etag")).toBeDefined();
+  });
+
+  // A purge lists the keys, then deletes the ones that match. A store landing
+  // between the two is not in the list, so the purge cannot delete it; only
+  // purgedSince can catch it, and only if the purge was recorded before the
+  // listing. Recorded after the delete instead, the purge is invisible to a
+  // leader that finishes inside that gap, which then keeps its pre-write body
+  // until maxAge. keys() is held open after listing to widen the gap enough to
+  // land in reliably.
+  it("does not keep a body stored between a purge's listing and its delete", async () => {
+    const newTitle = `listed-${Date.now()}`;
+    const [article] = await strapi
+      .documents(UID)
+      .findMany({ status: "published", limit: 1 });
+
+    // A draft-only change: the published body every read returns is unchanged
+    // until the publish below, so that publish is the only purge that matters.
+    await strapi.documents(UID).update({
+      documentId: article.documentId,
+      data: { title: newTitle },
+    });
+
+    const store = strapi.plugin("rest-cache").service("cacheStore");
+    const keys = store.keys;
+    store.keys = async (...args) => {
+      const listed = await keys.apply(store, args);
+      await sleep(1500);
+      return listed;
+    };
+
+    try {
+      slowReads = true;
+      // A: reads the pre-publish body, then stalls 800ms, so it stores while
+      // the publish's purge is holding its key list.
+      const inFlight = fetch(`${baseUrl}/api/articles`).then((r) => r.json());
+      await sleep(300);
+
+      await strapi.documents(UID).publish({ documentId: article.documentId });
+      slowReads = false;
+
+      const leader = await inFlight;
+      // Control: A really did read before the publish.
+      expect(titles(leader)).not.toContain(newTitle);
+    } finally {
+      store.keys = keys;
+      slowReads = false;
     }
 
     const later = await agent().get("/api/articles");
