@@ -174,10 +174,18 @@ export class NodeRedisStore extends EventEmitter {
       return (await this.client.unlink(name)) > 0;
     }
 
+    // Untrack first, then unlink, as the plugin-redis v2 path does on a
+    // cluster (#244). Without a MULTI a delete interleaves with a write of the
+    // same key, and unlinking first could run UNLINK (delete) -> SET, SADD
+    // (write) -> SREM (delete): a live entry missing from the tracking set,
+    // which keys() cannot list and so no purge can ever find. In this order the
+    // race leaves at worst a tracked key with nothing behind it, which the
+    // prune removes. An error between the two now leaves an untracked entry
+    // until its maxAge instead; makeClusterSafe in RedisCacheProvider has the
+    // trade-off. See https://github.com/strapi-community/plugin-rest-cache/issues/100
     if (this.isCluster) {
-      const removed = await this.client.unlink(name);
       await this.client.sRem(this._getNamespace(), name);
-      return removed > 0;
+      return (await this.client.unlink(name)) > 0;
     }
 
     const [removed] = await this.client
@@ -250,12 +258,14 @@ export class NodeRedisStore extends EventEmitter {
     if (!qualified.length) return;
     const set = this._getNamespace();
 
+    // Untracked before anything is unlinked, for the reason given in
+    // delete(): unlinking first loses entries to a racing write (#244).
     if (this.isCluster) {
-      for (const batch of chunks(qualified, UNLINK_CONCURRENCY)) {
-        await Promise.all(batch.map((key) => this.client.unlink(key)));
-      }
       for (const batch of chunks(qualified, CHUNK)) {
         await this.client.sRem(set, batch);
+      }
+      for (const batch of chunks(qualified, UNLINK_CONCURRENCY)) {
+        await Promise.all(batch.map((key) => this.client.unlink(key)));
       }
       return;
     }
