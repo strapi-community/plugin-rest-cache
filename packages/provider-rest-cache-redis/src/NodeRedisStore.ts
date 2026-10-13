@@ -78,13 +78,33 @@ export class NodeRedisStore extends EventEmitter {
 
   readonly opts: { dialect: 'redis'; url: string; useRedisSets: boolean };
 
-  readonly client: NodeRedisClient;
+  /**
+   * The client to use right now.
+   *
+   * plugin-redis v3 replaces the node-redis client of a cluster or sentinel
+   * connection when it has to reconnect from scratch, destroying the old one;
+   * `connection.native` is a getter for whichever is current. So the client is
+   * resolved on every use rather than kept: a reference taken at bootstrap
+   * would go on pointing at a destroyed client.
+   */
+  get client(): NodeRedisClient {
+    return this.resolveClient();
+  }
+
+  private readonly resolveClient: () => NodeRedisClient;
 
   readonly isCluster: boolean;
 
-  constructor(client: NodeRedisClient, options: NodeRedisStoreOptions) {
+  /**
+   * @param client the client, or a function returning the current one - pass
+   *   `() => connection.native` for a plugin-redis v3 connection.
+   */
+  constructor(
+    client: NodeRedisClient | (() => NodeRedisClient),
+    options: NodeRedisStoreOptions
+  ) {
     super();
-    this.client = client;
+    this.resolveClient = typeof client === 'function' ? client : () => client;
     this.isCluster = options.isCluster;
     // `dialect` is what makes Keyv treat this store as iterable.
     this.opts = {

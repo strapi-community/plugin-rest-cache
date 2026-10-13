@@ -108,7 +108,9 @@ export = {
 
       strapi.log.info('REST Cache provider "redis": connection established');
       return new RedisCacheProvider(connection.client, options, {
-        client: connection.native,
+        // Read on every use, never kept: v3 swaps the client of a cluster or
+        // sentinel connection that has to reconnect from scratch.
+        client: () => connection.native,
         isCluster: connection.type === 'cluster',
       });
     }

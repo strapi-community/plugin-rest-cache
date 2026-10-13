@@ -138,6 +138,31 @@ async function redisProviderUsesV3Native() {
   assert.strictEqual(instance.ready, true);
 }
 
+// plugin-redis v3 replaces the node-redis client of a cluster or sentinel
+// connection when it has to reconnect from scratch, and `connection.native`
+// is a getter for whichever client is current. A store that kept the client
+// it was first given would go on using a destroyed one.
+async function redisProviderFollowsV3ClientSwap() {
+  const { provider } = redisProviderModule();
+  const before = { isReady: true, async get() { return 'before'; } };
+  const after = { isReady: true, async get() { return 'after'; } };
+  let current = before;
+  const connection = { client: untouchable, type: 'cluster', ready: true };
+  Object.defineProperty(connection, 'native', { get: () => current, enumerable: false });
+  const strapi = v3Strapi({ whenReady: async () => connection });
+
+  const instance = await provider.init({}, { strapi });
+  const store = instance.cache.stores[0].opts.store;
+  assert.strictEqual(await store.get('k'), 'before');
+
+  current = after;
+  assert.strictEqual(store.client, after, 'the store kept the replaced client');
+  assert.strictEqual(await store.get('k'), 'after');
+
+  after.isReady = false;
+  assert.strictEqual(instance.ready, false, 'ready should follow the current client');
+}
+
 async function redisProviderDetectsV3Cluster() {
   const { provider } = redisProviderModule();
   const strapi = v3Strapi({
@@ -203,6 +228,7 @@ async function redisProviderKeepsV2Path() {
   await record('redis provider: module loads', redisProviderModuleLoads);
   await record('redis provider: uses plugin-redis v3 native client', redisProviderUsesV3Native);
   await record('redis provider: detects a v3 cluster from .type', redisProviderDetectsV3Cluster);
+  await record('redis provider: follows a v3 client swap', redisProviderFollowsV3ClientSwap);
   await record('redis provider: reports a v3 connection failure', redisProviderReportsV3Failure);
   await record('redis provider: keeps the plugin-redis v2 path', redisProviderKeepsV2Path);
 

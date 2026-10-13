@@ -87,7 +87,8 @@ const nodeRedisStoreOf = (cache: Cache): NodeRedisStore | undefined => {
  * See https://github.com/strapi-community/plugin-rest-cache/pull/239
  */
 export interface NativeRedisConnection {
-  client: NodeRedisClient;
+  /** The client, or a function returning the current one; see NodeRedisStore#client. */
+  client: NodeRedisClient | (() => NodeRedisClient);
   isCluster: boolean;
 }
 
