@@ -20,6 +20,13 @@ interface SharedResponse {
   status: number;
 }
 
+/** A request that is fetching from the origin, as seen by later requests. */
+interface InFlightRead {
+  shared: Promise<SharedResponse>;
+  /** cacheStore.generation when this read started, before calling the origin. */
+  generation: number;
+}
+
 /**
  * Requests currently fetching from the origin, keyed by cache key.
  *
@@ -32,7 +39,7 @@ interface SharedResponse {
  *
  * @see https://github.com/strapi-community/plugin-rest-cache/issues/130
  */
-const inFlight = new Map<CacheKey, Promise<SharedResponse>>();
+const inFlight = new Map<CacheKey, InFlightRead>();
 
 export default function createRecv(
   options: { cacheRouteConfig?: CacheRouteConfig },
@@ -140,11 +147,15 @@ export default function createRecv(
 
       // Cache miss. If an identical request is already fetching, wait for its
       // result instead of making our own trip to the origin.
+      //
+      // Not if a purge for this key has started since that request read the
+      // origin: it is carrying pre-write data, and a request that arrives after
+      // the write returned must see the write. Fetch independently instead.
       const pending = inFlight.get(cacheKey);
 
-      if (pending) {
+      if (pending && !store.purgedSince(pending.generation, cacheKey)) {
         try {
-          const shared = await pending;
+          const shared = await pending.shared;
 
           debug('strapi:plugin-rest-cache')(
             `[RECV] GET ${cacheKey} ${colors.yellow('MISS')} ${colors.grey('(coalesced)')}`
@@ -158,7 +169,8 @@ export default function createRecv(
           // request that went to the origin and never saw its response headers.
           // It is only ever handed a response that passed isCacheable - a
           // refused one releases us to fetch for ourselves below - but the
-          // store write may still fail, and staying quiet costs one client one
+          // store write may still fail, or be skipped because the read raced
+          // a purge, and staying quiet costs one client one
           // revalidation where guessing wrong tells a browser to cache
           // something the plugin did not.
           ctx.status = shared.status;
@@ -176,6 +188,11 @@ export default function createRecv(
     let publish: ((value: SharedResponse) => void) | undefined;
     let abandon: ((reason?: unknown) => void) | undefined;
 
+    // Read before the origin is called, so any purge that starts after this
+    // point is one this response may have raced. See purgedSince.
+    const generation = store.generation;
+    let ownRead: InFlightRead | undefined;
+
     if (lookup) {
       const shared = new Promise<SharedResponse>((resolve, reject) => {
         publish = resolve;
@@ -183,7 +200,8 @@ export default function createRecv(
       });
       // Nothing may be waiting yet, and an unobserved rejection would warn.
       shared.catch(() => {});
-      inFlight.set(cacheKey, shared);
+      ownRead = { shared, generation };
+      inFlight.set(cacheKey, ownRead);
     }
 
     try {
@@ -193,7 +211,10 @@ export default function createRecv(
       abandon?.(error);
       throw error;
     } finally {
-      if (lookup) {
+      // Only our own entry. A request that declined to join us after a purge
+      // has registered its own read under the same key, and removing it would
+      // let a third request stampede the origin alongside it.
+      if (ownRead && inFlight.get(cacheKey) === ownRead) {
         inFlight.delete(cacheKey);
       }
     }
@@ -251,6 +272,19 @@ export default function createRecv(
     // so waiters are not blocked on the store.
     publish?.({ body: ctx.body, status: ctx.status });
 
+    // A purge for this key started while we were reading the origin, so this
+    // body may predate the write that triggered it. Storing it now would undo
+    // the purge until maxAge. It is still returned to this caller, and to the
+    // requests that joined us before the purge, all of which were issued
+    // before the write returned. Requests arriving later fetch for
+    // themselves. No Cache-Control either: nothing is going into the cache.
+    if (store.purgedSince(generation, cacheKey)) {
+      debug('strapi:plugin-rest-cache')(
+        `[RECV] GET ${cacheKey} ${colors.grey('not cached: purged while in flight')}`
+      );
+      return;
+    }
+
     // Only now, past the verdict: this response is going into the cache, and
     // isCacheable has already read whatever Cache-Control the handler set.
     setCacheControl(ctx);
@@ -291,6 +325,13 @@ export default function createRecv(
       //
       // See https://github.com/strapi-community/plugin-rest-cache/issues/132
       await Promise.all(writes);
+
+      // A purge that started while those writes were in progress may have
+      // listed the keys before ours landed, and so not deleted it. Remove it
+      // ourselves rather than leave a pre-write body cached until maxAge.
+      if (store.purgedSince(generation, cacheKey)) {
+        await store.delMany([cacheKey, `${cacheKey}_etag`]);
+      }
     }
   };
 }

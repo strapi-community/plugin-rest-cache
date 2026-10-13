@@ -38,7 +38,8 @@ For every request on a cached route, in this order:
 4. **Look the key up.** A hit is returned immediately with status `200`, along
    with the stored ETag when there is one.
 5. **On a miss, check for an in-flight request** for the same key. If one
-   exists, wait for it instead of calling the origin again. See
+   exists, wait for it instead of calling the origin again, unless a purge for
+   this key has started since it read the origin. See
    [Request coalescing](#request-coalescing).
 6. **Call the origin** — the Strapi controller, and every middleware between it
    and the cache.
@@ -57,7 +58,7 @@ flowchart TD
     Etag -->|no| Lookup{Key in store?}
 
     Lookup -->|hit| Hit([X-Cache: HIT<br/>origin never called])
-    Lookup -->|miss| InFlight{Same key<br/>already fetching?}
+    Lookup -->|miss| InFlight{Same key already<br/>fetching, and not<br/>purged since?}
 
     InFlight -->|yes| Wait[Wait for that request]
     Wait --> Shared([X-Cache: MISS<br/>shared response])
@@ -205,6 +206,7 @@ holds for every response.
 | The body is a stream | A stream can be consumed once. A stored copy cannot be replayed, and the entry would poison every later request for that key. |
 | The response sets `Set-Cookie` | A cookie is issued to one caller. Replaying it hands that caller's session, CSRF token or consent state to everybody sharing the key. |
 | `Cache-Control` says `no-store` or `private` | An explicit instruction from the handler not to store the response. |
+| A purge for the key started while the response was being read | The body may predate the write that triggered the purge. See [A purge ends the wait](#a-purge-ends-the-wait). |
 
 The response is still returned to the client as normal — only the storing step
 is skipped. With `debug` on, the log line for the request states which of these
@@ -215,7 +217,8 @@ applied.
 <Badge type="tip" text="since 5.1.0" />
 
 When several requests for the same uncached key arrive at once, exactly one
-calls the origin. The rest wait on it and are served its result.
+calls the origin. The rest wait on it and are served its result, with one
+exception: a purge for that key. See [A purge ends the wait](#a-purge-ends-the-wait).
 
 Without this, N concurrent misses produce N origin queries — the thundering
 herd a cache exists to prevent. It fires exactly when it hurts most: on a cold
@@ -268,6 +271,30 @@ Two details worth knowing:
 
 Coalescing is keyed on the cache key, so it only ever merges requests that
 would have shared an entry anyway.
+
+### A purge ends the wait
+
+A request that is reading the origin when a write purges its key is holding
+data from before that write. Coalescing onto it would hand pre-write data to a
+client that asked after the write returned, and storing it would undo the purge
+until `maxAge`. So once a matching purge has started:
+
+- **Requests that arrive afterwards do not join it.** They call the origin
+  themselves, and the first of them becomes the request the rest wait on.
+- **Its response is not stored.** It is still returned to its own caller, and to
+  any request that joined it before the purge, but without `Cache-Control` or an
+  `ETag`, since nothing is going into the cache.
+
+Purges that cannot match the key, such as a write to an unrelated content type,
+do not count. This is tracked per process: a purge on another instance cannot
+see reads in progress here.
+
+The plugin remembers the last **1000** purges in each process, of any content
+type. A read that is still in progress after more than 1000 purges have
+started is treated as having raced one of them, because the record that would
+say otherwise is gone: it is neither joined nor stored. That needs a read slow
+enough to outlast a thousand writes, and it costs one uncached response, never
+a stale one.
 
 ## When the store is slow
 
