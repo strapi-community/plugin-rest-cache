@@ -99,6 +99,10 @@ const PurgeCacheButton = ({
           }),
       });
     } finally {
+      // The button stays mounted after the dialog closes, so a loading state
+      // left set here is what the next confirmation opens with: a disabled
+      // spinner as the only action, until a reload remounts it.
+      setIsLoading(false);
       setShowConfirmModal(false);
     }
   };
