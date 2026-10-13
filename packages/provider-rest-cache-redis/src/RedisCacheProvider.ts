@@ -71,6 +71,61 @@ interface KeyvRedisStore {
 const redisStoreOf = (cache: Cache): KeyvRedisStore =>
   cache.stores[0].opts.store as unknown as KeyvRedisStore;
 
+/** @keyv/redis' own read/write methods, which a cluster needs replaced. */
+interface KeyvRedisAdapter extends KeyvRedisStore {
+  redis: RedisClient & {
+    set(key: string, value: string, ...args: unknown[]): Promise<unknown>;
+    sadd(key: string, ...members: string[]): Promise<unknown>;
+  };
+  _getKeyName(key: string): string;
+  set(key: string, value: string | undefined, ttl?: number): Promise<void>;
+  delete(key: string): Promise<boolean>;
+}
+
+/**
+ * Make @keyv/redis' writes and deletes work on a Redis Cluster.
+ *
+ * @keyv/redis 3 writes an entry and adds it to the tracking set in one MULTI,
+ * and deletes them the same way. Those are two keys in different hash slots,
+ * which a cluster refuses ("All keys in the pipeline should belong to the same
+ * slots allocation group"). Keyv catches the failure and only emits it, so on
+ * a cluster set() reported success and nothing was ever cached.
+ *
+ * Here the same two commands are issued separately, leaving the same keys, the
+ * same PX lifetime and the same tracking set. The entry is written before it
+ * is tracked and untracked after it is removed, so an interruption leaves at
+ * worst an untracked entry that expires - never a tracked key with nothing
+ * behind it. Standalone servers keep the MULTI.
+ *
+ * See https://github.com/strapi-community/plugin-rest-cache/issues/100
+ */
+function makeClusterSafe(store: KeyvRedisAdapter): void {
+  const { redis } = store;
+
+  store.set = async (key, value, ttl) => {
+    if (value === undefined) return;
+    const name = store._getKeyName(key);
+    // ttl is milliseconds, as PX expects. Never converted.
+    if (typeof ttl === 'number') {
+      await redis.set(name, value, 'PX', ttl);
+    } else {
+      await redis.set(name, value);
+    }
+    if (store.opts?.useRedisSets !== false) {
+      await redis.sadd(store._getNamespace!(), name);
+    }
+  };
+
+  store.delete = async (key) => {
+    const name = store._getKeyName(key);
+    const removed = Number(await redis.unlink(name));
+    if (store.opts?.useRedisSets !== false) {
+      await redis.srem(store._getNamespace!(), name);
+    }
+    return removed > 0;
+  };
+}
+
 /** Everything accepted under `provider.options` in the plugin configuration. */
 export interface RedisCacheProviderOptions {
   /** Name of a connection declared on the redis plugin. */
@@ -90,14 +145,15 @@ export class RedisCacheProvider extends CacheProvider {
 
     const { ttl, ...adapterOptions } = options;
 
+    const store = new KeyvRedis(client, adapterOptions);
+    if (client.isCluster) {
+      makeClusterSafe(store);
+    }
+
     this.client = client;
     this.cache = createCache({
       ttl,
-      stores: [
-        new Keyv({
-          store: new KeyvRedis(client, adapterOptions),
-        }),
-      ],
+      stores: [new Keyv({ store })],
     });
   }
 
