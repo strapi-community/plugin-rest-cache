@@ -118,6 +118,13 @@ jobs:
 
       - run: pnpm run test:cluster:live
 
+      # The v2/v3 storage layout again, with both backends on their cluster
+      # code paths and the entries spread over every master. See
+      # https://github.com/strapi-community/plugin-rest-cache/pull/239
+      - run: pnpm run test:continuity
+        env:
+          REDIS_CLUSTER_NODES: 127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002
+
   linters:
     runs-on: ubuntu-latest
     strategy:
@@ -267,5 +274,14 @@ jobs:
       # such as purging with useRedisSets off.
       - name: Run provider checks against Redis
         run: pnpm run test:redis:live
+        env:
+          REDIS_URL: redis://127.0.0.1:6379/15
+
+      # The provider's plugin-redis v2 and v3 backends must share one storage
+      # layout, or an upgrade orphans every entry cached before it. Needs a
+      # real Redis, so it runs here rather than in provider_smoke. See
+      # https://github.com/strapi-community/plugin-rest-cache/pull/239
+      - name: Check v2/v3 key continuity
+        run: pnpm run test:continuity
         env:
           REDIS_URL: redis://127.0.0.1:6379/15

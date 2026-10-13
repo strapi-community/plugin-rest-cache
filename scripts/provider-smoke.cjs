@@ -81,12 +81,156 @@ async function redisProviderModuleLoads() {
   assert.strictEqual(typeof RedisCacheProvider, 'function');
 }
 
+/**
+ * The redis provider runs on plugin-redis v3's node-redis connection when v3 is
+ * installed, and on v2's ioredis client otherwise. Neither path needs a server
+ * to choose; these drive init() against stand-ins for each plugin version.
+ * See https://github.com/strapi-community/plugin-rest-cache/pull/239
+ */
+function redisProviderModule() {
+  return {
+    provider: require(path.join(ROOT, 'packages/provider-rest-cache-redis/dist/index.js')),
+    ...require(path.join(ROOT, 'packages/provider-rest-cache-redis/dist/NodeRedisStore.js')),
+  };
+}
+
+const quietStrapi = (extra) => ({ log: { info() {}, warn() {} }, ...extra });
+
+/** An ioredis client that must never be used. */
+const untouchable = new Proxy(
+  {},
+  {
+    get(_t, prop) {
+      if (prop === 'then') return undefined;
+      throw new Error(`touched the ioredis client (.${String(prop)})`);
+    },
+  }
+);
+
+function v3Strapi({ whenReady }) {
+  return quietStrapi({
+    redis: { connections: {} },
+    plugin: (name) =>
+      name === 'redis'
+        ? { service: (svc) => (svc === 'connection' ? { whenReady } : undefined) }
+        : undefined,
+  });
+}
+
+async function redisProviderUsesV3Native() {
+  const { provider, NodeRedisStore } = redisProviderModule();
+  const native = { isReady: true };
+  const asked = [];
+  const strapi = v3Strapi({
+    whenReady: async (name) => {
+      asked.push(name);
+      return { client: untouchable, native, type: 'standalone', ready: true };
+    },
+  });
+
+  const instance = await provider.init({ connection: 'cache' }, { strapi });
+  const store = instance.cache.stores[0].opts.store;
+
+  assert.deepStrictEqual(asked, ['cache'], 'should wait on the configured connection');
+  assert.ok(store instanceof NodeRedisStore, 'v3 should run on NodeRedisStore');
+  assert.strictEqual(store.client, native, 'v3 should use connections[name].native');
+  assert.strictEqual(store.isCluster, false);
+  assert.strictEqual(instance.ready, true);
+}
+
+// plugin-redis v3 replaces the node-redis client of a cluster or sentinel
+// connection when it has to reconnect from scratch, and `connection.native`
+// is a getter for whichever client is current. A store that kept the client
+// it was first given would go on using a destroyed one.
+async function redisProviderFollowsV3ClientSwap() {
+  const { provider } = redisProviderModule();
+  const before = { isReady: true, async get() { return 'before'; } };
+  const after = { isReady: true, async get() { return 'after'; } };
+  let current = before;
+  const connection = { client: untouchable, type: 'cluster', ready: true };
+  Object.defineProperty(connection, 'native', { get: () => current, enumerable: false });
+  const strapi = v3Strapi({ whenReady: async () => connection });
+
+  const instance = await provider.init({}, { strapi });
+  const store = instance.cache.stores[0].opts.store;
+  assert.strictEqual(await store.get('k'), 'before');
+
+  current = after;
+  assert.strictEqual(store.client, after, 'the store kept the replaced client');
+  assert.strictEqual(await store.get('k'), 'after');
+
+  after.isReady = false;
+  assert.strictEqual(instance.ready, false, 'ready should follow the current client');
+}
+
+async function redisProviderDetectsV3Cluster() {
+  const { provider } = redisProviderModule();
+  const strapi = v3Strapi({
+    whenReady: async () => ({ client: untouchable, native: { isReady: true }, type: 'cluster' }),
+  });
+
+  const instance = await provider.init({}, { strapi });
+  assert.strictEqual(instance.cache.stores[0].opts.store.isCluster, true);
+}
+
+async function redisProviderReportsV3Failure() {
+  const { provider } = redisProviderModule();
+  const strapi = v3Strapi({
+    whenReady: async () => {
+      throw new Error('connection "default" failed: ECONNREFUSED');
+    },
+  });
+
+  await assert.rejects(provider.init({}, { strapi }), (error) => {
+    assert.match(error.message, /Could not initialize REST Cache provider "redis"/);
+    assert.match(error.message, /ECONNREFUSED/);
+    return true;
+  });
+}
+
+async function redisProviderKeepsV2Path() {
+  const { provider, NodeRedisStore } = redisProviderModule();
+  const listeners = {};
+  const client = {
+    status: 'ready',
+    options: { family: 4 },
+    on(event, fn) {
+      (listeners[event] ||= []).push(fn);
+    },
+    once() {},
+    off() {},
+  };
+  // plugin-redis v2 registers no "connection" service.
+  const strapi = quietStrapi({
+    redis: { connections: { default: { client } } },
+    plugin: (name) => (name === 'redis' ? { service: () => undefined } : undefined),
+  });
+
+  // The v2 path logs through the global, as it always has.
+  global.strapi = strapi;
+  let instance;
+  try {
+    instance = await provider.init({}, { strapi });
+  } finally {
+    delete global.strapi;
+  }
+  const store = instance.cache.stores[0].opts.store;
+
+  assert.ok(!(store instanceof NodeRedisStore), 'v2 should stay on @keyv/redis');
+  assert.strictEqual(store.redis, client, 'v2 should use connections[name].client');
+}
+
 (async () => {
   console.log(`provider smoke test - Node ${process.version}\n`);
 
   await record('memory provider: set/get/keys/del', memoryProvider);
   await record('memory provider: honours maxAge in ms', memoryProviderRespectsTtl);
   await record('redis provider: module loads', redisProviderModuleLoads);
+  await record('redis provider: uses plugin-redis v3 native client', redisProviderUsesV3Native);
+  await record('redis provider: detects a v3 cluster from .type', redisProviderDetectsV3Cluster);
+  await record('redis provider: follows a v3 client swap', redisProviderFollowsV3ClientSwap);
+  await record('redis provider: reports a v3 connection failure', redisProviderReportsV3Failure);
+  await record('redis provider: keeps the plugin-redis v2 path', redisProviderKeepsV2Path);
 
   for (const [ok, name, detail] of results) {
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `\n          ${detail}` : ''}`);

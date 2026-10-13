@@ -2,6 +2,8 @@ import { createCache, type Cache } from 'cache-manager';
 import { CacheProvider } from '@strapi-community/plugin-rest-cache/types';
 import type { CacheKey, Milliseconds } from '@strapi-community/plugin-rest-cache/types';
 
+import { NodeRedisStore, type NodeRedisClient, type TrackingSet } from './NodeRedisStore';
+
 // keyv 4 exports the constructor directly, keyv 5 exports it as `.default`, and
 // @keyv/redis exposes only `.default` from its CJS build. Accept either shape:
 // which one we get depends on what else in the host application's dependency
@@ -221,7 +223,8 @@ interface PruneState {
 }
 
 /**
- * Prune bookkeeping, keyed by the @keyv/redis store.
+ * Prune bookkeeping, keyed by the store: @keyv/redis, or NodeRedisStore on
+ * plugin-redis v3.
  *
  * Not a field on the provider: the plugin freezes the instance it gets back,
  * so it could never be written after construction.
@@ -253,6 +256,31 @@ function prunable(store: KeyvRedisStore): store is KeyvRedisStore & { redis: Red
 }
 
 /**
+ * The tracking set of @keyv/redis on plugin-redis v2's ioredis client, as the
+ * prune drives it. The same commands the prune always issued there; v3's
+ * node-redis store provides its own (NodeRedisStore#trackingSet).
+ */
+function ioredisTrackingSet(redis: RedisClient, set: string): TrackingSet {
+  return {
+    sscan: (cursor, count) => redis.sscan!(set, cursor, 'COUNT', count),
+    existing: (keys) => existing(redis, keys),
+    srem: (members) => redis.srem(set, ...members),
+    sadd: (members) => redis.sadd(set, ...members),
+  };
+}
+
+/**
+ * The tracking set to prune, on whichever store the cache runs on, or
+ * undefined when it keeps none this provider knows how to prune.
+ */
+function trackingSetOf(store: object): TrackingSet | undefined {
+  if (store instanceof NodeRedisStore) return store.trackingSet();
+  const keyvRedis = store as KeyvRedisStore;
+  if (!prunable(keyvRedis)) return undefined;
+  return ioredisTrackingSet(keyvRedis.redis, keyvRedis._getNamespace!());
+}
+
+/**
  * Put members back in the tracking set, trying twice.
  *
  * Re-tracking a member whose entry is gone is harmless, so this is called with
@@ -260,10 +288,10 @@ function prunable(store: KeyvRedisStore): store is KeyvRedisStore & { redis: Red
  * purges and writes, and a member it could not restore is the one residual
  * case documented on untrackDead.
  */
-async function retrack(redis: RedisClient, set: string, members: string[]): Promise<void> {
+async function retrack(tracking: TrackingSet, members: string[]): Promise<void> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await redis.sadd(set, ...members);
+      await tracking.sadd(members);
       return;
     } catch {
       // Tried again once; see above.
@@ -289,23 +317,23 @@ async function retrack(redis: RedisClient, set: string, members: string[]): Prom
  * script would close it on a standalone server, but not on a cluster, where
  * the entries live in other slots than the set.
  */
-async function untrackDead(redis: RedisClient, set: string, members: string[]): Promise<void> {
-  const found = await existing(redis, members);
+async function untrackDead(tracking: TrackingSet, members: string[]): Promise<void> {
+  const found = await tracking.existing(members);
   const dead = members.filter((_, i) => !found[i]);
   if (!dead.length) return;
 
   try {
     // One key, the set, so a batched SREM is slot-safe on a cluster too.
-    await redis.srem(set, ...dead);
+    await tracking.srem(dead);
   } catch {
     // It may still have applied; the re-check below decides.
   }
 
   // existing() reports every member it could not check as live, so a failed
   // re-check re-tracks all of them.
-  const recheck = await existing(redis, dead);
+  const recheck = await tracking.existing(dead);
   const rewritten = dead.filter((_, i) => recheck[i]);
-  if (rewritten.length) await retrack(redis, set, rewritten);
+  if (rewritten.length) await retrack(tracking, rewritten);
 }
 
 /**
@@ -327,13 +355,13 @@ async function untrackDead(redis: RedisClient, set: string, members: string[]): 
  *
  * See https://github.com/strapi-community/plugin-rest-cache/issues/131
  */
-async function pruneTrackingSet(redis: RedisClient, set: string): Promise<void> {
+async function pruneTrackingSet(tracking: TrackingSet): Promise<void> {
   try {
     let cursor = '0';
     do {
-      const [next, batch] = await redis.sscan!(set, cursor, 'COUNT', PRUNE_BATCH);
+      const [next, batch] = await tracking.sscan(cursor, PRUNE_BATCH);
       cursor = next;
-      if (batch.length) await untrackDead(redis, set, batch);
+      if (batch.length) await untrackDead(tracking, batch);
     } while (cursor !== '0');
   } catch {
     // See above: the next pass picks up where this one could not.
@@ -349,18 +377,38 @@ async function pruneTrackingSet(redis: RedisClient, set: string): Promise<void> 
  * members took a pattern purge from ~70ms to 0.5s standalone and over 2s on a
  * cluster, on every content save.
  */
-function startPrune(store: KeyvRedisStore, interval: number): Promise<void> | null {
-  if (!prunable(store)) return null;
+function startPrune(store: object, interval: number): Promise<void> | null {
+  const tracking = trackingSetOf(store);
+  if (!tracking) return null;
 
   const state = pruneStateOf(store);
   if (state.running) return state.running;
   if (Date.now() - state.lastStarted < interval) return null;
 
   state.lastStarted = Date.now();
-  state.running = pruneTrackingSet(store.redis, store._getNamespace!()).finally(() => {
+  state.running = pruneTrackingSet(tracking).finally(() => {
     state.running = null;
   });
   return state.running;
+}
+
+/** The store, when the cache runs on plugin-redis v3's node-redis client. */
+const nodeRedisStoreOf = (cache: Cache): NodeRedisStore | undefined => {
+  const store: unknown = cache.stores[0].opts.store;
+  return store instanceof NodeRedisStore ? store : undefined;
+};
+
+/**
+ * plugin-redis v3's node-redis connection, `connections[name].native`.
+ *
+ * When given, the cache runs on it through NodeRedisStore. Without it the
+ * provider runs on @keyv/redis 3 and the ioredis client, as on plugin-redis v2.
+ * See https://github.com/strapi-community/plugin-rest-cache/pull/239
+ */
+export interface NativeRedisConnection {
+  /** The client, or a function returning the current one; see NodeRedisStore#client. */
+  client: NodeRedisClient | (() => NodeRedisClient);
+  isCluster: boolean;
 }
 
 /** Everything accepted under `provider.options` in the plugin configuration. */
@@ -377,14 +425,35 @@ export class RedisCacheProvider extends CacheProvider {
 
   private readonly cache: Cache;
 
-  constructor(client: RedisClient, options: RedisCacheProviderOptions) {
+  /**
+   * @param client the ioredis client: plugin-redis v2's connection, or v3's
+   *   deprecated ioredis-compatible shim. Kept as `client` for anyone typed
+   *   against it; with `native` given it is never used.
+   * @param native plugin-redis v3's node-redis connection, when there is one.
+   */
+  constructor(
+    client: RedisClient,
+    options: RedisCacheProviderOptions,
+    native?: NativeRedisConnection
+  ) {
     super();
 
     const { ttl, ...adapterOptions } = options;
 
-    const store = new KeyvRedis(client, adapterOptions);
-    if (client.isCluster) {
-      makeClusterSafe(store);
+    // On plugin-redis v3 the ioredis client is only its deprecated shim, so
+    // @keyv/redis is never built over it: NodeRedisStore runs on `.native`.
+    let store: unknown;
+    if (native) {
+      store = new NodeRedisStore(native.client, {
+        isCluster: native.isCluster,
+        useRedisSets: adapterOptions.useRedisSets !== false,
+      });
+    } else {
+      const keyvRedis = new KeyvRedis(client, adapterOptions);
+      if (client.isCluster) {
+        makeClusterSafe(keyvRedis);
+      }
+      store = keyvRedis;
     }
 
     this.client = client;
@@ -440,6 +509,16 @@ export class RedisCacheProvider extends CacheProvider {
 
   async delMany(keys: Array<CacheKey | string>): Promise<void> {
     if (!keys.length) return;
+
+    const nodeStore = nodeRedisStoreOf(this.cache);
+    if (nodeStore?.opts.useRedisSets && nodeStore.namespace) {
+      await nodeStore.unlinkTracked(keys.map((key) => `${nodeStore.namespace}:${key}`));
+      return;
+    }
+    if (nodeStore) {
+      await this.cache.mdel(keys as string[]);
+      return;
+    }
 
     const store = redisStoreOf(this.cache);
     const namespace = store._getNamespace?.();
@@ -511,6 +590,25 @@ export class RedisCacheProvider extends CacheProvider {
     // trip here.
     //
     // See https://github.com/strapi-community/plugin-rest-cache/issues/131
+    const nodeStore = nodeRedisStoreOf(this.cache);
+    if (nodeStore) {
+      // The same keys, found the same way, as on @keyv/redis below: by their
+      // `sets:` names when redis sets are off (#245), otherwise from the
+      // tracking set, pruned in the background (#131).
+      const prefix = `${nodeStore.namespace}:`;
+      const unqualified = (key: string) =>
+        key.startsWith(prefix) ? key.slice(prefix.length) : key;
+
+      if (!nodeStore.opts.useRedisSets) {
+        const named = `sets:${nodeStore._getNamespace()}:`;
+        return (await nodeStore.namedKeys()).map((key) => unqualified(key.slice(named.length)));
+      }
+
+      const members = await nodeStore.trackedKeys();
+      startPrune(nodeStore, PRUNE_INTERVAL);
+      return members.map(unqualified);
+    }
+
     const store = redisStoreOf(this.cache);
     const namespace = store._getNamespace?.();
 
@@ -578,6 +676,12 @@ export class RedisCacheProvider extends CacheProvider {
   }
 
   async clear(): Promise<void> {
+    // NodeRedisStore.clear() is already slot-safe on a cluster.
+    if (nodeRedisStoreOf(this.cache)) {
+      await this.cache.clear();
+      return;
+    }
+
     const store = redisStoreOf(this.cache);
 
     // @keyv/redis's clear() unlinks every key in a single multi-key command,
@@ -593,6 +697,11 @@ export class RedisCacheProvider extends CacheProvider {
   }
 
   get ready(): boolean {
+    const nodeStore = nodeRedisStoreOf(this.cache);
+    if (nodeStore) {
+      return nodeStore.ready;
+    }
+
     const client = redisStoreOf(this.cache).redis;
     return client.status === 'ready';
   }
