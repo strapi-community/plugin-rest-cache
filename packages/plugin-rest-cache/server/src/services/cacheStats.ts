@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import type { CachePluginHitpass } from '../types/common';
 import type { CacheSummary, ContentTypeStats } from '../types/api';
 import type { RestCachePluginConfig } from '../types/config';
+import { unkeyedAuthenticatedRoutes } from '../utils/config/unkeyedAuthenticatedRoutes';
 
 export type { CacheSummary, ContentTypeStats };
 
@@ -55,6 +56,11 @@ export default function createCacheStatsService({
             maxAge: conf?.maxAge,
             hitpass: (conf?.hitpass as CachePluginHitpass | boolean) !== false,
             keysAuthIdentity: conf?.keys?.useAuth === true,
+            // Per route, on resolved values - the same predicate as the boot
+            // warning. `hitpass` and `keysAuthIdentity` above describe the
+            // content type's own settings, which a route can differ from in
+            // both directions, so they cannot answer this on their own.
+            unkeyedAuthenticatedRoutes: unkeyedAuthenticatedRoutes(conf?.routes ?? []),
             routes: (conf?.routes ?? [])
               .filter((route) => route.method === 'GET')
               .map((route) => route.path as string),

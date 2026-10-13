@@ -273,10 +273,10 @@ tokens carry different permissions.
 Cache that without `useAuth` and the first caller to miss decides what everyone
 else sees, until the entry expires.
 
-The server logs a warning at boot when it finds a content type with
-`hitpass: false` and no `keys.useAuth`, naming the content type. The admin
-dashboard shows the same thing as a **Shared across callers** badge, because
-nobody reads boot logs.
+The server logs a warning at boot when it finds a GET route that resolved to
+`hitpass: false` with no `keys.useAuth`, naming the content type and the routes.
+The admin dashboard shows the same thing as a **Shared across callers** badge,
+because nobody reads boot logs.
 
 :::: code-group
 

@@ -119,8 +119,16 @@ const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => 
           // two people authorised for the same route share one entry. The
           // server warns about this at boot; surface it where someone will
           // actually see it.
-          const sharesAuthenticatedEntries =
-            contentType.hitpass === false && !contentType.keysAuthIdentity;
+          //
+          // From the server's per-route list, which is what the boot warning
+          // reads. The content type's own hitpass and keys missed a listed
+          // route that sets hitpass: false itself, and flagged content types
+          // whose listed routes all keep the strategy's bypass (#230). The
+          // old expression stays only for a server that does not send the
+          // list.
+          const sharesAuthenticatedEntries = contentType.unkeyedAuthenticatedRoutes
+            ? contentType.unkeyedAuthenticatedRoutes.length > 0
+            : contentType.hitpass === false && !contentType.keysAuthIdentity;
 
           return (
             <Tr key={contentType.uid}>

@@ -120,9 +120,9 @@ merely useless: `useAuth` adds a component to keys that are never written,
 because `hitpass` bypassed them.
 
 ::: warning The server tells you when you get this wrong
-Strapi logs a warning at boot naming any content type with `hitpass: false` and
-no `keys.useAuth`, and the admin dashboard shows it as a **Shared across
-callers** badge on that content type's row. If you see either, treat it as a
+Strapi logs a warning at boot naming any content type with a GET route that
+resolved to `hitpass: false` and no `keys.useAuth`, and the admin dashboard
+shows it as a **Shared across callers** badge on that content type's row. If you see either, treat it as a
 data-exposure bug rather than a configuration nit.
 :::
 
