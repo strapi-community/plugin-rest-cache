@@ -28,14 +28,31 @@ async function warm() {
   expect(second.get("x-cache")).toBe("HIT");
 }
 
+const purgeByParams = async (params, wildcard = false) => {
+  const regExps = strapi
+    .plugin("rest-cache")
+    .service("cacheConfig")
+    .getCacheKeysRegexp(CATEGORY, params, wildcard);
+  await strapi.plugin("rest-cache").service("cacheStore").clearByRegexp(regExps);
+};
+
+const warmPath = async (path) => {
+  const first = await agent().get(path);
+  expect(first.status).toBe(200);
+  const second = await agent().get(path);
+  expect(second.get("x-cache")).toBe("HIT");
+};
+
+const cacheState = async (path) => (await agent().get(path)).get("x-cache");
+
 describe("purge patterns for custom routes", () => {
   beforeAll(async () => {
     process.env.KEYS_PREFIX = undefined;
-    process.env.CASE_ROUTE = "true";
+    process.env.PURGE_ROUTE_FIXTURES = "true";
     await setup();
   });
   afterAll(async () => {
-    delete process.env.CASE_ROUTE;
+    delete process.env.PURGE_ROUTE_FIXTURES;
     await teardown();
   });
 
@@ -98,20 +115,6 @@ describe("purge patterns for custom routes", () => {
       }
     });
 
-    const purgeByParams = async (params) => {
-      const regExps = strapi
-        .plugin("rest-cache")
-        .service("cacheConfig")
-        .getCacheKeysRegexp(CATEGORY, params);
-      await strapi.plugin("rest-cache").service("cacheStore").clearByRegexp(regExps);
-    };
-
-    const warmPath = async (path) => {
-      await agent().get(path);
-      const second = await agent().get(path);
-      expect(second.get("x-cache")).toBe("HIT");
-    };
-
     it("purges the entry for an upper-case param value", async () => {
       // A route path that is already lower-case, so only the param is at stake.
       const path = "/api/categories/slug/News";
@@ -140,6 +143,121 @@ describe("purge patterns for custom routes", () => {
 
       const after = await agent().get("/api/categories/slug/news");
       expect(after.get("x-cache")).toBe("HIT");
+    });
+  });
+
+  /**
+   * Every parameter form path-to-regexp accepts has to turn into a pattern that
+   * matches the keys the route actually stores. Each of these was a pattern
+   * that matched nothing, or matched the wrong keys:
+   * - `:slug+` was matched as a single segment, so `/many/a/b` never purged;
+   * - `:slug?` left its `?` in the pattern, so a wildcard required the `/`
+   *   the bare key does not have, and a targeted `abc` became `abc?`, which
+   *   also purged `ab`;
+   * - `:id(\\d+)` was used as regexp source to find itself, matched nothing,
+   *   and stayed in the pattern as literal text.
+   *
+   * Wildcard and targeted patterns are tested separately, through
+   * getCacheKeysRegexp + clearByRegexp, for the reason given above.
+   */
+  describe("parameter forms", () => {
+    it("purges every segment of a repeatable param on a wildcard purge", async () => {
+      await warmPath("/api/categories/echo/many/a/b");
+
+      await purgeByParams({}, true);
+
+      expect(await cacheState("/api/categories/echo/many/a/b")).toBe("MISS");
+    });
+
+    it("purges the bare path of an optional param on a wildcard purge", async () => {
+      await warmPath("/api/categories/echo/maybe");
+      await warmPath("/api/categories/echo/maybe/x");
+
+      await purgeByParams({}, true);
+
+      expect(await cacheState("/api/categories/echo/maybe")).toBe("MISS");
+      expect(await cacheState("/api/categories/echo/maybe/x")).toBe("MISS");
+    });
+
+    it("purges only the given value of an optional param", async () => {
+      await warmPath("/api/categories/echo/maybe/abc");
+      await warmPath("/api/categories/echo/maybe/ab");
+
+      await purgeByParams({ slug: "abc" });
+
+      expect(await cacheState("/api/categories/echo/maybe/abc")).toBe("MISS");
+      expect(await cacheState("/api/categories/echo/maybe/ab")).toBe("HIT");
+    });
+
+    it("purges a regex-constrained param on a wildcard purge", async () => {
+      await warmPath("/api/categories/echo/num/42");
+
+      await purgeByParams({}, true);
+
+      expect(await cacheState("/api/categories/echo/num/42")).toBe("MISS");
+    });
+
+    // The constraint is kept in the wildcard pattern, which is lower-cased
+    // afterwards. Lower-casing the letter of an escape would turn `\D` (not a
+    // digit) into `\d` (a digit), and this entry would never be purged.
+    it("keeps an escape in a constraint when lower-casing the pattern", async () => {
+      await warmPath("/api/categories/echo/code/abc");
+
+      await purgeByParams({}, true);
+
+      expect(await cacheState("/api/categories/echo/code/abc")).toBe("MISS");
+    });
+  });
+
+  /**
+   * A key's path is the request path as it arrived: percent-encoded, then
+   * lower-cased. Params are what code has to hand - the slug as stored, not
+   * as a browser put it on the wire - so `café` and `a b` never matched the
+   * `caf%c3%a9` and `a%20b` they were cached under.
+   */
+  describe("param values and URL encoding", () => {
+    it("matches a non-ASCII value against its encoded key", async () => {
+      await warmPath("/api/categories/echo/one/caf%C3%A9");
+
+      await purgeByParams({ slug: "café" });
+
+      expect(await cacheState("/api/categories/echo/one/caf%C3%A9")).toBe("MISS");
+    });
+
+    it("encodes an upper-case non-ASCII value before lower-casing it", async () => {
+      // `É` is %C3%89. Lower-casing the character first would give `é`,
+      // %C3%A9, which is a different key.
+      await warmPath("/api/categories/echo/one/CAF%C3%89");
+
+      await purgeByParams({ slug: "CAFÉ" });
+
+      expect(await cacheState("/api/categories/echo/one/CAF%C3%89")).toBe("MISS");
+    });
+
+    it("matches a value with a space against its encoded key", async () => {
+      await warmPath("/api/categories/echo/one/a%20b");
+
+      await purgeByParams({ slug: "a b" });
+
+      expect(await cacheState("/api/categories/echo/one/a%20b")).toBe("MISS");
+    });
+
+    it("still matches a value that is passed already encoded", async () => {
+      await warmPath("/api/categories/echo/one/caf%C3%A9");
+
+      await purgeByParams({ slug: "caf%C3%A9" });
+
+      expect(await cacheState("/api/categories/echo/one/caf%C3%A9")).toBe("MISS");
+    });
+
+    // A string replacement reads `$&` as "the matched text", which would put
+    // `:slug` back into the pattern and drop it as unresolved.
+    it("inserts a value containing `$&` literally", async () => {
+      await warmPath("/api/categories/echo/one/a$&b");
+
+      await purgeByParams({ slug: "a$&b" });
+
+      expect(await cacheState("/api/categories/echo/one/a$&b")).toBe("MISS");
     });
   });
 });

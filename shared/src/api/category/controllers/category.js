@@ -52,6 +52,14 @@ module.exports = createCoreController(
       ctx.body = { inherits: true, at: Date.now() };
     },
 
+    /**
+     * Answers any parameters with 200, so purge-pattern fixtures can cache a
+     * value without a row to back it.
+     */
+    async echo(ctx) {
+      ctx.body = { params: ctx.params, at: Date.now() };
+    },
+
     async findBySlug(ctx) {
       const { slug } = ctx.params;
       const { query } = ctx;

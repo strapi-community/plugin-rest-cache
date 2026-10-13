@@ -14,6 +14,34 @@ module.exports = {
       path: "/categories/bySlug/:slug",
       handler: "category.findBySlug",
     },
+    // Fixtures for purge patterns, one per parameter form: plain,
+    // repeatable, optional and regex-constrained. The handler echoes, so any
+    // value answers 200 and is cached without a matching row.
+    {
+      method: "GET",
+      path: "/categories/echo/one/:slug",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/many/:slug+",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/maybe/:slug?",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/num/:id(\\d+)",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/code/:code(\\D+)",
+      handler: "category.echo",
+    },
     // Fixtures for responses the cache must refuse to buffer. See
     // https://github.com/strapi-community/plugin-rest-cache/issues/133
     {
