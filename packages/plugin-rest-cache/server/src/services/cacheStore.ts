@@ -2,8 +2,8 @@ import type { Core } from '@strapi/strapi';
 import debug from 'debug';
 
 import colors from '../utils/colors';
-import { serialize } from '../utils/store/serialize';
-import { deserialize } from '../utils/store/deserialize';
+import { serialize, type CacheEntryMeta } from '../utils/store/serialize';
+import { deserializeEntry, type CacheEntry } from '../utils/store/deserialize';
 import { withTimeout } from '../utils/store/withTimeout';
 import type { CacheProvider } from '../types';
 import type { CacheKey, ContentTypeUID, Milliseconds } from '../types/common';
@@ -21,11 +21,18 @@ import type { RestCachePluginConfig } from '../types/config';
  */
 export interface CacheStoreService {
   init(newProvider: CacheProvider): Promise<void>;
+  /** The stored body alone. */
   get(key: CacheKey | string): Promise<unknown>;
+  /**
+   * The stored body together with what was kept about the response, such as
+   * its Content-Type. `get` is unchanged so existing callers are unaffected.
+   */
+  getEntry(key: CacheKey | string): Promise<CacheEntry | null>;
   set(
     key: CacheKey | string,
     val: unknown,
-    maxAge?: Milliseconds | number
+    maxAge?: Milliseconds | number,
+    meta?: CacheEntryMeta
   ): Promise<unknown>;
   del(key: CacheKey | string): Promise<unknown>;
   delMany(keys: Array<CacheKey | string>): Promise<unknown>;
@@ -94,6 +101,27 @@ export default function createCacheStoreService({
   const hasPrefix = (key: string): boolean => key.startsWith(keysPrefix);
   const stripPrefix = (key: string): string => key.slice(keysPrefix.length);
 
+  /**
+   * Shared by get and getEntry. A plain function rather than `this.getEntry`,
+   * because get used not to depend on `this`, and a caller that detached it -
+   * `const { get } = cacheStore` - must keep working.
+   */
+  const readEntry = async (key: CacheKey | string): Promise<CacheEntry | null> => {
+    if (unusable()) return null;
+
+    return withTimeout(
+      async () => deserializeEntry((await provider.get(`${keysPrefix}${key}`)) as string),
+      getTimeout
+    ).catch((error) => {
+      if (error?.message === 'timeout') {
+        strapi.log.error(`REST Cache provider timed-out after ${getTimeout}ms.`);
+        return null;
+      }
+
+      return logProviderError(error);
+    });
+  };
+
   return {
     async init(newProvider) {
       provider = newProvider;
@@ -101,26 +129,18 @@ export default function createCacheStoreService({
     },
 
     async get(key) {
-      if (unusable()) return null;
+      const entry = await readEntry(key);
 
-      return withTimeout(
-        async () => deserialize((await provider.get(`${keysPrefix}${key}`)) as string),
-        getTimeout
-      ).catch((error) => {
-        if (error?.message === 'timeout') {
-          strapi.log.error(`REST Cache provider timed-out after ${getTimeout}ms.`);
-          return null;
-        }
-
-        return logProviderError(error);
-      });
+      return entry ? entry.data : null;
     },
 
-    async set(key, val, maxAge = 3600000) {
+    getEntry: readEntry,
+
+    async set(key, val, maxAge = 3600000, meta = {}) {
       if (unusable()) return null;
 
       try {
-        return provider.set(`${keysPrefix}${key}`, serialize(val), maxAge);
+        return provider.set(`${keysPrefix}${key}`, serialize(val, meta), maxAge);
       } catch (error) {
         return logProviderError(error);
       }

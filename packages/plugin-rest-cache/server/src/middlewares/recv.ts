@@ -18,7 +18,44 @@ import type { RestCachePluginConfig } from '../types/config';
 interface SharedResponse {
   body: unknown;
   status: number;
+  /** See {@link typeToKeep}. */
+  type?: string;
 }
+
+/**
+ * The Content-Type to store and replay with this response, if Koa would not
+ * arrive at the same one by itself.
+ *
+ * Replaying a body means assigning it to ctx.body, and Koa then guesses the
+ * type from it. For an object that guess is JSON - which is what Koa set on the
+ * MISS too, unconditionally - so JSON entries need nothing kept and stay
+ * exactly the shape earlier versions wrote. For a string the guess is
+ * `text/plain`, or `text/html` if it starts with `<`, whatever the handler
+ * said: CSV turned into `text/plain` and XML into `text/html` on every HIT.
+ */
+const typeToKeep = (ctx: Context): string | undefined => {
+  if (typeof ctx.body !== 'string') {
+    return undefined;
+  }
+
+  return String(ctx.response.get('Content-Type') || '') || undefined;
+};
+
+/**
+ * Serve a stored or borrowed body with the type it was produced with.
+ *
+ * The header has to be in place before the body is assigned: Koa only infers a
+ * type for a string body when none is set yet. Absent a type - every JSON
+ * entry, and every entry written before types were kept - nothing is set and
+ * Koa infers exactly as it always did.
+ */
+const replay = (ctx: Context, body: unknown, type: string | undefined): void => {
+  if (type) {
+    ctx.set('Content-Type', type);
+  }
+
+  ctx.body = body;
+};
 
 /**
  * Requests currently fetching from the origin, keyed by cache key.
@@ -114,10 +151,10 @@ export default function createRecv(
         // etag miss
       }
 
-      const cacheEntry = await store.get(cacheKey);
+      const cacheEntry = await store.getEntry(cacheKey);
 
       // hit cache
-      if (cacheEntry) {
+      if (cacheEntry?.data) {
         debug('strapi:plugin-rest-cache')(
           `[RECV] GET ${cacheKey} ${colors.green('HIT')}`
         );
@@ -134,7 +171,7 @@ export default function createRecv(
         setCacheControl(ctx);
 
         ctx.status = 200;
-        ctx.body = cacheEntry;
+        replay(ctx, cacheEntry.data, cacheEntry.type);
         return;
       }
 
@@ -161,7 +198,7 @@ export default function createRecv(
           // revalidation; guessing wrong tells a browser to cache something the
           // plugin itself declined to.
           ctx.status = shared.status;
-          ctx.body = shared.body;
+          replay(ctx, shared.body, shared.type);
           return;
         } catch {
           // The request we were waiting on failed. Fall through and fetch
@@ -220,7 +257,8 @@ export default function createRecv(
 
     // Hand the response to anything waiting on us before writing to the cache,
     // so waiters are not blocked on the store.
-    publish?.({ body: ctx.body, status: ctx.status });
+    const type = typeToKeep(ctx);
+    publish?.({ body: ctx.body, status: ctx.status, type });
 
     const { cacheable, reason } = isCacheable(ctx);
 
@@ -253,7 +291,7 @@ export default function createRecv(
       }
 
       writes.push(
-        store.set(cacheKey, ctx.body, maxAge).catch(() => {
+        store.set(cacheKey, ctx.body, maxAge, { type }).catch(() => {
           debug('strapi:plugin-rest-cache')(
             `[RECV] GET ${cacheKey} ${colors.yellow('Unable to store Content in cache')}`
           );

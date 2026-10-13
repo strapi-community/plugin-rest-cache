@@ -82,6 +82,18 @@ module.exports = ({ env }) => ({
           keys: { useQueryParams: true, useHeaders: [], useAuth: true },
         },
         {
+          // ?delay= holds the origin open, so a coalescing test needs it in
+          // the key to keep its burst apart from the plain requests.
+          path: "/api/categories/probe/csv",
+          method: "GET",
+          keys: { useQueryParams: true, useHeaders: [], useAuth: true },
+        },
+        {
+          path: "/api/categories/probe/xml",
+          method: "GET",
+          keys: { useQueryParams: true, useHeaders: [], useAuth: true },
+        },
+        {
           path: "/api/categories/slug/:slug+",
           keys: {
             useQueryParams: ["populate", "locale"],

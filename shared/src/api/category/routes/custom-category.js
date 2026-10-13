@@ -39,5 +39,17 @@ module.exports = {
       path: "/categories/probe/inherits",
       handler: "category.inherits",
     },
+    // Fixtures for string bodies with a handler-chosen Content-Type, which a
+    // cache HIT must serve with that same type rather than one Koa infers.
+    {
+      method: "GET",
+      path: "/categories/probe/csv",
+      handler: "category.csv",
+    },
+    {
+      method: "GET",
+      path: "/categories/probe/xml",
+      handler: "category.xml",
+    },
   ],
 };

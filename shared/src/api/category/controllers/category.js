@@ -52,6 +52,24 @@ module.exports = createCoreController(
       ctx.body = { inherits: true, at: Date.now() };
     },
 
+    /**
+     * String bodies whose type the handler states, which Koa would otherwise
+     * guess from the body: `text/plain` for the CSV, `text/html` for the XML,
+     * because it starts with `<`. `?delay=` (milliseconds) holds the origin
+     * open so concurrent requests can coalesce behind it.
+     */
+    async csv(ctx) {
+      await new Promise((resolve) => setTimeout(resolve, Number(ctx.query.delay) || 0));
+      ctx.type = "text/csv";
+      ctx.body = "a,b\n1,2\n";
+    },
+
+    async xml(ctx) {
+      await new Promise((resolve) => setTimeout(resolve, Number(ctx.query.delay) || 0));
+      ctx.type = "application/xml";
+      ctx.body = '<?xml version="1.0" encoding="UTF-8"?>\n<probe>xml</probe>\n';
+    },
+
     async findBySlug(ctx) {
       const { slug } = ctx.params;
       const { query } = ctx;
