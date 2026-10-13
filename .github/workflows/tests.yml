@@ -118,6 +118,13 @@ jobs:
 
       - run: pnpm run test:cluster:live
 
+      # The v2/v3 storage layout again, with both backends on their cluster
+      # code paths and the entries spread over every master. See
+      # https://github.com/strapi-community/plugin-rest-cache/pull/239
+      - run: pnpm run test:continuity
+        env:
+          REDIS_CLUSTER_NODES: 127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002
+
   linters:
     runs-on: ubuntu-latest
     strategy:

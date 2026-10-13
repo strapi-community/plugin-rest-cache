@@ -114,40 +114,102 @@ function recordingClient({ isCluster }) {
  * Same command names and argument shapes as @redis/client: arrays for
  * multi-key commands, camelCase methods, a chainable multi().
  */
-function recordingNodeRedis({ isCluster }) {
+function recordingNodeRedis({ isCluster, masters = 3 }) {
   const issued = [];
   const members = new Set();
+  // The entries themselves, as distinct from the tracking set's members.
+  const entries = new Set();
   const flat = (k) => [k].flat();
 
   const run = {
     set: (key) => {
       issued.push({ cmd: 'set', keys: [key] });
+      entries.add(key);
       return 'OK';
     },
     sAdd: (_set, m) => {
+      issued.push({ cmd: 'sadd', keys: flat(m) });
       for (const k of flat(m)) members.add(k);
       return flat(m).length;
     },
     sRem: (_set, m) => {
       issued.push({ cmd: 'srem', keys: flat(m) });
+      // Before the members go, as on the ioredis recorder: a write landing
+      // between the prune's check and its SREM.
+      if (client.onSrem) client.onSrem();
       for (const k of flat(m)) members.delete(k);
       return flat(m).length;
     },
     unlink: (k) => {
       issued.push({ cmd: 'unlink', keys: flat(k) });
-      for (const key of flat(k)) members.delete(key);
+      for (const key of flat(k)) {
+        members.delete(key);
+        entries.delete(key);
+      }
       return flat(k).length;
     },
   };
 
-  return {
+  /**
+   * One client per master, each holding the entries that hash to it - here,
+   * every `masters`-th one. SCAN sent to the cluster object itself would only
+   * see whichever node it landed on, so it throws.
+   */
+  const nodes = Array.from({ length: masters }, (_, i) => ({ address: `node-${i}` }));
+  const nodeClients = nodes.map((node, i) => ({
+    async scan(cursor, options = {}) {
+      issued.push({ cmd: 'scan', node: node.address, cursor, keys: [] });
+      const pattern = String(options.MATCH || '*').replace(/\*$/, '');
+      const held = [...entries].filter((_, n) => n % masters === i);
+      return { cursor: '0', keys: held.filter((key) => key.startsWith(pattern)) };
+    },
+    async unlink(k) {
+      return run.unlink(k);
+    },
+  }));
+
+  const client = {
     isCluster,
     isReady: true,
     issued,
     members,
+    entries,
+    onSrem: null,
     seed(keys) {
-      for (const key of keys) members.add(key);
+      for (const key of keys) {
+        members.add(key);
+        entries.add(key);
+      }
     },
+    /** An entry Redis expired: gone, but still a member of the tracking set. */
+    expire(key) {
+      entries.delete(key);
+    },
+    async exists(k) {
+      issued.push({ cmd: 'exists', keys: flat(k) });
+      return flat(k).filter((key) => entries.has(key)).length;
+    },
+    async sScan(_set, cursor, options = {}) {
+      // Pages of COUNT, cursor = offset: enough to drive a multi-page pass.
+      issued.push({ cmd: 'sscan', cursor, keys: [] });
+      const all = [...members];
+      const start = Number(cursor);
+      const next = start + Number(options.COUNT || 10);
+      return { cursor: next >= all.length ? '0' : String(next), members: all.slice(start, next) };
+    },
+    async keys(pattern) {
+      issued.push({ cmd: 'keys', keys: [] });
+      const prefix = pattern.replace(/\*$/, '');
+      return [...entries].filter((key) => key.startsWith(prefix));
+    },
+    ...(isCluster
+      ? {
+          masters: nodes,
+          async nodeClient(node) {
+            return nodeClients[nodes.indexOf(node)];
+          },
+        }
+      : {}),
     async get(key) {
       issued.push({ cmd: 'get', keys: [key] });
       return null;
@@ -171,9 +233,16 @@ function recordingNodeRedis({ isCluster }) {
     async sMembers() {
       return [...members];
     },
-    async scan() {
-      issued.push({ cmd: 'scan', keys: [] });
-      return { cursor: '0', keys: [] };
+    async scan(cursor, options) {
+      // On a cluster, only the node the command lands on: the first.
+      if (isCluster) {
+        const reply = await nodeClients[0].scan(cursor, options);
+        issued[issued.length - 1].node = 'cluster';
+        return reply;
+      }
+      issued.push({ cmd: 'scan', cursor, keys: [] });
+      const pattern = String((options && options.MATCH) || '*').replace(/\*$/, '');
+      return { cursor: '0', keys: [...entries].filter((key) => key.startsWith(pattern)) };
     },
     multi() {
       const queued = [];
@@ -186,6 +255,8 @@ function recordingNodeRedis({ isCluster }) {
           issued.push({ cmd: 'multi', queued });
           for (const q of queued) {
             if (q.cmd === 'unlink' || q.cmd === 'srem') for (const k of q.keys) members.delete(k);
+            if (q.cmd === 'unlink') for (const k of q.keys) entries.delete(k);
+            if (q.cmd === 'set') for (const k of q.keys) entries.add(k);
             if (q.cmd === 'sadd') for (const k of q.keys) members.add(k);
           }
           return queued.map(() => 1);
@@ -194,6 +265,8 @@ function recordingNodeRedis({ isCluster }) {
       return chain;
     },
   };
+
+  return client;
 }
 
 /** Swap the provider's underlying store for our recorder. */
@@ -598,6 +671,154 @@ async function check(name, fn) {
     const multis = client.issued.filter((c) => c.cmd === 'multi');
     assert.strictEqual(multis.length, 1, 'expected a single batched MULTI');
     assert.strictEqual(multis[0].queued[0].keys.length, KEYS.length);
+  });
+
+  // The v3 store is not one MULTI per write or delete on a cluster either, so
+  // the same order applies, for the same reason: UNLINK (delete) -> SET, SADD
+  // (write) -> SREM (delete) leaves a live entry no purge can find.
+  await check('v3 cluster: delMany untracks before it unlinks', async () => {
+    const { client, provider } = v3(true);
+    client.seed(qualified);
+    await provider.delMany(KEYS);
+
+    const order = client.issued.map((c) => c.cmd);
+    const lastSrem = order.lastIndexOf('srem');
+    const firstUnlink = order.indexOf('unlink');
+    assert.ok(lastSrem !== -1 && firstUnlink !== -1, `unexpected commands: ${order.join(',')}`);
+    assert.ok(lastSrem < firstUnlink, 'unlinked an entry before removing it from the tracking set');
+  });
+
+  await check('v3 cluster: del() untracks before it unlinks', async () => {
+    const { client, provider } = v3(true);
+    client.seed(qualified);
+    await provider.del(KEYS[0]);
+
+    const order = client.issued.map((c) => c.cmd).filter((cmd) => cmd === 'srem' || cmd === 'unlink');
+    assert.deepStrictEqual(order, ['srem', 'unlink'], `issued ${order.join(' -> ')}`);
+    assert.ok(!client.members.has(qualified[0]), 'still tracked after del()');
+  });
+
+  await check('v3 cluster: clear() untracks before it unlinks', async () => {
+    const { client, provider } = v3(true);
+    client.seed(qualified);
+    await provider.clear();
+
+    const order = client.issued.map((c) => c.cmd);
+    assert.ok(order.lastIndexOf('srem') < order.indexOf('unlink'), `issued ${order.join(',')}`);
+  });
+
+  await check('v3 cluster: prune() untracks expired entries, checking key by key', async () => {
+    const { client, provider } = v3(true);
+    client.seed(qualified);
+    client.expire(qualified[0]);
+
+    await provider.prune();
+    const keys = await provider.keys();
+    assert.ok(!keys.includes(KEYS[0]), 'listed an expired entry after a prune');
+    assert.strictEqual(keys.length, KEYS.length - 1, `listed ${keys.length} of ${KEYS.length - 1} live entries`);
+
+    const offending = client.issued.filter((c) => MULTI_KEY.has(c.cmd) && c.keys.length > 1);
+    assert.deepStrictEqual(offending, [], 'the prune issued a multi-key command');
+    assert.strictEqual(client.issued.some((c) => c.cmd === 'multi'), false, 'used MULTI');
+    assert.ok(
+      client.issued.some((c) => c.cmd === 'srem' && c.keys.includes(qualified[0])),
+      'the expired entry was not removed from the tracking set'
+    );
+  });
+
+  await check('v3 cluster: prune() keeps an entry written while it was being pruned', async () => {
+    const { client, provider } = v3(true);
+    client.seed(qualified);
+    client.expire(qualified[0]);
+    client.onSrem = () => {
+      client.onSrem = null;
+      client.seed([qualified[0]]);
+    };
+
+    await provider.prune();
+    assert.strictEqual(client.onSrem, null, 'the prune issued no SREM');
+    assert.ok(client.members.has(qualified[0]), 'the rewritten entry was left out of the tracking set');
+  });
+
+  await check('v3: prune() re-tracks what it removed when the re-check fails', async () => {
+    const { client, provider } = v3(true);
+    client.seed(qualified);
+    client.expire(qualified[0]);
+    client.onSrem = () => {
+      client.onSrem = null;
+      client.seed([qualified[0]]);
+      client.exists = async () => {
+        throw new Error('connection lost');
+      };
+    };
+
+    await provider.prune();
+    // Without this, a prune that never untracked anything would pass.
+    assert.strictEqual(client.onSrem, null, 'the prune issued no SREM');
+    assert.ok(client.members.has(qualified[0]), 'a possibly-live member was left untracked');
+  });
+
+  await check('v3: set() starts a background prune, at most once per interval', async () => {
+    const { client, provider } = v3(true);
+    client.seed(qualified);
+    const passes = () => client.issued.filter((c) => c.cmd === 'sscan' && c.cursor === '0').length;
+    for (let i = 0; i < 3; i++) {
+      await provider.set(KEYS[i], { i }, 60000);
+      await provider.keys();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.strictEqual(passes(), 1, `started ${passes()} passes`);
+  });
+
+  // plugin-redis v3 replaces the node-redis client of a cluster connection
+  // that has to reconnect from scratch, and destroys the old one. A prune that
+  // took the client once, at the start of a pass, would go on sending to the
+  // destroyed one for the rest of it.
+  await check('v3: prune() resolves the client for every command', async () => {
+    const before = recordingNodeRedis({ isCluster: true });
+    const after = recordingNodeRedis({ isCluster: true });
+    let current = before;
+    const provider = new RedisCacheProvider(null, {}, { client: () => current, isCluster: true });
+    for (const client of [before, after]) {
+      client.seed(qualified);
+      client.expire(qualified[0]);
+    }
+    const sScan = before.sScan;
+    before.sScan = async (...args) => {
+      const reply = await sScan(...args);
+      current = after;
+      return reply;
+    };
+
+    await provider.prune();
+    const late = before.issued.filter((c) => c.cmd !== 'sscan');
+    assert.deepStrictEqual(late, [], `sent ${late.map((c) => c.cmd).join(',')} to the replaced client`);
+    assert.ok(!after.members.has(qualified[0]), 'the current client was not pruned');
+  });
+
+  // Without redis sets the entries are named `sets:namespace:keyv:keyv:<key>`
+  // and there is nothing to read them from, so keys() has to SCAN for them -
+  // on every master, since SCAN only sees the node it is sent to.
+  await check('v3 cluster without redis sets: keys() scans every master', async () => {
+    const client = recordingNodeRedis({ isCluster: true });
+    const provider = new RedisCacheProvider(null, { useRedisSets: false }, { client, isCluster: true });
+    client.seed(qualified.map((k) => `sets:namespace:keyv:${k}`));
+
+    const keys = await provider.keys();
+    assert.deepStrictEqual(keys.sort(), [...KEYS].sort());
+    const scanned = new Set(client.issued.filter((c) => c.cmd === 'scan').map((c) => c.node));
+    assert.deepStrictEqual([...scanned].sort(), ['node-0', 'node-1', 'node-2'], `scanned ${[...scanned]}`);
+  });
+
+  await check('v3 cluster without redis sets: clear() issues no multi-key command', async () => {
+    const client = recordingNodeRedis({ isCluster: true });
+    const provider = new RedisCacheProvider(null, { useRedisSets: false }, { client, isCluster: true });
+    client.seed(qualified.map((k) => `sets:namespace:keyv:${k}`));
+
+    await provider.clear();
+    const offending = client.issued.filter((c) => MULTI_KEY.has(c.cmd) && c.keys.length > 1);
+    assert.deepStrictEqual(offending, [], `issued ${JSON.stringify(offending[0])}`);
+    assert.strictEqual(client.entries.size, 0, `left ${client.entries.size} entries`);
   });
 
   console.log(`redis cluster safety - ${results.length} checks\n`);
