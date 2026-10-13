@@ -40,9 +40,14 @@ A row may carry a badge:
 
 - **Keyed per caller** — `keys.useAuth` is on, so entries are stored separately
   per authenticated caller.
-- **Shared across callers** — `hitpass` is off but `keys.useAuth` is not set,
-  so one caller's response can be served to another. The server also warns
-  about this at boot; the badge is here because nobody reads boot logs.
+- **Shared across callers** — at least one of the content type's GET routes
+  resolved to `hitpass: false` without `keys.useAuth`, so one caller's response
+  can be served to another. It is judged per route, on what each route
+  actually resolved to, exactly as the boot warning is. So a listed route that
+  turns `hitpass` off itself is flagged, and a content type whose listed routes
+  keep the strategy's bypass is not. Hover the badge for the routes at fault.
+  The server also warns about this at boot; the badge is here because nobody
+  reads boot logs.
 
 The **Purge** button clears every entry for that content type, and for the
 content types related to it when `clearRelatedCache` is on. The counts update
@@ -52,6 +57,10 @@ without a page reload.
 The dashboard requires `plugin::rest-cache.cache.read-strategy`, and purging
 requires `plugin::rest-cache.cache.purge`. Grant them under
 **Settings → Roles**.
+
+They are independent. An admin with only `cache.purge` is offered the purge
+controls in the content manager; they do not see the dashboard or the edit
+view's cache panel, which show the strategy.
 
 Hiding a control is presentation, not protection: every admin route carries a
 permission policy for the same action, so the server refuses regardless of

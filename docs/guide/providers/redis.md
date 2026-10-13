@@ -206,9 +206,22 @@ A prefix also means the keyspace is shared with something else, so the plugin wi
 
 Purging by content type means finding every cache key that matches a pattern, which means listing keys.
 
-The provider reads `@keyv/redis`'s own tracking set — a single `SMEMBERS` — rather than scanning the keyspace. The previous implementation iterated the store, which issued a `SCAN` at ioredis' default `COUNT` of 10 and an `MGET` of a page of **values** for every page, purely to learn key names. Measured over a 100,000-entry cache that was roughly 20,000 round trips and 55MB transferred, against one round trip now ([#131](https://github.com/strapi-community/plugin-rest-cache/issues/131)).
+The provider reads `@keyv/redis`'s own tracking set — a single `SMEMBERS` — rather than scanning the keyspace. The previous implementation iterated the store, which issued a `SCAN` at ioredis' default `COUNT` of 10 and an `MGET` of a page of **values** for every page, purely to learn key names. Measured over a 100,000-entry cache that was roughly 20,000 round trips and 55MB transferred ([#131](https://github.com/strapi-community/plugin-rest-cache/issues/131)).
 
-If you sized `getTimeout` or your Redis timeouts around the old behaviour, you can bring them back down.
+`SMEMBERS` is one command, but its reply holds every tracked key, so its cost still grows with the cache: listing 100,000 keys took 50–110ms in local measurements, on a standalone server and on a three-node cluster alike. Every pattern purge lists keys, so that is what a content save pays per purge. If you raised `getTimeout` or your Redis command timeouts to survive the old enumeration, size them for an `SMEMBERS` of your largest cache rather than removing the headroom altogether.
+
+### Expired entries in the tracking set
+
+`@keyv/redis` adds a key to that set when it writes the entry, but removes it only on an explicit delete. An entry that expires on its `maxAge` leaves its key behind, and the set itself never expires, so without help it grows for as long as the cache runs.
+
+The provider prunes it in the background: it walks the set with `SSCAN`, 500 members at a time, checks each with `EXISTS` (one pipeline per batch on a standalone server, routed key by key on a cluster) and removes the members whose entries are gone. A pass starts at most once every five minutes per Strapi process, triggered by a write or a key listing, and neither ever waits for it. Over 100,000 members a pass took about 0.5–0.8s on a standalone server and 2.5–4.5s on a three-node cluster, holding Strapi's event loop for at most a few tens of milliseconds at a time.
+
+A member is removed only once its entry is confirmed gone, and checked again afterwards in case a response was cached for that key in the meantime. A failed check counts as "still there", and if the re-check fails, everything that batch removed is put back. The one case left is a response cached in that window while putting members back fails twice in a row: that entry is then missed by purges until its `maxAge`, as with a failed delete on a cluster (below). A failing prune never surfaces as an error; the next pass picks up what it did not reach.
+
+Because listing does not wait for the prune, keys can be listed for up to about five minutes, plus the length of a pass, after their entries expire on a cache that is in use. That has two visible effects:
+
+- a purge may match a key that has already expired. It removes the key from the set and deletes nothing, which is harmless;
+- the admin panel's cache statistics can count entries that expired since the last pass. On a cache that is being written to, that is at most about five minutes' worth of expiries; on one that has been idle, the first listing after the idle period can include everything that expired during it, and the counts settle once the pass it starts has finished.
 
 ## Redis Cluster
 
@@ -223,6 +236,8 @@ Two things differ when clustered, and both are handled for you:
   ```
 
   Cache keys are derived from request paths and therefore spread across slots, so the provider deletes them individually with bounded concurrency and lets the cluster client route each one. The tracking set is a single key, so removing entries from it stays batched ([#100](https://github.com/strapi-community/plugin-rest-cache/issues/100)).
+
+  Without a `MULTI`, a purge and a response being cached for the same key can interleave, so the provider removes a key from the tracking set _before_ deleting the entry. The other way round, a write landing between the two left a live entry outside the set, which no purge could find until it expired. The trade-off is on the failure path: if Redis fails the delete after the entry has been untracked, the entry stays cached, out of reach of purges, until its `maxAge`.
 
 - **Key listing does not use `SCAN`.** `SCAN` addresses one node, so on a cluster it returns only the portion of the keyspace that node holds — a purge built on it silently misses everything on the other nodes. Reading the tracking set avoids that entirely, because the set is one key and therefore complete.
 

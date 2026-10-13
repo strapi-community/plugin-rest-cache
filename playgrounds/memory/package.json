@@ -13,8 +13,8 @@
     "e2e:serve": "strapi build && strapi start"
   },
   "dependencies": {
-    "@strapi/plugin-users-permissions": "5.52.0",
-    "@strapi/strapi": "5.52.0",
+    "@strapi/plugin-users-permissions": "5.57.0",
+    "@strapi/strapi": "5.57.0",
     "better-sqlite3": "13.0.3",
     "mime-types": "^3.0.2",
     "react": "^18.0.0",

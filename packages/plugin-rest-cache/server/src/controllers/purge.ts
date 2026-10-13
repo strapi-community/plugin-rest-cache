@@ -2,6 +2,7 @@ import type { Context } from 'koa';
 import type { Core } from '@strapi/strapi';
 
 import type { CachePluginStrategy, ContentTypeUID } from '../types';
+import type { PurgeableContentTypesResponse } from '../types/api';
 
 /**
  * The purge payload. Koa does not type the parsed body, and it is unvalidated
@@ -50,6 +51,22 @@ export default function createPurgeController({ strapi }: { strapi: Core.Strapi 
      */
     async index(ctx: Context) {
       return purge(ctx);
+    },
+
+    /**
+     * The uids of the cached content types, and nothing else.
+     *
+     * The admin's purge controls read the strategy to decide whether to
+     * render, but the strategy is behind cache.read-strategy. An admin granted
+     * only cache.purge got a 403 there and so was never offered the control
+     * the permission exists for. This is what they fall back to.
+     */
+    async contentTypes(ctx: Context) {
+      const body: PurgeableContentTypesResponse = {
+        contentTypes: strapi.plugin('rest-cache').service('cacheConfig').getUids(),
+      };
+
+      ctx.body = body;
     },
 
     /**

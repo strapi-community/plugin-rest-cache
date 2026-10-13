@@ -1,4 +1,4 @@
-import { useCacheStrategy } from '../services/restCache';
+import { useCacheStrategy, usePurgeableContentTypes } from '../services/restCache';
 import type { CacheContentTypeConfig } from '../../../server/src/types';
 import type { PurgeRequest } from '../../../server/src/types/api';
 import type { EditViewContext } from '../types/contentManager';
@@ -29,6 +29,31 @@ const toPurgeParams = (values: unknown): PurgeRequest['params'] => {
   return params;
 };
 
+/**
+ * The route params that address this entry in the REST API.
+ *
+ * `:id` in a Strapi 5 REST route is the documentId - `/api/articles/:id` is
+ * requested as `/api/articles/<documentId>`, and that is what the cache key
+ * holds. The document's own `id` field is the numeric database row id, which
+ * never appears in a URL, so passing the document through as-is purged a key
+ * that cannot exist. With clearRelatedCache on that went unnoticed, because a
+ * content type is related to itself and its routes are wildcarded anyway; with
+ * it off, the edit-view purge removed nothing for the entry it was opened on.
+ *
+ * The other scalar fields stay, so a custom route such as `/api/articles/:slug`
+ * is still narrowed to this entry. The server's document service middleware
+ * scopes its own purges the same way, with `{ id: documentId }`.
+ */
+const toEntryParams = (values: unknown, documentId?: string): PurgeRequest['params'] => {
+  const params = toPurgeParams(values) ?? {};
+
+  if (documentId) {
+    params.id = documentId;
+  }
+
+  return params;
+};
+
 export interface CachedDocument {
   /**
    * Whether a purge control should be offered for the document currently open.
@@ -38,7 +63,10 @@ export interface CachedDocument {
    * configured strategy.
    */
   isEligible: boolean;
-  /** The strategy entry for this content type, when there is one. */
+  /**
+   * The strategy entry for this content type, when there is one and this
+   * admin may read the strategy. Absent for an admin who may only purge.
+   */
   config?: CacheContentTypeConfig;
   /** Route params to scope the purge by. Empty for a single type. */
   params: PurgeRequest['params'];
@@ -68,6 +96,7 @@ export const useCachedDocument = ({
   collectionType,
 }: EditViewContext): CachedDocument => {
   const { data } = useCacheStrategy();
+  const purgeable = usePurgeableContentTypes();
 
   const config = data?.strategy?.contentTypes?.find(
     (contentType) => contentType.contentType === model
@@ -77,9 +106,12 @@ export const useCachedDocument = ({
 
   return {
     // Nothing has been written yet, so nothing can be cached.
-    isEligible: Boolean(documentId) && config !== undefined,
+    // From the purgeable list rather than `config`, which is only there for
+    // admins who may read the strategy: one who may only purge still gets
+    // the purge action.
+    isEligible: Boolean(documentId) && purgeable?.includes(model) === true,
     config,
-    params: isSingleType ? {} : toPurgeParams(document),
+    params: isSingleType ? {} : toEntryParams(document, documentId),
     isSingleType,
   };
 };

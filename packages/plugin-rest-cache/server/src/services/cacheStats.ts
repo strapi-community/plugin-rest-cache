@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import type { CachePluginHitpass } from '../types/common';
 import type { CacheSummary, ContentTypeStats } from '../types/api';
 import type { RestCachePluginConfig } from '../types/config';
+import { unkeyedAuthenticatedRoutes } from '../utils/config/unkeyedAuthenticatedRoutes';
 
 export type { CacheSummary, ContentTypeStats };
 
@@ -17,6 +18,14 @@ export interface CacheStatsService {
  * separately, so they cannot drift from reality. That does mean a call costs
  * one enumeration - cheap on redis since #131 made it a single SMEMBERS, but
  * still not something to poll aggressively.
+ *
+ * On redis the counts can include entries that expired recently. Expiry does
+ * not remove a key from @keyv/redis' tracking set; the provider prunes the set
+ * in the background, at most every five minutes per process, rather than check
+ * every key on each listing - that check sat on every purge and took a 100k-key
+ * purge from tens of milliseconds to seconds. So on a cache in use the counts
+ * can be up to about five minutes behind expiries, and after an idle period
+ * the first call can count everything that expired during it.
  *
  * @see https://github.com/strapi-community/plugin-rest-cache/issues/114
  */
@@ -55,6 +64,11 @@ export default function createCacheStatsService({
             maxAge: conf?.maxAge,
             hitpass: (conf?.hitpass as CachePluginHitpass | boolean) !== false,
             keysAuthIdentity: conf?.keys?.useAuth === true,
+            // Per route, on resolved values - the same predicate as the boot
+            // warning. `hitpass` and `keysAuthIdentity` above describe the
+            // content type's own settings, which a route can differ from in
+            // both directions, so they cannot answer this on their own.
+            unkeyedAuthenticatedRoutes: unkeyedAuthenticatedRoutes(conf?.routes ?? []),
             routes: (conf?.routes ?? [])
               .filter((route) => route.method === 'GET')
               .map((route) => route.path as string),

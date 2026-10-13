@@ -29,6 +29,7 @@
   "contentTypes.authKeyed.hint": "Les réponses sont mises en cache séparément pour chaque appelant authentifié.",
   "contentTypes.authRisk": "Partagé entre les appelants",
   "contentTypes.authRisk.hint": "Le hitpass est désactivé mais keys.useAuth n'est pas défini : la réponse d'un appelant peut donc être servie à un autre.",
+  "contentTypes.authRisk.routesHint": "{count, plural, one {La route {routes} met} other {Les routes {routes} mettent}} en cache des requêtes authentifiées sans keys.useAuth : la réponse d'un appelant peut donc être servie à un autre.",
   "contentTypes.related": "Vide également {count, plural, one {# type associé} other {# types associés}}",
   "panel.cached.title": "REST Cache",
   "panel.cached.body": "Les réponses pour cette entrée sont mises en cache pendant {maxAge} au maximum après leur première requête.",

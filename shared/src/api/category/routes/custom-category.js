@@ -7,6 +7,41 @@ module.exports = {
       path: "/categories/slug/:slug+",
       handler: "category.findBySlug",
     },
+    // Fixture for a custom route whose configured path has upper-case
+    // characters. Cache keys are lower-cased; purge patterns must match them.
+    {
+      method: "GET",
+      path: "/categories/bySlug/:slug",
+      handler: "category.findBySlug",
+    },
+    // Fixtures for purge patterns, one per parameter form: plain,
+    // repeatable, optional and regex-constrained. The handler echoes, so any
+    // value answers 200 and is cached without a matching row.
+    {
+      method: "GET",
+      path: "/categories/echo/one/:slug",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/many/:slug+",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/maybe/:slug?",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/num/:id(\\d+)",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/code/:code(\\D+)",
+      handler: "category.echo",
+    },
     // Fixtures for responses the cache must refuse to buffer. See
     // https://github.com/strapi-community/plugin-rest-cache/issues/133
     {
@@ -21,6 +56,16 @@ module.exports = {
     },
     {
       method: "GET",
+      path: "/categories/probe/buffer",
+      handler: "category.buffer",
+    },
+    {
+      method: "GET",
+      path: "/categories/probe/throwing-body",
+      handler: "category.throwingBody",
+    },
+    {
+      method: "GET",
       path: "/categories/probe/with-cookie",
       handler: "category.withCookie",
     },
@@ -31,6 +76,37 @@ module.exports = {
       method: "GET",
       path: "/categories/probe/cache-control",
       handler: "category.withCacheControl",
+    },
+    // Fixture for a listed route inheriting its content type's options. See
+    // https://github.com/strapi-community/plugin-rest-cache/issues/230
+    {
+      method: "GET",
+      path: "/categories/probe/inherits",
+      handler: "category.inherits",
+    },
+    // Fixtures for string bodies with a handler-chosen Content-Type, which a
+    // cache HIT must serve with that same type rather than one Koa infers.
+    {
+      method: "GET",
+      path: "/categories/probe/csv",
+      handler: "category.csv",
+    },
+    {
+      method: "GET",
+      path: "/categories/probe/xml",
+      handler: "category.xml",
+    },
+    {
+      method: "GET",
+      path: "/categories/probe/negotiated",
+      handler: "category.negotiated",
+    },
+    // Fixture for a route keyed on a query param and two headers, so the
+    // separators between every part of a cache key can be exercised.
+    {
+      method: "GET",
+      path: "/categories/probe/vary",
+      handler: "category.vary",
     },
   ],
 };

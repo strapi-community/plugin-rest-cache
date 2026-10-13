@@ -2,6 +2,8 @@ import type { Core } from '@strapi/strapi';
 
 import { getRelatedModelsUid } from './getRelatedModelsUid';
 import { deepFreeze } from './deepFreeze';
+import { shouldLookup } from '../middlewares/shouldLookup';
+import { unkeyedAuthenticatedRoutes } from './unkeyedAuthenticatedRoutes';
 import {
   CachePluginStrategy,
   CacheRouteConfig,
@@ -13,7 +15,7 @@ import type {
   CachePluginStrategyInput,
   CacheRouteConfigInput,
 } from '../../types/inputs';
-import type { HttpMethod } from '../../types/common';
+import type { CachePluginHitpass, HttpMethod } from '../../types/common';
 
 const routeParamNameRegex = /:([^/]+)/g;
 const routeParams = /(?<=\/\:).*?(?=\/|$)/g;
@@ -42,6 +44,54 @@ function getApiNameFromUid(uid: string): string {
   return uid.split('::')[1]?.split('.')[0];
 }
 
+/**
+ * The hitpass a route listed under a content type gets when it sets none itself.
+ *
+ * Listed routes used to get the strategy's hitpass outright, whatever the
+ * content type said (#230). Handing them the content type's instead is right
+ * when the route's entries are keyed per caller, but where they are not, a
+ * content type's `hitpass: false` would start sharing one caller's
+ * authenticated response with everybody - from a configuration that, until
+ * now, bypassed those requests. So such a route keeps the strategy's bypass,
+ * and adds the content type's on top: it caches nothing it did not cache
+ * before, and still honours a content type that bypasses more.
+ * See https://github.com/strapi-community/plugin-rest-cache/issues/230
+ */
+function listedRouteHitpass(
+  strategyHitpass: CachePluginHitpass | boolean | undefined,
+  contentTypeHitpass: CachePluginHitpass | boolean | undefined | null,
+  keys: CacheKeysConfig
+): CachePluginHitpass | boolean | undefined {
+  if (contentTypeHitpass == null) {
+    return strategyHitpass;
+  }
+
+  if (keys.useAuth === true) {
+    return contentTypeHitpass;
+  }
+
+  return async (ctx) =>
+    !(await shouldLookup(ctx, strategyHitpass as CachePluginHitpass | boolean)) ||
+    !(await shouldLookup(ctx, contentTypeHitpass));
+}
+
+/**
+ * The same object without the keys whose value is undefined.
+ *
+ * Options are merged by spreading them over what they inherit, and a key that
+ * is present but undefined - `maxAge: env.int("UNSET")` is the everyday way to
+ * get one - overwrote the inherited value instead of falling back to it. The
+ * config classes then substituted their own hard-coded defaults: maxAge
+ * 3600000, hitpass false (caching cookie-carrying requests, so one caller was
+ * served another's response), and no injected routes at all. Dropping such
+ * keys makes them behave exactly like omitted ones, as documented.
+ */
+function definedOnly<T extends object>(options: T): T {
+  return Object.fromEntries(
+    Object.entries(options).filter(([, value]) => value !== undefined)
+  ) as T;
+}
+
 export const resolveUserStrategy = function (
   strapi: Core.Strapi,
   userOptions: CachePluginStrategyInput
@@ -59,9 +109,9 @@ export const resolveUserStrategy = function (
   };
 
   // Creating cache Config
-  for (const contentTypeOption of contentTypes as Array<
-    string | CacheContentTypeConfigInput
-  >) {
+  for (const entry of contentTypes as Array<string | CacheContentTypeConfigInput>) {
+    const contentTypeOption = typeof entry === 'string' ? entry : definedOnly(entry);
+
     // string
     if (typeof contentTypeOption === 'string') {
       cacheConfigs.push({
@@ -76,36 +126,54 @@ export const resolveUserStrategy = function (
     // Object
     const routes: CacheRouteConfig[] = [];
     const contentTypeKeys = contentTypeOption?.keys ?? defaultModelConfig.keys;
+    // Listed routes take maxAge from their content type, which inherits from
+    // the strategy - as keys already did, and as the injected core routes do.
+    // Taking it straight from the strategy stored a content type's 10 minute
+    // maxAge for an hour. hitpass follows the same path, with the exception
+    // listedRouteHitpass explains. See
+    // https://github.com/strapi-community/plugin-rest-cache/issues/230
+    const contentTypeMaxAge = contentTypeOption.maxAge ?? defaultModelConfig.maxAge;
 
     (
       contentTypeOption.routes as Array<string | CacheRouteConfigInput> | undefined
     )?.reduce((acc, value) => {
       if (typeof value === 'string') {
+        const keys = new CacheKeysConfig(contentTypeKeys);
         acc.push(
           new CacheRouteConfig({
             path: value,
             method: 'GET',
-            keys: new CacheKeysConfig(contentTypeKeys),
-            maxAge: defaultModelConfig.maxAge,
-            hitpass: defaultModelConfig.hitpass,
+            keys,
+            maxAge: contentTypeMaxAge,
+            hitpass: listedRouteHitpass(
+              defaultModelConfig.hitpass,
+              contentTypeOption.hitpass,
+              keys
+            ),
             paramNames: (value.match(routeParamNameRegex) ?? []).map((param) =>
               param.replace(':', '')
             ),
           })
         );
       } else {
+        const route = definedOnly(value);
+        const keys = route.keys
+          ? new CacheKeysConfig(route.keys)
+          : new CacheKeysConfig(contentTypeKeys);
         // @TODO get the route of the value maby replace route with handler.
         acc.push(
           new CacheRouteConfig({
-            maxAge: defaultModelConfig.maxAge,
-            hitpass: defaultModelConfig.hitpass,
-            paramNames: (value.path.match(routeParamNameRegex) ?? []).map((param) =>
+            maxAge: contentTypeMaxAge,
+            hitpass: listedRouteHitpass(
+              defaultModelConfig.hitpass,
+              contentTypeOption.hitpass,
+              keys
+            ),
+            paramNames: (route.path.match(routeParamNameRegex) ?? []).map((param) =>
               param.replace(':', '')
             ),
-            ...value,
-            keys: value.keys
-              ? new CacheKeysConfig(value.keys)
-              : new CacheKeysConfig(contentTypeKeys),
+            ...route,
+            keys,
           })
         );
       }
@@ -234,16 +302,25 @@ export const resolveUserStrategy = function (
   // carrying an authorization or cookie header - so warn rather than refuse,
   // but warn loudly and name the content type.
   // See https://github.com/strapi-community/plugin-rest-cache/issues/113
+  //
+  // Checked per route, on the values each route actually resolved to. A listed
+  // route can set keys of its own while inheriting hitpass: false, and a check
+  // on the content type alone both missed that and warned for content types
+  // whose own hitpass no route used.
+  // See https://github.com/strapi-community/plugin-rest-cache/issues/230
+  //
+  // The dashboard's "Shared across callers" badge uses the same predicate, so
+  // the two agree on which content types are at risk.
   for (const cacheConfig of cacheConfigs) {
-    const cachesAuthenticated = cacheConfig.hitpass === false;
-    const keysAuthIdentity = cacheConfig.keys?.useAuth === true;
+    const unkeyedPaths = unkeyedAuthenticatedRoutes(cacheConfig.routes);
 
-    if (cachesAuthenticated && !keysAuthIdentity) {
+    if (unkeyedPaths.length) {
       strapi.log.warn(
-        `REST Cache: "${cacheConfig.contentType}" has hitpass disabled but keys.useAuth is not set. ` +
+        `REST Cache: "${cacheConfig.contentType}" has hitpass disabled but keys.useAuth is not set ` +
+          `on ${unkeyedPaths.join(', ')}. ` +
           'Authenticated responses will be cached under a key that does not identify the caller, ' +
-          "so one user's response can be served to another. Set keys: { useAuth: true } for this " +
-          'contentType, or leave hitpass enabled.'
+          "so one user's response can be served to another. Set keys: { useAuth: true } on these " +
+          'routes, or leave hitpass enabled.'
       );
     }
   }
@@ -260,7 +337,8 @@ export const resolveUserStrategy = function (
   ) {
     for (const cacheConfig of cacheConfigs) {
       const keyedPerCaller = cacheConfig.routes.filter(
-        (route) => route.keys?.useAuth === true
+        // Truthiness, as buildCacheControl and the key generator decide it.
+        (route) => Boolean(route.keys?.useAuth)
       );
 
       if (!keyedPerCaller.length) {

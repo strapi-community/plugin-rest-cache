@@ -78,6 +78,46 @@ jobs:
           node-version: 24
       - run: node scripts/provider-smoke.cjs
 
+  # A real three-master Redis Cluster. The recording client in test:cluster
+  # proves which commands the provider issues, but it cannot see a failure
+  # inside @keyv/redis: its cross-slot MULTI on every write was refused by a
+  # real cluster and swallowed by keyv, so nothing was ever cached there.
+  # Service containers cannot form a cluster, so the nodes are started here
+  # on the host network. See
+  # https://github.com/strapi-community/plugin-rest-cache/issues/100
+  redis_cluster:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Start a Redis Cluster
+        run: |
+          for port in 7000 7001 7002; do
+            docker run -d --rm --name "redis-$port" --network host redis:8.10 \
+              redis-server --port "$port" --cluster-enabled yes \
+              --cluster-config-file "nodes-$port.conf" --save "" --appendonly no
+          done
+          for port in 7000 7001 7002; do
+            until docker exec redis-7000 redis-cli -p "$port" ping >/dev/null 2>&1; do sleep 1; done
+          done
+          docker exec redis-7000 redis-cli --cluster create \
+            127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 0 --cluster-yes
+          until docker exec redis-7000 redis-cli -p 7000 cluster info | grep -q 'cluster_state:ok'; do
+            sleep 1
+          done
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - run: pnpm run test:cluster:live
+
   linters:
     runs-on: ubuntu-latest
     strategy:
@@ -113,9 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       redis:
-        image: bitnami/redis:latest
-        env:
-          ALLOW_EMPTY_PASSWORD: yes
+        image: redis:8.10
         ports:
           - 6379:6379
     steps:
@@ -201,9 +239,7 @@ jobs:
         node: [22, 24, 26]
     services:
       redis:
-        image: bitnami/redis:latest
-        env:
-          ALLOW_EMPTY_PASSWORD: yes
+        image: redis:8.10
         ports:
           # Opens tcp port 6379 on the host and service container
           - 6379:6379
@@ -226,6 +262,13 @@ jobs:
       - name: Run Redis e2e tests
         working-directory: playgrounds/redis
         run: pnpm run test:e2e
+
+      # Provider behaviour the playground's single configuration never reaches,
+      # such as purging with useRedisSets off.
+      - name: Run provider checks against Redis
+        run: pnpm run test:redis:live
+        env:
+          REDIS_URL: redis://127.0.0.1:6379/15
 
       # The provider's plugin-redis v2 and v3 backends must share one storage
       # layout, or an upgrade orphans every entry cached before it. Needs a
