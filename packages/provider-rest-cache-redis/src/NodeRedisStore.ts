@@ -32,12 +32,15 @@ export interface NodeRedisClient {
   sRem(key: string, members: string | string[]): Promise<number>;
   sMembers(key: string): Promise<string[]>;
   unlink(keys: string | string[]): Promise<number>;
-  keys(pattern: string): Promise<string[]>;
   scan(
     cursor: string,
     options?: { MATCH?: string; COUNT?: number }
   ): Promise<{ cursor: string; keys: string[] }>;
   multi(): NodeRedisMulti;
+  /** On a cluster (@redis/client 5+): one entry per master, for nodeClient(). */
+  readonly masters?: unknown[];
+  /** On a cluster: the client connected to one node of `masters`. */
+  nodeClient?(node: unknown): Promise<Pick<NodeRedisClient, 'scan'>>;
 }
 
 export interface NodeRedisStoreOptions {
@@ -211,20 +214,67 @@ export class NodeRedisStore extends EventEmitter {
       return;
     }
 
-    // As @keyv/redis 3: every key is named under the namespace, so one pattern
-    // finds them all.
-    const keys = await this.client.keys(`sets:${this._getNamespace()}:*`);
+    // Every key is named under the namespace, as @keyv/redis 3 names it, so
+    // one pattern finds them all - on every master of a cluster.
+    const keys = await this.namedKeys();
+    if (this.isCluster) {
+      // A multi-key UNLINK spanning hash slots is CROSSSLOT on a cluster.
+      for (const batch of chunks(keys, UNLINK_CONCURRENCY)) {
+        await Promise.all(batch.map((key) => this.client.unlink(key)));
+      }
+      return;
+    }
     for (const batch of chunks(keys, CHUNK)) {
       await this.client.unlink(batch);
     }
   }
 
   /**
+   * Every entry's raw key when redis sets are off: `sets:namespace:<ns>:<key>`.
+   *
+   * There is no tracking set to read then, so the keys are found by that name.
+   * SCAN only sees the node it is sent to, so on a cluster each master is
+   * scanned through its own client; scanning one node made pattern purges miss
+   * every entry held elsewhere (#245, as on the plugin-redis v2 path).
+   */
+  async namedKeys(): Promise<string[]> {
+    const MATCH = `sets:${this._getNamespace()}:*`;
+    const scanAll = async (node: Pick<NodeRedisClient, 'scan'>, found: string[]) => {
+      let cursor = '0';
+      do {
+        const reply = await node.scan(cursor, { MATCH, COUNT: CHUNK });
+        cursor = String(reply.cursor);
+        found.push(...reply.keys);
+      } while (cursor !== '0');
+    };
+
+    const found: string[] = [];
+    if (!this.isCluster) {
+      await scanAll(this.client, found);
+      return found;
+    }
+
+    const { masters } = this.client;
+    if (!masters || typeof this.client.nodeClient !== 'function') {
+      // Better a failed purge than one that reports success having looked at
+      // a single node.
+      throw new Error(
+        'REST Cache provider "redis": this node-redis cluster client cannot list its masters'
+      );
+    }
+    for (const master of masters) {
+      await scanAll(await this.client.nodeClient(master), found);
+    }
+    return found;
+  }
+
+  /**
    * Yields [key, value] for keys under `namespace`, as @keyv/redis 3 does.
    *
-   * SCAN addresses a single node, so on a cluster this would silently return
-   * part of the keyspace. The provider never needs it with redis sets on - it
-   * reads the tracking set instead - so refuse rather than mislead.
+   * Kept for Keyv's own iterator(). The provider never calls it: it reads the
+   * tracking set, or namedKeys() when redis sets are off. SCAN addresses a
+   * single node, so on a cluster this would silently return part of the
+   * keyspace - refuse rather than mislead.
    */
   async *iterator(namespace?: string): AsyncGenerator<[string, string | null]> {
     if (this.isCluster) {

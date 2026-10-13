@@ -565,11 +565,20 @@ export class RedisCacheProvider extends CacheProvider {
     // See https://github.com/strapi-community/plugin-rest-cache/issues/131
     const nodeStore = nodeRedisStoreOf(this.cache);
     if (nodeStore) {
-      // The same tracking set, read the same way, as on @keyv/redis below -
-      // including reading it when redis sets are off, where it is empty.
+      // The same keys, found the same way, as on @keyv/redis below: by their
+      // `sets:` names when redis sets are off (#245), otherwise from the
+      // tracking set.
       const prefix = `${nodeStore.namespace}:`;
+      const unqualified = (key: string) =>
+        key.startsWith(prefix) ? key.slice(prefix.length) : key;
+
+      if (!nodeStore.opts.useRedisSets) {
+        const named = `sets:${nodeStore._getNamespace()}:`;
+        return (await nodeStore.namedKeys()).map((key) => unqualified(key.slice(named.length)));
+      }
+
       const members = await nodeStore.trackedKeys();
-      return members.map((key) => (key.startsWith(prefix) ? key.slice(prefix.length) : key));
+      return members.map(unqualified);
     }
 
     const store = redisStoreOf(this.cache);
