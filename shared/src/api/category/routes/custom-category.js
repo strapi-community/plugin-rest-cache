@@ -56,6 +56,11 @@ module.exports = {
     },
     {
       method: "GET",
+      path: "/categories/probe/throwing-body",
+      handler: "category.throwingBody",
+    },
+    {
+      method: "GET",
       path: "/categories/probe/with-cookie",
       handler: "category.withCookie",
     },
@@ -73,6 +78,13 @@ module.exports = {
       method: "GET",
       path: "/categories/probe/inherits",
       handler: "category.inherits",
+    },
+    // Fixture for a route keyed on a query param and two headers, so the
+    // separators between every part of a cache key can be exercised.
+    {
+      method: "GET",
+      path: "/categories/probe/vary",
+      handler: "category.vary",
     },
   ],
 };
