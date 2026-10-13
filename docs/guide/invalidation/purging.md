@@ -52,7 +52,7 @@ path is `/rest-cache/purge`. It requires an authenticated admin user holding
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `contentType` | `string` | yes | The uid to purge. Must be a content type you configured. |
-| `params` | `object` | no | Route parameters to substitute, e.g. `{ id }`. Omit to purge the routes that take no parameters. |
+| `params` | `object` | no | Route parameters to substitute, e.g. `{ id }`, where `id` is the documentId as it appears in the URL - not the numeric database id. Omit to purge the routes that take no parameters. |
 | `wildcard` | `boolean` | no | Ignore `params` and match any value for every route parameter. |
 
 | Status | Meaning |
