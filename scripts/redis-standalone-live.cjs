@@ -59,6 +59,23 @@ async function check(name, fn) {
     });
   }
 
+  // An entry that expires is removed by Redis, but its tracking-set member is
+  // not: @keyv/redis only SREMs on an explicit delete, and the set itself has
+  // no lifetime. keys() reported the dead entry - cacheStats counted it - and
+  // the set grew without bound.
+  await check('with redis sets: keys() omits expired entries and untracks them', async () => {
+    const provider = new RedisCacheProvider(client, {});
+    await client.flushdb();
+    await provider.set('/api/short', { short: true }, 50);
+    await provider.set('/api/long', { long: true }, MAX_AGE);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const listed = await provider.keys();
+    assert.deepStrictEqual(listed, ['/api/long'], `keys() returned ${JSON.stringify(listed)}`);
+    const tracked = await client.smembers('namespace:keyv');
+    assert.deepStrictEqual(tracked, ['keyv:/api/long'], `tracking set holds ${JSON.stringify(tracked)}`);
+    assert.deepStrictEqual(await provider.get('/api/long'), { long: true });
+  });
+
   await client.flushdb();
   await client.quit();
 

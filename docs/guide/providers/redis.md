@@ -208,6 +208,8 @@ Purging by content type means finding every cache key that matches a pattern, wh
 
 The provider reads `@keyv/redis`'s own tracking set — a single `SMEMBERS` — rather than scanning the keyspace. The previous implementation iterated the store, which issued a `SCAN` at ioredis' default `COUNT` of 10 and an `MGET` of a page of **values** for every page, purely to learn key names. Measured over a 100,000-entry cache that was roughly 20,000 round trips and 55MB transferred, against one round trip now ([#131](https://github.com/strapi-community/plugin-rest-cache/issues/131)).
 
+`@keyv/redis` adds a key to that set when it writes the entry, but removes it only on an explicit delete — an entry that expires on its `maxAge` leaves its key behind, and the set itself never expires. So the provider checks which listed entries still exist (`EXISTS` per key, 1,000 at a time: one pipeline each on a standalone server, routed key by key on a cluster), lists only those, and removes the rest from the set. Without that, expired entries showed up in the admin panel's cache statistics and the set grew for as long as the cache ran.
+
 If you sized `getTimeout` or your Redis timeouts around the old behaviour, you can bring them back down.
 
 ## Redis Cluster
@@ -223,6 +225,8 @@ Two things differ when clustered, and both are handled for you:
   ```
 
   Cache keys are derived from request paths and therefore spread across slots, so the provider deletes them individually with bounded concurrency and lets the cluster client route each one. The tracking set is a single key, so removing entries from it stays batched ([#100](https://github.com/strapi-community/plugin-rest-cache/issues/100)).
+
+  Without a `MULTI`, a purge and a response being cached for the same key can interleave, so the provider removes a key from the tracking set _before_ deleting the entry. The other way round, a write landing between the two left a live entry outside the set, which no purge could find until it expired.
 
 - **Key listing does not use `SCAN`.** `SCAN` addresses one node, so on a cluster it returns only the portion of the keyspace that node holds — a purge built on it silently misses everything on the other nodes. Reading the tracking set avoids that entirely, because the set is one key and therefore complete.
 

@@ -24,6 +24,12 @@ export interface RedisMulti {
   exec(): Promise<unknown>;
 }
 
+/** A queued pipeline, as ioredis returns it from `pipeline()`. */
+export interface RedisPipeline {
+  exists(key: string): unknown;
+  exec(): Promise<Array<[Error | null, unknown]> | null>;
+}
+
 /**
  * The ioredis client, as `@strapi-community/plugin-redis` hands it over.
  *
@@ -41,9 +47,12 @@ export interface RedisClient {
   off(event: string, listener: (...args: any[]) => void): unknown;
   once(event: string, listener: (...args: any[]) => void): unknown;
   smembers(key: string): Promise<string[]>;
+  sadd(key: string, ...members: string[]): Promise<unknown>;
   unlink(...keys: string[]): Promise<unknown>;
   srem(key: string, ...members: string[]): Promise<unknown>;
+  exists?(key: string): Promise<number>;
   multi(): RedisMulti;
+  pipeline?(): RedisPipeline;
   scan?(cursor: string, ...args: Array<string | number>): Promise<[string, string[]]>;
   /** On an ioredis Cluster: one client per node. */
   nodes?(role: 'master'): RedisClient[];
@@ -78,7 +87,6 @@ const redisStoreOf = (cache: Cache): KeyvRedisStore =>
 interface KeyvRedisAdapter extends KeyvRedisStore {
   redis: RedisClient & {
     set(key: string, value: string, ...args: unknown[]): Promise<unknown>;
-    sadd(key: string, ...members: string[]): Promise<unknown>;
   };
   _getKeyName(key: string): string;
   set(key: string, value: string | undefined, ttl?: number): Promise<void>;
@@ -95,10 +103,24 @@ interface KeyvRedisAdapter extends KeyvRedisStore {
  * a cluster set() reported success and nothing was ever cached.
  *
  * Here the same two commands are issued separately, leaving the same keys, the
- * same PX lifetime and the same tracking set. The entry is written before it
- * is tracked and untracked after it is removed, so an interruption leaves at
- * worst an untracked entry that expires - never a tracked key with nothing
- * behind it. Standalone servers keep the MULTI.
+ * same PX lifetime and the same tracking set. Standalone servers keep the
+ * MULTI.
+ *
+ * Without the MULTI a write and a delete of the same key can interleave, so
+ * the order of each pair matters. A write is SET then SADD, and a delete is
+ * SREM then UNLINK - both put the tracking-set change on the side where losing
+ * the race is harmless. Deleting UNLINK-first could interleave as UNLINK
+ * (delete) -> SET, SADD (write) -> SREM (delete): a live entry missing from the
+ * tracking set, which keys() cannot see and so no purge can ever find - served
+ * stale until maxAge, under nothing more than ordinary concurrency. Untracking
+ * first, the same race leaves at worst a tracked key with nothing behind it,
+ * which keys() prunes (#131).
+ *
+ * The cost is on the failure path: an error between SREM and UNLINK now leaves
+ * an untracked entry, invisible to purges until it expires on its own maxAge.
+ * Unlink-first was the safer order there - a failure left only a dead member -
+ * but that took a failed command, and losing entries to the race took nothing
+ * more than a purge arriving while responses were being cached.
  *
  * See https://github.com/strapi-community/plugin-rest-cache/issues/100
  */
@@ -121,12 +143,96 @@ function makeClusterSafe(store: KeyvRedisAdapter): void {
 
   store.delete = async (key) => {
     const name = store._getKeyName(key);
-    const removed = Number(await redis.unlink(name));
     if (store.opts?.useRedisSets !== false) {
       await redis.srem(store._getNamespace!(), name);
     }
+    const removed = Number(await redis.unlink(name));
     return removed > 0;
   };
+}
+
+/**
+ * Whether each key exists, without a command that spans hash slots.
+ *
+ * A variadic EXISTS only returns a count, and a cluster rejects one whose keys
+ * span slots, so each key is asked about on its own. On a standalone server
+ * those go out as one pipeline; on a cluster each is routed to its node.
+ *
+ * A key whose check fails is reported as existing: dropping it from the
+ * tracking set would hide a live entry from every purge, while keeping a dead
+ * one only costs a wasted UNLINK later.
+ */
+async function existing(redis: RedisClient, keys: string[]): Promise<boolean[]> {
+  if (!redis.isCluster && typeof redis.pipeline === 'function') {
+    const pipeline = redis.pipeline();
+    for (const key of keys) pipeline.exists(key);
+    const replies = (await pipeline.exec()) ?? [];
+    return keys.map((_, i) => {
+      const [error, count] = replies[i] ?? [new Error('no reply'), 0];
+      return error !== null || Number(count) > 0;
+    });
+  }
+
+  return Promise.all(
+    keys.map((key) =>
+      redis.exists!(key).then(
+        (count) => Number(count) > 0,
+        () => true
+      )
+    )
+  );
+}
+
+/**
+ * The tracking set's members whose entries still exist, untracking the rest.
+ *
+ * @keyv/redis SADDs a key on write and SREMs it only on an explicit delete. An
+ * entry that expires through its PX lifetime is removed by Redis, but its
+ * member stays, and the set has no lifetime of its own. So keys() listed
+ * entries that had expired - cacheStats counted them, purges unlinked keys
+ * that were already gone - and the set grew for as long as the cache ran.
+ *
+ * Only members with nothing behind them are dropped, which are exactly the
+ * keys get() already returns nothing for. A write can land between the check
+ * and the SREM, so the dropped members are checked once more afterwards and
+ * any that now exist are tracked again: the write's SADD either follows that
+ * second check or precedes it, and either way the entry stays tracked.
+ *
+ * Chunked so a large set is not one enormous command or reply.
+ *
+ * See https://github.com/strapi-community/plugin-rest-cache/issues/131
+ */
+async function untrackExpired(
+  redis: RedisClient,
+  set: string,
+  members: string[]
+): Promise<string[]> {
+  // An adapter without EXISTS cannot be checked; list what it tracks, as
+  // before.
+  if (typeof redis.exists !== 'function') return members;
+
+  const CHUNK = 1000;
+  const live: string[] = [];
+
+  for (let i = 0; i < members.length; i += CHUNK) {
+    const batch = members.slice(i, i + CHUNK);
+    const found = await existing(redis, batch);
+    const dead = batch.filter((_, j) => !found[j]);
+    live.push(...batch.filter((_, j) => found[j]));
+    if (!dead.length) continue;
+
+    // One key, the set, so a batched SREM is slot-safe on a cluster too.
+    await redis.srem(set, ...dead);
+
+    const recheck = await existing(redis, dead);
+    const rewritten = dead.filter((_, j) => recheck[j]);
+    if (rewritten.length) {
+      await redis.sadd(set, ...rewritten);
+      live.push(...rewritten);
+    }
+  }
+
+  return live;
 }
 
 /** Everything accepted under `provider.options` in the plugin configuration. */
@@ -202,18 +308,24 @@ export class RedisCacheProvider extends CacheProvider {
       // The tracking set is a single key, so a variadic SREM against it is
       // still safe and can stay batched.
       //
+      // Untrack first, then unlink. Without a MULTI a purge interleaves with
+      // responses being cached for the same keys, and unlinking first lost
+      // entries: UNLINK (purge) -> SET, SADD (write) -> SREM (purge) left a
+      // live entry outside the tracking set, which no later purge could find.
+      // In this order the race leaves at worst a tracked key with nothing
+      // behind it, which keys() prunes. makeClusterSafe has the trade-off.
+      //
       // See https://github.com/strapi-community/plugin-rest-cache/issues/100
       if (store.redis.isCluster) {
-        const CONCURRENCY = 16;
-
-        for (let i = 0; i < qualified.length; i += CONCURRENCY) {
-          const batch = qualified.slice(i, i + CONCURRENCY);
-          await Promise.all(batch.map((key) => store.redis.unlink(key)));
-        }
-
         const SREM_CHUNK = 1000;
         for (let i = 0; i < qualified.length; i += SREM_CHUNK) {
           await store.redis.srem(namespace, ...qualified.slice(i, i + SREM_CHUNK));
+        }
+
+        const CONCURRENCY = 16;
+        for (let i = 0; i < qualified.length; i += CONCURRENCY) {
+          const batch = qualified.slice(i, i + CONCURRENCY);
+          await Promise.all(batch.map((key) => store.redis.unlink(key)));
         }
 
         return;
@@ -245,7 +357,8 @@ export class RedisCacheProvider extends CacheProvider {
     // keyspace at ioredis' default COUNT of 10, and MGETs a batch of *values*
     // for every page, purely to enumerate names. Measured over 100k entries
     // that was roughly 20,000 round trips and 55MB transferred, against 1 round
-    // trip here.
+    // trip here - plus, on a standalone server, one pipelined EXISTS per 1000
+    // members to leave out entries that have expired (see untrackExpired).
     //
     // See https://github.com/strapi-community/plugin-rest-cache/issues/131
     const store = redisStoreOf(this.cache);
@@ -277,7 +390,11 @@ export class RedisCacheProvider extends CacheProvider {
     }
 
     if (typeof store.redis?.smembers === 'function' && namespace && store.namespace) {
-      const members = await store.redis.smembers(namespace);
+      const members = await untrackExpired(
+        store.redis,
+        namespace,
+        await store.redis.smembers(namespace)
+      );
 
       // The tracking set holds fully qualified redis keys ("keyv:/api/foo"),
       // whereas the iterator - and therefore every caller of this method -

@@ -117,6 +117,94 @@ async function allKeys(cluster) {
     assert.deepStrictEqual(await allKeys(cluster), []);
   });
 
+  // A purge racing a response being cached for the same key. On a cluster
+  // neither is one MULTI, so they interleave. With the purge unlinking first,
+  // UNLINK (purge) -> SET, SADD (write) -> SREM (purge) left a live entry
+  // missing from the tracking set: invisible to keys(), so no later purge could
+  // find it and it was served stale until maxAge. Every live entry must stay
+  // reachable through keys().
+  await check('delMany() racing set() never leaves a live entry keys() cannot see', async () => {
+    await flushAll(cluster);
+    const keys = Array.from({ length: 200 }, (_, i) => `/api/articles?page=${i}&`);
+    for (let round = 0; round < 20; round++) {
+      await Promise.all(keys.map((key) => provider.set(key, 'old', MAX_AGE)));
+      await Promise.all([
+        provider.delMany(keys),
+        ...keys.map((key) => provider.set(key, 'new', MAX_AGE)),
+      ]);
+    }
+    noStoreErrors();
+    const listed = new Set(await provider.keys());
+    const unseen = (await allKeys(cluster))
+      .filter((key) => key.startsWith('keyv:'))
+      .map((key) => key.slice('keyv:'.length))
+      .filter((key) => !listed.has(key));
+    assert.deepStrictEqual(unseen.length, 0, `${unseen.length} live entries missing from keys(), e.g. ${unseen[0]}`);
+  });
+
+  // The same race through del(), which goes through the cluster-safe delete.
+  // Locally a round trip is far shorter than the gap between a delete's two
+  // commands on a loaded network, so the race almost never shows. Here the
+  // deleting and the writing instance each get their own connection and a few
+  // milliseconds of jitter per command, as a busy network would add.
+  await check('del() racing set() never leaves a live entry keys() cannot see', async () => {
+    await flushAll(cluster);
+    const connect = async () => {
+      const client = new Redis.Cluster(NODES);
+      await new Promise((resolve, reject) => {
+        client.once('ready', resolve);
+        client.once('error', reject);
+      });
+      for (const command of ['set', 'sadd', 'srem', 'unlink']) {
+        const send = client[command].bind(client);
+        client[command] = async (...args) => {
+          await new Promise((resolve) => setTimeout(resolve, Math.random() * 3));
+          return send(...args);
+        };
+      }
+      return client;
+    };
+    const clients = [await connect(), await connect()];
+    const [deleter, writer] = clients.map((client) => {
+      const instance = new RedisCacheProvider(client, {});
+      instance.cache.stores[0].on('error', (error) => storeErrors.push(error.message));
+      return instance;
+    });
+    try {
+      const keys = Array.from({ length: 200 }, (_, i) => `/api/articles?page=${i}&`);
+      for (let round = 0; round < 20; round++) {
+        await Promise.all(keys.map((key) => provider.set(key, 'old', MAX_AGE)));
+        await Promise.all(
+          keys.flatMap((key) => [deleter.del(key), writer.set(key, 'new', MAX_AGE)])
+        );
+      }
+    } finally {
+      for (const client of clients) client.disconnect();
+    }
+    noStoreErrors();
+    const listed = new Set(await provider.keys());
+    const unseen = (await allKeys(cluster))
+      .filter((key) => key.startsWith('keyv:'))
+      .map((key) => key.slice('keyv:'.length))
+      .filter((key) => !listed.has(key));
+    assert.deepStrictEqual(unseen.length, 0, `${unseen.length} live entries missing from keys(), e.g. ${unseen[0]}`);
+  });
+
+  // An entry that expires is removed by Redis, but its tracking-set member is
+  // not: @keyv/redis only SREMs on an explicit delete, and the set itself has
+  // no lifetime. keys() reported the dead entry, and the set grew forever.
+  await check('keys() omits expired entries and untracks them', async () => {
+    await flushAll(cluster);
+    await provider.set('/api/short', { short: true }, 50);
+    await provider.set('/api/long', { long: true }, MAX_AGE);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const listed = await provider.keys();
+    assert.deepStrictEqual(listed, ['/api/long'], `keys() returned ${JSON.stringify(listed)}`);
+    const tracked = await cluster.smembers('namespace:keyv');
+    assert.deepStrictEqual(tracked, ['keyv:/api/long'], `tracking set holds ${JSON.stringify(tracked)}`);
+    assert.deepStrictEqual(await provider.get('/api/long'), { long: true });
+  });
+
   // Without redis sets there is no tracking set to read, so keys() has to find
   // entries itself - on every master, since SCAN only sees the node it is sent
   // to. Reading one node, or the empty set, made pattern purges match nothing.

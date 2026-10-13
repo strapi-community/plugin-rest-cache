@@ -29,11 +29,13 @@ const { RedisCacheProvider } = require(
 );
 
 /** Commands that address more than one key, and so must be slot-safe. */
-const MULTI_KEY = new Set(['unlink', 'del', 'mget', 'mset']);
+const MULTI_KEY = new Set(['unlink', 'del', 'exists', 'mget', 'mset']);
 
 function recordingClient({ isCluster }) {
   const issued = [];
   const members = new Set();
+  // The entries themselves, as distinct from the tracking set's members.
+  const entries = new Set();
 
   const client = {
     isCluster,
@@ -43,11 +45,25 @@ function recordingClient({ isCluster }) {
     },
     async unlink(...keys) {
       issued.push({ cmd: 'unlink', keys: keys.flat() });
-      for (const key of keys.flat()) members.delete(key);
+      for (const key of keys.flat()) {
+        members.delete(key);
+        entries.delete(key);
+      }
       return keys.flat().length;
+    },
+    async exists(...keys) {
+      issued.push({ cmd: 'exists', keys: keys.flat() });
+      return keys.flat().filter((key) => entries.has(key)).length;
     },
     async srem(_set, ...keys) {
       issued.push({ cmd: 'srem', keys: keys.flat() });
+      for (const key of keys.flat()) members.delete(key);
+      if (client.onSrem) client.onSrem();
+      return keys.flat().length;
+    },
+    async sadd(_set, ...keys) {
+      issued.push({ cmd: 'sadd', keys: keys.flat() });
+      for (const key of keys.flat()) members.add(key);
       return keys.flat().length;
     },
     multi() {
@@ -62,8 +78,15 @@ function recordingClient({ isCluster }) {
         },
       };
     },
+    /** An entry Redis expired: gone, but still a member of the tracking set. */
+    expire(key) {
+      entries.delete(key);
+    },
     seed(keys) {
-      for (const key of keys) members.add(key);
+      for (const key of keys) {
+        members.add(key);
+        entries.add(key);
+      }
     },
   };
 
@@ -131,6 +154,24 @@ async function check(name, fn) {
     );
   });
 
+  // A write is SET then SADD. A purge that unlinks before it untracks can
+  // interleave as UNLINK (purge) -> SET, SADD (write) -> SREM (purge), leaving
+  // a live entry no later purge can find. Untracking first means the same race
+  // leaves at worst a tracked key with nothing behind it, which keys() prunes.
+  await check('cluster: delMany untracks before it unlinks', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    const provider = makeProvider(client);
+
+    await provider.delMany(KEYS);
+
+    const order = client.issued.map((c) => c.cmd);
+    const lastSrem = order.lastIndexOf('srem');
+    const firstUnlink = order.indexOf('unlink');
+    assert.ok(lastSrem !== -1 && firstUnlink !== -1, `unexpected commands: ${order.join(',')}`);
+    assert.ok(lastSrem < firstUnlink, 'unlinked an entry before removing it from the tracking set');
+  });
+
   await check('cluster: SREM against the tracking set may stay batched', async () => {
     const client = recordingClient({ isCluster: true });
     client.seed(qualified);
@@ -169,6 +210,55 @@ async function check(name, fn) {
     const keys = await provider.keys();
     assert.strictEqual(keys.length, KEYS.length);
     assert.ok(keys.every((k) => !k.startsWith('keyv:')), 'keys should be unqualified');
+  });
+
+  // Expiry removes an entry but not its tracking-set member, so keys() has to
+  // check what is still alive - and on a cluster the entries span hash slots,
+  // so each EXISTS must address one key.
+  await check('cluster: keys() drops expired entries, checking key by key', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    client.expire(qualified[0]);
+    const provider = makeProvider(client);
+
+    const keys = await provider.keys();
+    assert.ok(!keys.includes(KEYS[0]), 'listed an expired entry');
+    assert.strictEqual(keys.length, KEYS.length - 1, `listed ${keys.length} of ${KEYS.length - 1} live entries`);
+
+    const offending = client.issued.filter(
+      (c) => MULTI_KEY.has(c.cmd) && c.keys.length > 1
+    );
+    assert.deepStrictEqual(offending, [], 'keys() issued a multi-key command');
+    assert.strictEqual(
+      client.issued.some((c) => c.cmd === 'multi'),
+      false,
+      'used MULTI, which cannot span hash slots'
+    );
+    assert.ok(
+      client.issued.some((c) => c.cmd === 'srem' && c.keys.includes(qualified[0])),
+      'the expired entry was not removed from the tracking set'
+    );
+  });
+
+  // keys() checks a member, then untracks it. A response cached for that key
+  // in between - SET then SADD - must not end up untracked, or it is a live
+  // entry no purge can find.
+  await check('cluster: keys() keeps an entry written while it was being pruned', async () => {
+    const client = recordingClient({ isCluster: true });
+    client.seed(qualified);
+    client.expire(qualified[0]);
+    client.onSrem = () => {
+      client.onSrem = null;
+      client.seed([qualified[0]]);
+    };
+    const provider = makeProvider(client);
+
+    const keys = await provider.keys();
+    assert.ok(keys.includes(KEYS[0]), 'the rewritten entry was not listed');
+    assert.ok(
+      (await client.smembers()).includes(qualified[0]),
+      'the rewritten entry was left out of the tracking set'
+    );
   });
 
   await check('standalone: delMany still batches into MULTI', async () => {
