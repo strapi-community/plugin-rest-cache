@@ -16,6 +16,7 @@ authenticated admin plus the listed permission, enforced server-side by an
 | `GET` | `/rest-cache/config/provider` | `cache.read-provider` | The provider's `name` and `getTimeout`. |
 | `GET` | `/rest-cache/stats` | `cache.read-strategy` | What the cache currently holds. <Badge type="tip" text="since 5.1.0" /> |
 | `POST` | `/rest-cache/purge` | `cache.purge` | Purge a content type. |
+| `GET` | `/rest-cache/purge/content-types` | `cache.purge` | The uids of the cached content types, and nothing else. Lets the panel offer purge controls to an admin who may purge but not read the strategy. |
 
 Permissions are granted under **Settings → Roles**, and are named in full as
 `plugin::rest-cache.cache.purge` and so on.

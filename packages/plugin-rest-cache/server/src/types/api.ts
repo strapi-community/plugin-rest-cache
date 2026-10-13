@@ -53,6 +53,17 @@ export interface CacheSummary {
   contentTypes: ContentTypeStats[];
 }
 
+/**
+ * The cached content types an admin may purge.
+ *
+ * Deliberately only the uids. This is served to admins holding cache.purge
+ * but not cache.read-strategy, so it must not grow into a second, less
+ * guarded copy of StrategyResponse.
+ */
+export interface PurgeableContentTypesResponse {
+  contentTypes: string[];
+}
+
 export interface PurgeRequest {
   contentType: ContentTypeUID | string;
   params?: Record<string, string | number>;
