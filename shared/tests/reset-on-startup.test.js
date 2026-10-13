@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * resetOnStartup must actually empty the cache at boot.
+ * resetOnStartup must empty the cache when the server starts, and only then.
  *
  * register.ts used to call cacheStore.reset() during the register phase, but
  * the provider is only handed to the store in bootstrap.ts, which runs later. A
@@ -9,6 +9,13 @@
  * initialized") and returns null, so the option was a silent no-op: entries a
  * persistent provider (Redis) still held from the previous run survived the
  * restart.
+ *
+ * Making it work in bootstrap would have made it fire on every strapi.load(),
+ * and the CLI loads Strapi for routes:list, export, import, transfer, the
+ * admin:* user commands, configuration:dump, openapi:generate and any script
+ * that calls load(). Against a shared Redis each of those would have emptied
+ * the production cache. So the reset waits for strapi.listen(), which only
+ * `strapi start`, `strapi develop` and `strapi console` call.
  *
  * The memory provider starts empty on every boot, so "an entry from the
  * previous run" is simulated: the store's init() is wrapped to write an entry
@@ -36,6 +43,9 @@ const STALE_KEY = "/api/stale-from-previous-run";
 describe("resetOnStartup: true", () => {
   const errors = [];
 
+  const storedKeys = () =>
+    strapi.plugin("rest-cache").service("cacheStore").keys();
+
   beforeAll(async () => {
     process.env.RESET_STARTUP = "true";
     const appContext = await compileStrapi();
@@ -56,9 +66,9 @@ describe("resetOnStartup: true", () => {
       await provider.set(STALE_KEY, JSON.stringify({ stale: true }), 3600000);
     };
 
+    // What every CLI command that is not a server does: load() and stop.
     await instance.bootstrap();
     instance.isLoaded = true;
-    strapi.server.mount();
   });
 
   afterAll(async () => {
@@ -66,9 +76,17 @@ describe("resetOnStartup: true", () => {
     await teardown();
   });
 
-  it("removes entries that were in the store before boot", async () => {
-    const cacheStore = strapi.plugin("rest-cache").service("cacheStore");
-    expect(await cacheStore.keys()).not.toContain(STALE_KEY);
+  it("does not reset on a load that never starts the server", async () => {
+    expect(await storedKeys()).toContain(STALE_KEY);
+  });
+
+  it("removes entries that were in the store before the server started", async () => {
+    // Port 0: any free port, so parallel jest workers cannot collide.
+    strapi.config.set("server.port", 0);
+    strapi.config.set("server.host", "127.0.0.1");
+    await strapi.listen();
+
+    expect(await storedKeys()).not.toContain(STALE_KEY);
   });
 
   it("does not attempt the reset before the provider is initialized", () => {
