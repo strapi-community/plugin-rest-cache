@@ -21,6 +21,11 @@ module.exports = {
     },
     {
       method: "GET",
+      path: "/categories/probe/buffer",
+      handler: "category.buffer",
+    },
+    {
+      method: "GET",
       path: "/categories/probe/with-cookie",
       handler: "category.withCookie",
     },

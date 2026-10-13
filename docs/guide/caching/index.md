@@ -203,6 +203,7 @@ holds for every response.
 | The body is empty | There is nothing to replay. |
 | The status is not `2xx` | Errors and redirects are not the answer to the question that was asked. |
 | The body is a stream | A stream can be consumed once. A stored copy cannot be replayed, and the entry would poison every later request for that key. |
+| The body is a `Buffer` | Entries are stored as JSON, which cannot carry raw bytes or the `Content-Type`. A replayed file or CSV would arrive as a JSON array of byte values. |
 | The response sets `Set-Cookie` | A cookie is issued to one caller. Replaying it hands that caller's session, CSRF token or consent state to everybody sharing the key. |
 | `Cache-Control` says `no-store` or `private` | An explicit instruction from the handler not to store the response. |
 

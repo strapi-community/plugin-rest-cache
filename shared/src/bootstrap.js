@@ -192,6 +192,7 @@ async function importSeedData() {
       "findOne",
       "raw",
       "stream",
+      "buffer",
       "withCookie",
       "withCacheControl",
       "inherits",

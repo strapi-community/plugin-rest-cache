@@ -27,6 +27,12 @@ module.exports = createCoreController(
       ctx.body = Readable.from([JSON.stringify({ streamed: true })]);
     },
 
+    /** A Buffer body with its own content type, e.g. a proxied file. */
+    async buffer(ctx) {
+      ctx.type = "text/csv";
+      ctx.body = Buffer.from("a,b\n1,2\n");
+    },
+
     /** A response carrying a Set-Cookie, which must never be shared. */
     async withCookie(ctx) {
       ctx.cookies.set("session", `s-${Date.now()}`, { httpOnly: true });
