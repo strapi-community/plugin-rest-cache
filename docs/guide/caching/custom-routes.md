@@ -120,6 +120,15 @@ A route inherits `maxAge`, `hitpass` and `keys` from its content type, which in
 turn inherits from the strategy. Overriding on the route is how you say "this
 one is different":
 
+::: info A content type's `hitpass: false`
+A route only takes its content type's `hitpass: false` when the route's keys
+include `useAuth: true`. Without that, its entries would be shared by every
+caller, so the route keeps bypassing authenticated requests as the strategy's
+`hitpass` does. See
+[Content types](./content-types.md#caching-authenticated-responses).
+:::
+
+
 - A search endpoint whose query string carries a free-text term probably wants
   a short `maxAge`, or `useQueryParams` restricted to the parameters that
   genuinely change the answer, so that one bot appending tracking parameters

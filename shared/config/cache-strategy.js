@@ -53,7 +53,9 @@ module.exports = ({ env }) => ({
     "api::page.page",
     {
       contentType: "api::category.category",
-      maxAge: 3600000,
+      // Overridable so a test can tell it apart from the strategy's maxAge.
+      // See https://github.com/strapi-community/plugin-rest-cache/issues/230
+      maxAge: env.int("CATEGORY_MAX_AGE", 3600000),
       // Caches authenticated requests, so the caller's identity has to be part
       // of the key. See https://github.com/strapi-community/plugin-rest-cache/issues/113
       hitpass: false,
@@ -68,6 +70,10 @@ module.exports = ({ env }) => ({
         { path: "/api/categories/probe/raw", method: "GET" },
         { path: "/api/categories/probe/stream", method: "GET" },
         { path: "/api/categories/probe/with-cookie", method: "GET" },
+        // No maxAge, hitpass or keys of its own: all three must come from
+        // this content type, not from the strategy. See
+        // https://github.com/strapi-community/plugin-rest-cache/issues/230
+        { path: "/api/categories/probe/inherits", method: "GET" },
         {
           // The handler sets its own Cache-Control, chosen by ?value=, so the
           // query string has to be part of the key here.

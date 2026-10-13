@@ -43,6 +43,15 @@ module.exports = createCoreController(
       ctx.body = { handlerSetCacheControl: true };
     },
 
+    /**
+     * A plain response for a route listed under the content type with no
+     * options of its own, so everything it gets is inherited. See
+     * https://github.com/strapi-community/plugin-rest-cache/issues/230
+     */
+    async inherits(ctx) {
+      ctx.body = { inherits: true, at: Date.now() };
+    },
+
     async findBySlug(ctx) {
       const { slug } = ctx.params;
       const { query } = ctx;

@@ -32,5 +32,12 @@ module.exports = {
       path: "/categories/probe/cache-control",
       handler: "category.withCacheControl",
     },
+    // Fixture for a listed route inheriting its content type's options. See
+    // https://github.com/strapi-community/plugin-rest-cache/issues/230
+    {
+      method: "GET",
+      path: "/categories/probe/inherits",
+      handler: "category.inherits",
+    },
   ],
 };
