@@ -29,6 +29,7 @@
   "contentTypes.authKeyed.hint": "Responses are cached separately for each authenticated caller.",
   "contentTypes.authRisk": "Shared across callers",
   "contentTypes.authRisk.hint": "Hitpass is disabled but keys.useAuth is not set, so one caller's response can be served to another.",
+  "contentTypes.authRisk.routesHint": "{count, plural, one {Route {routes} caches} other {Routes {routes} cache}} authenticated requests without keys.useAuth, so one caller's response can be served to another.",
   "contentTypes.related": "Also purges {count, plural, one {# related type} other {# related types}}",
   "panel.cached.title": "REST Cache",
   "panel.cached.body": "Responses for this entry are cached for up to {maxAge} after they are first requested.",

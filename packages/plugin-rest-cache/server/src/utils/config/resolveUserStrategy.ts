@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import { getRelatedModelsUid } from './getRelatedModelsUid';
 import { deepFreeze } from './deepFreeze';
 import { shouldLookup } from '../middlewares/shouldLookup';
+import { unkeyedAuthenticatedRoutes } from './unkeyedAuthenticatedRoutes';
 import {
   CachePluginStrategy,
   CacheRouteConfig,
@@ -307,15 +308,11 @@ export const resolveUserStrategy = function (
   // on the content type alone both missed that and warned for content types
   // whose own hitpass no route used.
   // See https://github.com/strapi-community/plugin-rest-cache/issues/230
+  //
+  // The dashboard's "Shared across callers" badge uses the same predicate, so
+  // the two agree on which content types are at risk.
   for (const cacheConfig of cacheConfigs) {
-    const unkeyedPaths = cacheConfig.routes
-      .filter(
-        (route) =>
-          route.method === 'GET' &&
-          route.hitpass === false &&
-          route.keys?.useAuth !== true
-      )
-      .map((route) => route.path);
+    const unkeyedPaths = unkeyedAuthenticatedRoutes(cacheConfig.routes);
 
     if (unkeyedPaths.length) {
       strapi.log.warn(

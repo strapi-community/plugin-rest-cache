@@ -66,12 +66,20 @@ endpoint does not make someone an operator entitled to credentials.
       "maxAge": 3600000,
       "hitpass": true,
       "keysAuthIdentity": false,
+      "unkeyedAuthenticatedRoutes": [],
       "routes": ["/api/articles", "/api/articles/:id"],
       "relatedContentTypes": ["api::category.category"]
     }
   ]
 }
 ```
+
+`hitpass` and `keysAuthIdentity` describe the content type's own settings.
+`unkeyedAuthenticatedRoutes` lists its GET routes that resolved to
+`hitpass: false` without `keys.useAuth`. These are the routes the boot warning
+names, and the list the dashboard's **Shared across callers** badge reads. A
+route's resolved values can differ from its content type's, so the first two
+fields do not answer that question on their own.
 
 Counts are derived from the store's own key list rather than tracked
 separately, so they cannot drift from reality. That does mean a call costs one

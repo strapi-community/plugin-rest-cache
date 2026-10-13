@@ -119,8 +119,16 @@ const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => 
           // two people authorised for the same route share one entry. The
           // server warns about this at boot; surface it where someone will
           // actually see it.
-          const sharesAuthenticatedEntries =
-            contentType.hitpass === false && !contentType.keysAuthIdentity;
+          //
+          // From the server's per-route list, which is what the boot warning
+          // reads. The content type's own hitpass and keys missed a listed
+          // route that sets hitpass: false itself, and flagged content types
+          // whose listed routes all keep the strategy's bypass (#230). The
+          // old expression stays only for a server that does not send the
+          // list.
+          const sharesAuthenticatedEntries = contentType.unkeyedAuthenticatedRoutes
+            ? contentType.unkeyedAuthenticatedRoutes.length > 0
+            : contentType.hitpass === false && !contentType.keysAuthIdentity;
 
           return (
             <Tr key={contentType.uid}>
@@ -156,11 +164,32 @@ const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => 
                     ) : null}
                     {sharesAuthenticatedEntries ? (
                       <Tooltip
-                        label={formatMessage({
-                          id: getTranslation('contentTypes.authRisk.hint'),
-                          defaultMessage:
-                            "Hitpass is disabled but keys.useAuth is not set, so one caller's response can be served to another.",
-                        })}
+                        label={
+                          // Name the routes when the server says which they
+                          // are. "Hitpass is disabled" is wrong for a content
+                          // type whose own hitpass is enabled and whose
+                          // listed route disables it, and it sends the admin
+                          // to a setting that is already right. The old text
+                          // stays for the fallback, where the badge came
+                          // from exactly those content type settings.
+                          contentType.unkeyedAuthenticatedRoutes
+                            ? formatMessage(
+                                {
+                                  id: getTranslation('contentTypes.authRisk.routesHint'),
+                                  defaultMessage:
+                                    "{count, plural, one {Route {routes} caches} other {Routes {routes} cache}} authenticated requests without keys.useAuth, so one caller's response can be served to another.",
+                                },
+                                {
+                                  count: contentType.unkeyedAuthenticatedRoutes.length,
+                                  routes: contentType.unkeyedAuthenticatedRoutes.join(', '),
+                                }
+                              )
+                            : formatMessage({
+                                id: getTranslation('contentTypes.authRisk.hint'),
+                                defaultMessage:
+                                  "Hitpass is disabled but keys.useAuth is not set, so one caller's response can be served to another.",
+                              })
+                        }
                       >
                         {/* Themed, not a hardcoded hex: the badge has to stay
                             legible in dark mode and in every locale. Wrapped for
