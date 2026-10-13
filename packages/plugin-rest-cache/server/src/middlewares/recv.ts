@@ -219,7 +219,17 @@ export default function createRecv(
       ctx.set('X-Cache', 'MISS');
     }
 
-    const { cacheable, reason } = isCacheable(ctx);
+    let verdict: ReturnType<typeof isCacheable>;
+    try {
+      verdict = isCacheable(ctx);
+    } catch (error) {
+      // Waiters are only ever released by a publish or an abandon. Deciding
+      // the verdict before publishing means a throw here would otherwise leave
+      // every concurrent caller waiting forever.
+      abandon?.(error);
+      throw error;
+    }
+    const { cacheable, reason } = verdict;
 
     if (!cacheable) {
       // Waiters must not get a response the plugin refuses to store. Coalescing

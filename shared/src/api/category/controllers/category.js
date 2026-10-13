@@ -29,6 +29,19 @@ module.exports = createCoreController(
     },
 
     /** A streamed body, which cannot be serialised into a cache entry. */
+    /**
+     * A body that throws when the cache inspects it, so the cacheability
+     * verdict itself fails while concurrent requests wait on this one.
+     */
+    async throwingBody(ctx) {
+      await originDelay(ctx);
+      ctx.body = {
+        get pipe() {
+          throw new Error("body inspection failed");
+        },
+      };
+    },
+
     async stream(ctx) {
       await originDelay(ctx);
       const { Readable } = require("stream");

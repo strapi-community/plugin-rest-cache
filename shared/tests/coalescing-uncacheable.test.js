@@ -98,4 +98,16 @@ describe("coalescing of uncacheable responses", () => {
       expect(res.body).toEqual({ raw: true });
     }
   });
+
+  // Waiters are released by the leader publishing or abandoning. If deciding
+  // whether the response is cacheable throws, neither happened, and every
+  // concurrent caller waited forever.
+  it("never leaves concurrent callers waiting when the verdict throws", async () => {
+    const settled = await Promise.race([
+      burst(`/api/categories/probe/throwing-body?delay=${DELAY}`).then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 10000)),
+    ]);
+
+    expect(settled).toBe(true);
+  });
 });
