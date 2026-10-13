@@ -1,4 +1,5 @@
 import type { Context } from 'koa';
+import { KEY_NULL, escapeKeyJson, escapeKeyName, escapeKeyValue } from './escapeKeyPart';
 
 export const generateQueryParamsKey = function (
   ctx: Context,
@@ -20,14 +21,24 @@ export const generateQueryParamsKey = function (
 
   keys.sort();
 
+  // Names and values are escaped so one parameter cannot spell out a second:
+  // `?locale=x,populate=a` must not share a key with `?locale=x&populate=a`.
+  // See escapeKeyPart.ts for why an ordinary value comes out unchanged.
   return keys
-    .map(
-      (k) =>
-        `${k}=${
-          typeof ctx.query[k] === 'object'
-            ? JSON.stringify(ctx.query[k])
-            : ctx.query[k]
-        }`
-    ) // query strings are key sensitive
+    .map((k) => {
+      const value = ctx.query[k];
+
+      // null is tested first: `typeof null` is "object", and as JSON it would
+      // key as `null`, the same as the string `?q=null`.
+      if (value === null) {
+        return `${escapeKeyName(k)}=${KEY_NULL}`;
+      }
+
+      return `${escapeKeyName(k)}=${
+        typeof value === 'object'
+          ? JSON.stringify(escapeKeyJson(value))
+          : escapeKeyValue(`${value}`)
+      }`;
+    }) // query strings are key sensitive
     .join(',');
 };
