@@ -158,6 +158,12 @@ store, so a configured hour lived 41.7 days and nothing ever expired.
 `maxAge` can be set at three levels, each inheriting from the one above:
 `strategy` → content type → route. A route that overrides it wins.
 
+`maxAge: 0` means **do not cache**: the response goes to the client as normal
+and nothing is stored, so every request reaches the origin. (Before 5.1.1 a 0
+was handed to the store as a lifetime, which it reads as "never expires", so
+such a route was cached forever.) Identical requests arriving at the same
+moment are still [coalesced](#request-coalescing) into one origin call.
+
 ## hitpass
 
 `hitpass` decides, per request, whether to bypass the cache entirely. It is a
