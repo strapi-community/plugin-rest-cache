@@ -81,9 +81,11 @@ whose parameters it can fill in. See
 [route parameters and purging](../caching/custom-routes.md#route-parameters-and-purging)
 for the case where it cannot.
 
-Content types that are not in your configuration are ignored entirely — the
-middleware checks before doing any work, so writes to uncached content types
-cost nothing.
+A content type that is not in your configuration has no entries of its own, so
+a write to it purges nothing of its own. Cached responses can still embed it,
+though, and with `clearRelatedCache` on those are purged — see
+[uncached content types](#uncached-content-types) below. A write to an uncached
+content type that no cached content type can embed costs nothing.
 
 ## Related content types
 
@@ -114,6 +116,45 @@ erDiagram
 Writing to `CATEGORY` purges `CATEGORY`, and also `ARTICLE` — whose responses
 embed it — and `HOMEPAGE`, which reaches it through a component two steps away.
 The traversal runs to a fixed point, so depth is not a limit.
+
+### Uncached content types
+
+The written content type does not have to be cached itself. Suppose `AUTHOR`
+above is not in your configuration but `ARTICLE` is:
+`/api/articles?populate=author` still contains author data. With
+`clearRelatedCache` on, writing to `AUTHOR` purges every cached content type
+that reaches it. In this example that's `ARTICLE`, plus anything that reaches
+`ARTICLE`. As with any related purge, the purge is wildcard-style.
+
+Only relations that can appear in a content-API response count. Strapi removes
+`private` attributes from every response, so a private relation can't carry an
+uncached type into a cached one, and it is skipped. This matters for admin
+content types. Every content type has `createdBy` and `updatedBy` relations to
+`admin::user`, and the admin types relate to each other. Followed naively, a
+write to `admin::user`, `admin::role`, `admin::permission`, `admin::api-token`
+or `admin::api-token-permission` would flush the whole cache. `createdBy` and
+`updatedBy` are private, so those writes purge nothing. The exception is a
+content type whose schema sets `options.populateCreatorFields: true`, which
+makes them public. A write to an admin user then purges that content type,
+because its responses carry the user's name. Strapi writes admin content types
+through `strapi.db.query`, which bypasses this purge entirely, so this only
+affects code that writes them with `strapi.documents('admin::…')`.
+
+The set is worked out the first time each uncached content type is written to,
+then reused. If no cached content type can reach it, the write purges nothing.
+With `clearRelatedCache` off, a write to an uncached content type purges nothing.
+
+::: warning Bulk writes to uncached content types
+Each write to an uncached content type that cached types embed issues its own
+wildcard purge of all of them. Nothing batches these. Importing 1,000 authors
+through the document service purges `ARTICLE` 1,000 times. Each purge lists
+every key in the store, which on redis is a full `SCAN`, then tests each key
+against the patterns and deletes the matches in one batch. So each write costs
+time in proportion to the size of the cache, and an import pays that cost on
+every write. For a large import, turn `clearRelatedCache` off for the
+run, or write below the document service, then purge once with `wildcard: true`
+afterwards. See [Purging](./purging.md).
+:::
 
 ::: info This is why purges look wider than the write
 A content type is a member of its own related set, so with `clearRelatedCache`

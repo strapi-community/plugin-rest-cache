@@ -22,6 +22,8 @@ interface TraversableAttribute {
    * https://github.com/strapi-community/plugin-rest-cache/issues/232
    */
   components?: string[];
+  /** Private attributes are removed from every content-API response. */
+  private?: boolean;
 }
 
 interface TraversableSchema {
@@ -37,11 +39,14 @@ interface TraversableSchema {
  * make a further model reachable. The loop ends when a full round adds nothing.
  *
  * @param uid The contentType used to find related caches to purge
+ * @param options.ignorePrivate Skip private attributes, which the content-API
+ *   sanitizer removes, so they cannot carry the related model into a response.
  * @return Array of related models uid
  */
 export const getRelatedModelsUid = function (
   strapi: Pick<Core.Strapi, 'components' | 'contentTypes'>,
-  uid: ContentTypeUID | string
+  uid: ContentTypeUID | string,
+  { ignorePrivate = false }: { ignorePrivate?: boolean } = {}
 ): string[] {
   if (!uid) {
     return [];
@@ -66,10 +71,11 @@ export const getRelatedModelsUid = function (
 
   /** Whether this attribute reaches something already known to be related. */
   const reachesKnown = (attribute: TraversableAttribute): boolean =>
-    (attribute.type === 'relation' && contentTypeUids.has(attribute.target)) ||
+    !(ignorePrivate && attribute.private === true) &&
+    ((attribute.type === 'relation' && contentTypeUids.has(attribute.target)) ||
     (attribute.type === 'component' && componentUids.has(attribute.component)) ||
     (attribute.type === 'dynamiczone' &&
-      (attribute.components ?? []).some((c) => componentUids.has(c)));
+      (attribute.components ?? []).some((c) => componentUids.has(c))));
 
   for (;;) {
     const knownBefore = contentTypeUids.size + componentUids.size;
