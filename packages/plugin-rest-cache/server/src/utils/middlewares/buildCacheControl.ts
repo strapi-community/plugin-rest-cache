@@ -46,10 +46,12 @@ export const buildCacheControl = function (
   // strategy level cannot be expected to re-check it against every route's
   // keys. register.ts warns at boot when this applies.
   // See https://github.com/strapi-community/plugin-rest-cache/issues/113
+  //
+  // Truthiness, not `=== true`: the key generator puts the caller in the key
+  // for any truthy useAuth - the raw string `useAuth: env("X")` included - so
+  // that is what decides whether the response is caller-specific.
   const scope =
-    config.scope === 'public' && cacheRouteConfig.keys?.useAuth === true
-      ? 'private'
-      : config.scope;
+    config.scope === 'public' && cacheRouteConfig.keys?.useAuth ? 'private' : config.scope;
 
   directives.push(scope);
 

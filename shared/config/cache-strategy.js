@@ -62,7 +62,12 @@ module.exports = ({ env }) => ({
       keys: {
         useQueryParams: false,
         useHeaders: ["accept-encoding"],
-        useAuth: env.bool("CATEGORY_USE_AUTH", true),
+        // CATEGORY_USE_AUTH_RAW passes the raw string through, as
+        // `useAuth: env("X")` without env.bool does: truthy, but not `true`.
+        useAuth:
+          env("CATEGORY_USE_AUTH_RAW", "") !== ""
+            ? env("CATEGORY_USE_AUTH_RAW")
+            : env.bool("CATEGORY_USE_AUTH", true),
       },
       routes: [
         // Deliberately configured for caching so the plugin's refusal to cache

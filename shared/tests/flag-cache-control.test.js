@@ -205,3 +205,54 @@ describe("cacheControl: enabled with scope public", () => {
     expect(cacheControlOf(first)).toBe("public, max-age=3600");
   });
 });
+
+// keys.useAuth set to a truthy value that is not the boolean true - the raw
+// string `useAuth: env("X")` gives - keys entries per caller exactly as `true`
+// does. The downgrade compared `=== true`, so those caller-specific responses
+// went out `public` and a shared cache could hand one caller's to another.
+describe("cacheControl: scope public, useAuth set to a truthy non-boolean", () => {
+  let bootOutput = "";
+
+  beforeAll(async () => {
+    process.env.KEYS_PREFIX = undefined;
+    process.env.CACHE_CONTROL_ENABLED = "true";
+    process.env.CACHE_CONTROL_SCOPE = "public";
+    process.env.CATEGORY_USE_AUTH_RAW = "true";
+    process.env.STRAPI_LOG_LEVEL = "warn";
+
+    const streams = [process.stdout, console._stdout].filter(
+      (stream, index, all) => stream && all.indexOf(stream) === index
+    );
+    const spies = streams.map((stream) => {
+      const write = stream.write.bind(stream);
+      return jest.spyOn(stream, "write").mockImplementation((chunk, ...rest) => {
+        bootOutput += String(chunk);
+        return write(chunk, ...rest);
+      });
+    });
+
+    try {
+      await setup();
+    } finally {
+      spies.forEach((spy) => spy.mockRestore());
+    }
+  });
+  afterAll(async () => {
+    delete process.env.CACHE_CONTROL_ENABLED;
+    delete process.env.CACHE_CONTROL_SCOPE;
+    delete process.env.CATEGORY_USE_AUTH_RAW;
+    delete process.env.STRAPI_LOG_LEVEL;
+    await teardown();
+  });
+
+  beforeEach(() => store().reset());
+
+  it("still downgrades to private", async () => {
+    const first = await agent().get("/api/categories");
+    const second = await agent().get("/api/categories");
+
+    expect(second.get("x-cache")).toBe("HIT");
+    expect(cacheControlOf(first)).toBe("private, max-age=3600");
+    expect(cacheControlOf(second)).toBe("private, max-age=3600");
+  });
+});

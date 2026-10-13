@@ -322,7 +322,8 @@ export const resolveUserStrategy = function (
   ) {
     for (const cacheConfig of cacheConfigs) {
       const keyedPerCaller = cacheConfig.routes.filter(
-        (route) => route.keys?.useAuth === true
+        // Truthiness, as buildCacheControl and the key generator decide it.
+        (route) => Boolean(route.keys?.useAuth)
       );
 
       if (!keyedPerCaller.length) {
