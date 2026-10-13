@@ -38,7 +38,8 @@
     "docs:api": "typedoc",
     "docs:build:only": "vitepress build docs",
     "build:providers": "pnpm --filter \"./packages/provider-*\" run build",
-    "test:cluster:live": "node scripts/redis-cluster-live.cjs"
+    "test:cluster:live": "node scripts/redis-cluster-live.cjs",
+    "test:redis:live": "node scripts/redis-standalone-live.cjs"
   },
   "license": "MIT",
   "devDependencies": {

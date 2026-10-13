@@ -262,3 +262,10 @@ jobs:
       - name: Run Redis e2e tests
         working-directory: playgrounds/redis
         run: pnpm run test:e2e
+
+      # Provider behaviour the playground's single configuration never reaches,
+      # such as purging with useRedisSets off.
+      - name: Run provider checks against Redis
+        run: pnpm run test:redis:live
+        env:
+          REDIS_URL: redis://127.0.0.1:6379/15
