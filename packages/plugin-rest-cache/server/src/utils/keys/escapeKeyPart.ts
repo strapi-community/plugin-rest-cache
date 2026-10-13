@@ -2,63 +2,66 @@
  * Escaping for the names and values that go into a cache key.
  *
  * A key is `path?query&headers&auth`, and the query and header parts are each
- * `name=value` pairs joined with ",". Nothing used to be escaped, so a value
- * could spell out a separator and the next pair itself: `?locale=x,populate=a`
- * and `?locale=x&populate=a` both keyed as `locale=x,populate=a`, and whichever
+ * `name=value` pairs joined with ",". Nothing used to be escaped, so one
+ * request could spell out another's key: `?locale=x,populate=a` and
+ * `?locale=x&populate=a` both keyed as `locale=x,populate=a`, and whichever
  * arrived first was served to the other - cache poisoning by an anonymous
- * caller. Header values could forge a second header the same way, and an "&"
- * in either could move the boundary between the query and header parts.
+ * caller. A header value could forge a second header the same way, an "&"
+ * could move the boundary between parts, and a string that looked like JSON
+ * (`?f={"a":"b"}`) keyed like the object qs builds from `?f[a]=b`.
  *
- * The obvious fix, encodeURIComponent on everything, would move the key of
- * nearly every real request: commas are ordinary in `populate=a,b`,
- * `sort=title:asc,id` and `Accept-Encoding: gzip, deflate`, and "=" in
- * `Accept-Language: en;q=0.9`. A moved key means every existing entry goes
- * cold on upgrade and is never purged, because nothing addresses it any more.
- * So this escapes only what is needed to make the encoding unambiguous, and
- * an ordinary value comes out byte-identical:
+ * The rule: a string is kept as it is unless it contains a character that
+ * could be read as structure, in which case the whole string is passed
+ * through encodeURIComponent. That gives four invariants, each easy to check:
  *
- * - "%" always, so an escape in the output cannot be mistaken for a literal
- *   "%2C" a caller sent;
- * - "&" always, so the three parts of a key are always split by exactly two
- *   bare "&";
- * - in a name, anything outside NAME_CHAR, so a name can never contain a
- *   separator;
- * - in a value, a "," only where it is followed by name characters and "=" -
- *   the one shape that reads as the start of another pair. `en-US,en;q=0.9`
- *   is untouched because ";" cannot appear in a name.
+ * 1. A name never contains "%", "&", "," or "=".
+ * 2. A value never contains "%" unless it was encoded, and an encoded value
+ *    always does - so a raw value and an encoded one cannot be equal.
+ * 3. A value never contains "&" or "=". With (1), every "=" in a part ends a
+ *    name, every name starts after the last "," before it, and the part
+ *    splits into pairs exactly one way; every "&" in a key is a separator.
+ * 4. A raw scalar never starts with "{", "[" or '"', and a nested value is
+ *    JSON of an object or array, which always does - so they cannot be equal.
+ *    Inside the JSON every string obeys (2) and (3), and JSON adds no "=",
+ *    "&" or "%" of its own.
  *
- * Decoding is then unique: a bare "," followed by NAME_CHAR* and "=" starts a
- * pair, every other "," belongs to a value, and a name ends at its first "=".
+ * Values may keep their commas: (3) is what makes that safe, and commas are
+ * ordinary in `populate=a,b`, `sort=title:asc,id` and
+ * `Accept-Encoding: gzip, deflate`. Encoding them would move those keys. Only
+ * a value containing "%", "&", "=" or a leading "{", "[" or '"' gets a new key,
+ * which costs one cold entry: the old entry is still purged, because purge
+ * patterns are anchored on the path.
  */
+
+// Encoded when matched. "," is structure in a name, but not in a value.
+const VALUE_STRUCTURE = /[%&=]|^[{["]/;
+const NAME_STRUCTURE = /[%&,=]|^[{["]/;
 
 /**
- * Characters a name may carry unescaped: the RFC 9110 token characters, which
- * every header name and every query name Strapi uses is made of, plus the
- * brackets of a nested query name qs left unparsed. "%" is in the set only
- * because it introduces an escape; a literal "%" is still escaped.
+ * encodeURIComponent turns every character above into %XX and never emits
+ * "&", ",", "=", "{", "[" or '"'. It throws on a lone surrogate, which a
+ * request must not be able to turn into a 500, so those are replaced first.
+ * qs leaves undecodable input as literal "%XX", so in practice none arrive.
  */
-const NAME_CHAR = "A-Za-z0-9!#$%'*+.^_`|~\\-\\[\\]";
-
-const NAME_UNSAFE = new RegExp(`[^${NAME_CHAR}]|%`, 'gu');
-const VALUE_UNSAFE = new RegExp(`[%&]|,(?=[${NAME_CHAR}]*=)`, 'g');
-
-const percentEncode = (char: string): string =>
-  Array.from(Buffer.from(char, 'utf8'), (byte) =>
-    `%${byte.toString(16).toUpperCase().padStart(2, '0')}`
-  ).join('');
+const encode = (s: string): string => {
+  try {
+    return encodeURIComponent(s);
+  } catch {
+    return encodeURIComponent(s.replace(/[\uD800-\uDFFF]/g, '�'));
+  }
+};
 
 export const escapeKeyName = (name: string): string =>
-  name.replace(NAME_UNSAFE, percentEncode);
+  NAME_STRUCTURE.test(name) ? encode(name) : name;
 
 export const escapeKeyValue = (value: string): string =>
-  value.replace(VALUE_UNSAFE, percentEncode);
+  VALUE_STRUCTURE.test(value) ? encode(value) : value;
 
 /**
- * A nested query value (`filters[title][$eq]=x` arrives as an object) goes
- * into the key as JSON. Its structural commas are always followed by `"`, `{`,
- * `[` or a literal, never by a name and "=", so only the strings inside need
- * escaping - and escaping them before stringifying leaves the JSON for an
- * ordinary value exactly as it was.
+ * A nested query value (`populate[author]=true` arrives as an object) goes
+ * into the key as JSON, as it always has, so its key does not move. Every
+ * string inside - keys included - is escaped first, which is what keeps
+ * invariants (2) and (3) true of the JSON as a whole.
  */
 export const escapeKeyJson = (value: unknown): unknown => {
   if (typeof value === 'string') {
