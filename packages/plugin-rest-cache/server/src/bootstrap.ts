@@ -4,6 +4,7 @@ import path from 'path';
 
 import colors from './utils/colors';
 import permissionsActions from './permissions-actions';
+import { registerDatabaseLifecyclePurge } from './utils/middlewares/registerDatabaseLifecyclePurge';
 import { CacheProvider } from './types';
 import type { CacheProviderConfig, RestCachePluginConfig } from './types/config';
 
@@ -172,6 +173,14 @@ export default async function bootstrap({ strapi }: { strapi: Core.Strapi }) {
   // register cache provider
   const provider = await createProvider(pluginOption.provider, { strapi });
   await cacheStore.init(provider);
+
+  // After init rather than in register next to the document service
+  // middleware: plugins seed their own tables during bootstrap (i18n's default
+  // locale, for one), and a purge before the provider exists only logs
+  // "provider not initialized" at every boot.
+  if (pluginOption.strategy.enableDocumentServiceMiddleware) {
+    registerDatabaseLifecyclePurge(strapi);
+  }
 
   // Must run after init(), never in register. It used to be issued from
   // register.ts, before the store had a provider, so the store refused it

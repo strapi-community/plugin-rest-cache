@@ -165,7 +165,10 @@ worse.
 ## What invalidation cannot see
 
 - **Writes that bypass the document service**, such as `strapi.db.query(...)`
-  or raw SQL. Nothing observes those.
+  or raw SQL, on your own content types. Nothing observes those. Cached
+  content types owned by a plugin are the exception: their `strapi.db.query`
+  writes do purge, because the plugins themselves write that way. See
+  [Plugin routes](../caching/custom-routes.md#how-plugin-routes-are-invalidated).
 - **Changes made outside this Strapi process**: another service writing to the
   same database, a restore from backup, a manual edit.
 - **Other instances, when using the memory provider.** Each instance caches and
