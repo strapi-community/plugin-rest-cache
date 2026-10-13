@@ -36,11 +36,37 @@ export interface NodeRedisClient {
     cursor: string,
     options?: { MATCH?: string; COUNT?: number }
   ): Promise<{ cursor: string; keys: string[] }>;
+  sScan(
+    key: string,
+    cursor: string,
+    options?: { MATCH?: string; COUNT?: number }
+  ): Promise<{ cursor: string; members: string[] }>;
   multi(): NodeRedisMulti;
   /** On a cluster (@redis/client 5+): one entry per master, for nodeClient(). */
   readonly masters?: unknown[];
   /** On a cluster: the client connected to one node of `masters`. */
   nodeClient?(node: unknown): Promise<Pick<NodeRedisClient, 'scan'>>;
+}
+
+/**
+ * The tracking set, as the provider's background prune sees it.
+ *
+ * The prune's logic - SSCAN a batch, check which members still exist, SREM the
+ * dead, re-check and re-add - lives once, in RedisCacheProvider, and runs on
+ * plugin-redis v2's ioredis client and v3's node-redis client alike through
+ * this. See https://github.com/strapi-community/plugin-rest-cache/issues/131
+ */
+export interface TrackingSet {
+  /** One SSCAN step: the next cursor ('0' when done) and a batch of members. */
+  sscan(cursor: string, count: number): Promise<[string, string[]]>;
+  /**
+   * Whether each key exists. Never rejects: a key that could not be checked is
+   * reported as existing, because untracking a live entry hides it from every
+   * purge while keeping a dead one only costs a wasted UNLINK later.
+   */
+  existing(keys: string[]): Promise<boolean[]>;
+  srem(members: string[]): Promise<unknown>;
+  sadd(members: string[]): Promise<unknown>;
 }
 
 export interface NodeRedisStoreOptions {
@@ -328,6 +354,46 @@ export class NodeRedisStore extends EventEmitter {
   /** Every tracked key, fully qualified. */
   async trackedKeys(): Promise<string[]> {
     return this.client.sMembers(this._getNamespace());
+  }
+
+  /**
+   * The tracking set, for the provider's prune; undefined when there is none.
+   *
+   * Every command resolves `this.client` as it is sent, never once per pass:
+   * a pass takes seconds on a large set, and plugin-redis v3 may replace the
+   * client in the middle of one.
+   */
+  trackingSet(): TrackingSet | undefined {
+    if (!this.opts.useRedisSets || !this.namespace) return undefined;
+    const set = this._getNamespace();
+
+    return {
+      sscan: async (cursor, count) => {
+        const reply = await this.client.sScan(set, cursor, { COUNT: count });
+        return [String(reply.cursor), reply.members];
+      },
+      // One EXISTS per key: a variadic EXISTS only returns a count, and on a
+      // cluster it would span hash slots. Issued together, so node-redis sends
+      // them as one pipeline on a standalone server (it batches every command
+      // made in the same tick) and routes each to its node on a cluster.
+      existing: async (keys) => {
+        try {
+          return await Promise.all(
+            keys.map((key) =>
+              this.client.exists(key).then(
+                (count) => Number(count) > 0,
+                () => true
+              )
+            )
+          );
+        } catch {
+          return keys.map(() => true);
+        }
+      },
+      // One key, the set, so a batched SREM or SADD is slot-safe on a cluster.
+      srem: (members) => this.client.sRem(set, members),
+      sadd: (members) => this.client.sAdd(set, members),
+    };
   }
 
   get ready(): boolean {
