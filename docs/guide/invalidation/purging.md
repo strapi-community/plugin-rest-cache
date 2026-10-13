@@ -157,8 +157,9 @@ The cache itself.
 | `clearByRegexp(regExps)` | Purge every key matching any of the given patterns. Patterns are tested against logical keys, without `keysPrefix`. |
 | `reset()` | Empty the cache. |
 | `keys()` | Every key currently held, with `keysPrefix` stripped. |
-| `get(key)` | Read one entry. Bounded by `provider.getTimeout`; a timeout reads as `null`. |
-| `set(key, value, maxAge?)` | Write one entry. `maxAge` is milliseconds. |
+| `get(key)` | Read one entry's body. Bounded by `provider.getTimeout`; a timeout reads as `null`. |
+| `getEntry(key)` | Read one entry as `{ data, type? }`: the body and, if one was stored, the response's `Content-Type`. Same timeout as `get`. |
+| `set(key, value, maxAge?, meta?)` | Write one entry. `maxAge` is milliseconds. `meta.type` stores a `Content-Type` to serve the body with on a hit. |
 | `del(key)` / `delMany(keys)` | Delete one key, or a batch in a single provider call. |
 | `ready` | Whether the provider is initialised and usable. |
 
@@ -226,6 +227,11 @@ a model you write to directly.
 type, so `{ id: "abc" }` resolves `/api/articles/:id` to `/api/articles/abc`. A
 route whose parameters cannot all be filled in is skipped rather than guessed
 at — so a `/api/articles/slug/:slug` route is not matched by an `id`.
+
+Pass values as you have them — `{ slug: "café" }`, not `{ slug: "caf%C3%A9" }`.
+They are encoded the way a browser puts them in the URL before they are matched,
+and a value that is already percent-encoded is left as it is, so both forms
+work.
 
 `wildcard: true` replaces every parameter with a match-anything pattern and
 clears the lot. Use it when you cannot enumerate what changed, which is most of

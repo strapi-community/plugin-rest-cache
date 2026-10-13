@@ -1,8 +1,11 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Core } from '@strapi/strapi';
 import debug from 'debug';
 
 import colors from '../colors';
+import { getRelatedModelsUid } from '../config/getRelatedModelsUid';
 import type { WriteAction } from '../../types/common';
+import type { RestCachePluginConfig } from '../../types/config';
 
 /**
  * Document service actions that change content and must therefore invalidate
@@ -22,6 +25,32 @@ const WRITE_ACTIONS = new Set<WriteAction>([
   'unpublish',
   'discardDraft',
 ]);
+
+/**
+ * The content type uids with a document service write in progress on the
+ * current async call chain.
+ *
+ * The document service writes through strapi.db.query, so every write it makes
+ * also fires database lifecycles. The database lifecycle purge
+ * (registerDatabaseLifecyclePurge) exists for writes that bypass the document
+ * service; it asks this whether a lifecycle event belongs to a write the
+ * middleware below will already purge, so that write is purged once rather
+ * than once per row the document service touches (draft, published version,
+ * each locale).
+ *
+ * AsyncLocalStorage rather than a process-wide "write in flight" flag: only
+ * the database events of this very call see the scope. A user.remove() from
+ * another request that overlaps a slow user update must still purge, or the
+ * removed user stays in the cached list until maxAge.
+ *
+ * Scoped by uid rather than "any document service write": a document service
+ * write to one content type that makes a raw strapi.db.query write to a
+ * different cached one is not purged for that other one by this middleware.
+ */
+const documentServiceWrites = new AsyncLocalStorage<ReadonlySet<string>>();
+
+export const isDocumentServiceWriteInProgress = (uid: string): boolean =>
+  documentServiceWrites.getStore()?.has(uid) ?? false;
 
 interface DocumentServiceContext {
   action: string;
@@ -60,20 +89,99 @@ export const registerDocumentServiceMiddleware = function (strapi: Core.Strapi):
     `[REGISTER] ${colors.blueBright('document service')} invalidation middleware`
   );
 
-  strapi.documents.use(async (ctx, next) => {
-    const result = await next();
+  /**
+   * Cached content types whose responses can embed an uncached one, by uid.
+   *
+   * A content type that is not configured for caching has no entries of its
+   * own, but cached responses can still contain it - `/api/articles?populate=author`
+   * embeds a writer whether or not writers are cached. Returning early on an
+   * uncached write left those responses stale until maxAge, although
+   * clearRelatedCache promises they are purged.
+   *
+   * Same direction as a cached type's relatedContentTypeUid: the content types
+   * that reach the written one through relations, components and dynamic zones,
+   * which are the ones whose responses can contain it. Filled lazily, once per
+   * written uid, because the schema cannot change after boot and most uncached
+   * content types are never written to; an empty list keeps a write to an
+   * uncached type nobody embeds as cheap as it was.
+   *
+   * Private attributes are skipped. Every content type has createdBy/updatedBy
+   * relations to admin::user, and the admin types relate to one another, so
+   * otherwise a document-service write to admin::user, role, permission,
+   * api-token or api-token-permission reached every cached type and flushed
+   * the whole cache. Those relations are private - createdBy/updatedBy unless
+   * the schema sets `options.populateCreatorFields`, admin::user.roles always -
+   * and the content-API sanitizer removes private attributes, so they never
+   * put admin data into a cached response. With populateCreatorFields the
+   * creator fields are public, and an admin user write still purges that type.
+   * The cached path keeps its own related set, unchanged.
+   */
+  const embeddedIn = new Map<string, string[]>();
 
-    if (!WRITE_ACTIONS.has(ctx.action as WriteAction)) {
-      return result;
+  const cachedTypesEmbedding = (uid: string): string[] => {
+    let uids = embeddedIn.get(uid);
+
+    if (!uids) {
+      const cacheConfig = strapi.plugin('rest-cache').service('cacheConfig');
+      uids = getRelatedModelsUid(strapi, uid, { ignorePrivate: true }).filter(
+        (relatedUid) => relatedUid !== uid && cacheConfig.isCached(relatedUid)
+      );
+      embeddedIn.set(uid, uids);
     }
+
+    return uids;
+  };
+
+  strapi.documents.use(async (ctx, next) => {
+    if (!WRITE_ACTIONS.has(ctx.action as WriteAction)) {
+      return next();
+    }
+
+    const inProgress = new Set(documentServiceWrites.getStore());
+    inProgress.add(ctx.uid);
+    const result = await documentServiceWrites.run(inProgress, () => next());
 
     const cacheConfig = strapi.plugin('rest-cache').service('cacheConfig');
+    const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
 
     if (!cacheConfig.isCached(ctx.uid)) {
+      const { strategy } = strapi.config.get<RestCachePluginConfig>('plugin::rest-cache');
+
+      // Behind the same flag as every other related purge: with it off, a
+      // write purges only the content type written, and that has no entries.
+      if (!strategy.clearRelatedCache) {
+        return result;
+      }
+
+      const related = cachedTypesEmbedding(ctx.uid);
+
+      if (!related.length) {
+        return result;
+      }
+
+      debug('strapi:plugin-rest-cache')(
+        `${colors.redBright('[PURGE]')} ${ctx.action} ${colors.cyan(ctx.uid)} (uncached) related: ${related.join(', ')}`
+      );
+
+      // Awaited, and never allowed to fail the write, for the same reasons as
+      // the purge below. Wildcard, as for any related purge: nothing says which
+      // of their entries embedded this document.
+      try {
+        await cacheStore.clearByRegexp(
+          related.flatMap((relatedUid) =>
+            cacheConfig.getCacheKeysRegexp(relatedUid, {}, true)
+          )
+        );
+      } catch (error) {
+        strapi.log.error(
+          `REST Cache: failed to purge content types related to "${ctx.uid}" after "${ctx.action}"`
+        );
+        strapi.log.error(error);
+      }
+
       return result;
     }
 
-    const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
     const documentId = resolveDocumentId(ctx as DocumentServiceContext, result);
 
     debug('strapi:plugin-rest-cache')(
