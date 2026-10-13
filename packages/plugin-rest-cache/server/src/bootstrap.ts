@@ -129,6 +129,27 @@ const createProvider = async (
   return Object.freeze(providerInstance);
 };
 
+/**
+ * Empty the cache the first time this instance starts listening.
+ *
+ * Wraps the instance's own listen() rather than the prototype, so no other
+ * Strapi instance in the process is affected, and puts the original back after
+ * the first call so the reset runs once per boot.
+ */
+const resetCacheOnListen = (
+  strapi: Core.Strapi,
+  reset: () => Promise<unknown>
+): void => {
+  const listen = strapi.listen;
+
+  strapi.listen = async function (this: Core.Strapi) {
+    strapi.listen = listen;
+    strapi.log.warn('Reset cache on startup is enabled');
+    await reset();
+    return listen.call(this);
+  };
+};
+
 export default async function bootstrap({ strapi }: { strapi: Core.Strapi }) {
   // resolve user configuration, check for missing or invalid optinos
   const pluginOption = strapi.config.get<RestCachePluginConfig>('plugin::rest-cache');
@@ -151,6 +172,23 @@ export default async function bootstrap({ strapi }: { strapi: Core.Strapi }) {
   // register cache provider
   const provider = await createProvider(pluginOption.provider, { strapi });
   await cacheStore.init(provider);
+
+  // Must run after init(), never in register. It used to be issued from
+  // register.ts, before the store had a provider, so the store refused it
+  // ("REST Cache provider not initialized") and the option silently did
+  // nothing - a persistent provider kept serving entries from the previous run.
+  //
+  // And not here either, but when the HTTP server starts. bootstrap runs on
+  // every strapi.load(), which the CLI also does for routes:list, export,
+  // import, transfer, the admin:* user commands, configuration:dump,
+  // openapi:generate and any script of the application's own. Against a shared
+  // Redis each of those would empty the production cache. strapi.listen() is
+  // what `strapi start` and `strapi develop` (and `strapi console`, which does
+  // serve) call after load(), so the reset still lands before the first request
+  // can be accepted.
+  if (pluginOption.strategy.resetOnStartup) {
+    resetCacheOnListen(strapi, () => cacheStore.reset());
+  }
 
   strapi.log.info(
     `Using REST Cache plugin with provider "${colors.cyan(pluginOption.provider.name)}"`
