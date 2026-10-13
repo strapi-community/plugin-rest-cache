@@ -84,6 +84,23 @@ module.exports = {
       path: "/categories/probe/inherits",
       handler: "category.inherits",
     },
+    // Fixtures for string bodies with a handler-chosen Content-Type, which a
+    // cache HIT must serve with that same type rather than one Koa infers.
+    {
+      method: "GET",
+      path: "/categories/probe/csv",
+      handler: "category.csv",
+    },
+    {
+      method: "GET",
+      path: "/categories/probe/xml",
+      handler: "category.xml",
+    },
+    {
+      method: "GET",
+      path: "/categories/probe/negotiated",
+      handler: "category.negotiated",
+    },
     // Fixture for a route keyed on a query param and two headers, so the
     // separators between every part of a cache key can be exercised.
     {

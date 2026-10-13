@@ -157,8 +157,9 @@ The cache itself.
 | `clearByRegexp(regExps)` | Purge every key matching any of the given patterns. Patterns are tested against logical keys, without `keysPrefix`. |
 | `reset()` | Empty the cache. |
 | `keys()` | Every key currently held, with `keysPrefix` stripped. |
-| `get(key)` | Read one entry. Bounded by `provider.getTimeout`; a timeout reads as `null`. |
-| `set(key, value, maxAge?)` | Write one entry. `maxAge` is milliseconds. |
+| `get(key)` | Read one entry's body. Bounded by `provider.getTimeout`; a timeout reads as `null`. |
+| `getEntry(key)` | Read one entry as `{ data, type? }`: the body and, if one was stored, the response's `Content-Type`. Same timeout as `get`. |
+| `set(key, value, maxAge?, meta?)` | Write one entry. `maxAge` is milliseconds. `meta.type` stores a `Content-Type` to serve the body with on a hit. |
 | `del(key)` / `delMany(keys)` | Delete one key, or a batch in a single provider call. |
 | `ready` | Whether the provider is initialised and usable. |
 

@@ -143,6 +143,25 @@ module.exports = ({ env }) => ({
           keys: { useQueryParams: ["q"], useHeaders: ["x-a", "x-b"], useAuth: true },
         },
         {
+          // ?delay= holds the origin open, so a coalescing test needs it in
+          // the key to keep its burst apart from the plain requests.
+          path: "/api/categories/probe/csv",
+          method: "GET",
+          keys: { useQueryParams: true, useHeaders: [], useAuth: true },
+        },
+        {
+          path: "/api/categories/probe/xml",
+          method: "GET",
+          keys: { useQueryParams: true, useHeaders: [], useAuth: true },
+        },
+        {
+          // Accept is deliberately not in the key: the handler varies its
+          // type on it, which is the cache-poisoning case under test.
+          path: "/api/categories/probe/negotiated",
+          method: "GET",
+          keys: { useQueryParams: true, useHeaders: [], useAuth: true },
+        },
+        {
           path: "/api/categories/slug/:slug+",
           keys: {
             useQueryParams: ["populate", "locale"],
