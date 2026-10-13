@@ -12,7 +12,7 @@
  * about, and flagged a content type the server considered safe.
  */
 
-const { setup, teardown, adminAgent } = require("./helpers/strapi");
+const { setup, teardown, agent, adminAgent } = require("./helpers/strapi");
 
 jest.setTimeout(90000);
 
@@ -30,7 +30,22 @@ jest.mock("../config/cache-strategy", () => {
     const strategy = real(args);
 
     strategy.contentTypes = [
-      "api::article.article",
+      // (C) A route with hitpass: false whose useAuth is truthy but not the
+      // boolean true - what `env("USE_AUTH")` hands over, since env() returns
+      // strings. The key generator tests useAuth for truthiness, so these
+      // entries are keyed per caller and nothing is shared.
+      {
+        contentType: "api::article.article",
+        injectDefaultRoutes: false,
+        routes: [
+          {
+            path: "/api/articles",
+            method: "GET",
+            hitpass: false,
+            keys: { useQueryParams: true, useHeaders: [], useAuth: "true" },
+          },
+        ],
+      },
       // (A) The content type keeps the default hitpass; one listed route sets
       // hitpass: false itself, without keys.useAuth. The boot warning names
       // the route; the content type's own hitpass says nothing is wrong.
@@ -87,6 +102,15 @@ describe("Shared across callers agrees with the boot warning", () => {
     } finally {
       spy.mockRestore();
     }
+
+    // (C) is checked against what the cache actually does, which needs
+    // authenticated callers the route lets through.
+    const role = await strapi
+      .query("plugin::users-permissions.role")
+      .findOne({ where: { type: "authenticated" } });
+    await strapi.query("plugin::users-permissions.permission").create({
+      data: { action: "api::article.article.find", role: role.id },
+    });
   });
   afterAll(async () => {
     delete process.env.STRAPI_LOG_LEVEL;
@@ -118,6 +142,43 @@ describe("Shared across callers agrees with the boot warning", () => {
     const stats = await statsFor("api::page.page");
     expect(dashboardFlags(stats)).toBe(false);
     expect(stats.unkeyedAuthenticatedRoutes).toEqual([]);
+  });
+
+  it("(C) does not flag a route whose truthy non-boolean useAuth keys entries per caller", async () => {
+    const jwtFor = async (username) => {
+      const role = await strapi
+        .query("plugin::users-permissions.role")
+        .findOne({ where: { type: "authenticated" } });
+      const user = await strapi.query("plugin::users-permissions.user").create({
+        data: {
+          username,
+          email: `${username}@example.com`,
+          password: "Password123",
+          confirmed: true,
+          blocked: false,
+          role: role.id,
+          provider: "local",
+        },
+      });
+      return strapi.plugin("users-permissions").service("jwt").issue({ id: user.id });
+    };
+    const alice = await jwtFor("flag-alice");
+    const bob = await jwtFor("flag-bob");
+    const get = (jwt) =>
+      agent().get("/api/articles").set("Authorization", `Bearer ${jwt}`);
+
+    // Precondition: the key really does identify the caller. Alice's entry is
+    // cached and served back to her, and Bob does not get it.
+    await strapi.plugin("rest-cache").service("cacheStore").reset();
+    expect((await get(alice)).get("x-cache")).toBe("MISS");
+    expect((await get(alice)).get("x-cache")).toBe("HIT");
+    expect((await get(bob)).get("x-cache")).toBe("MISS");
+
+    // So neither the boot warning nor the badge may claim it is shared.
+    expect(bootWarns("api::article.article")).toBe(false);
+    const stats = await statsFor("api::article.article");
+    expect(stats.unkeyedAuthenticatedRoutes).toEqual([]);
+    expect(dashboardFlags(stats)).toBe(false);
   });
 
   it("keeps the content type's own fields as they were", async () => {

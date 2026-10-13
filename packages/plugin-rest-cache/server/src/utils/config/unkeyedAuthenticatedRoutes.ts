@@ -14,9 +14,18 @@ import type { CacheRouteConfig } from '../../types';
  *
  * The boot warning and the dashboard's "Shared across callers" badge both
  * read this, so the two cannot disagree again.
+ *
+ * `useAuth` is tested for truthiness because that is what generateCacheKey
+ * does, and the question here is whether the key identifies the caller. The
+ * type says boolean, but a JavaScript config can pass anything - `env()`
+ * returns strings - and `=== true` flagged a route keyed by `"true"` as
+ * shared when its entries were already per caller. Nothing coerces useAuth
+ * at resolution, and nothing should here either: the hitpass, Cache-Control
+ * and stats checks compare `=== true`, and coercing would change what they
+ * bypass and emit for those configurations.
  */
 export const isUnkeyedAuthenticatedRoute = (route: CacheRouteConfig): boolean =>
-  route.method === 'GET' && route.hitpass === false && route.keys?.useAuth !== true;
+  route.method === 'GET' && route.hitpass === false && !route.keys?.useAuth;
 
 /** The paths of the routes `isUnkeyedAuthenticatedRoute` holds for. */
 export const unkeyedAuthenticatedRoutes = (
