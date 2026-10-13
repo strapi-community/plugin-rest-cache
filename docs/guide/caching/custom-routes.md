@@ -227,6 +227,39 @@ export default {
 
 ::::
 
+The plugin's routes are found among each plugin's `content-api` routes, with
+the plugin's own prefix applied: users-permissions mounts `/users` directly on
+the API (`/api/users`), upload mounts its routes under `/upload`
+(`/api/upload/files`).
+
+### How plugin routes are invalidated
+
+Plugins do not always write their content through the document service.
+users-permissions deletes users with `strapi.db.query(...)`; upload creates,
+updates and deletes files that way; i18n does the same for locales. The
+document service hook that normally drives [invalidation](../invalidation/index.md)
+never sees those writes.
+
+So for a cached content type whose uid starts with `plugin::`, the plugin also
+listens to Strapi's database lifecycles (`afterCreate`, `afterUpdate`,
+`afterDelete` and their `*Many` forms). Each such write purges every cached
+entry for the content type, and its related content types when
+[`clearRelatedCache`](../reference/config.md#top-level) is on, the same way a document
+service write does.
+
+- A write that does go through the document service is purged once, by the
+  document service hook. Its database writes are not purged a second time.
+- The purge is a wildcard. A database write carries no route parameters, and
+  plugin routes such as `/api/users/:id` use the numeric id rather than a
+  document id.
+- A `createMany`, `updateMany` or `deleteMany` purges once per call, not per
+  row. Uploading many files one by one purges once per file.
+- Application content types (`api::...`) are not hooked this way. Writes to
+  them through `strapi.db.query` still need an explicit purge; see
+  [Purging](../invalidation/purging.md).
+- This needs `enableDocumentServiceMiddleware`, which is on by default. In the
+  legacy route-based mode, only the listed write routes purge.
+
 ::: warning Think before caching user data
 `/api/users` responses depend on who is asking. The default `hitpass` already
 prevents them being cached at all, since they carry an `authorization` header.

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Core } from '@strapi/strapi';
 import debug from 'debug';
 
@@ -22,6 +23,27 @@ const WRITE_ACTIONS = new Set<WriteAction>([
   'unpublish',
   'discardDraft',
 ]);
+
+/**
+ * The content type uids with a document service write in progress on the
+ * current async call chain.
+ *
+ * The document service writes through strapi.db.query, so every write it makes
+ * also fires database lifecycles. The database lifecycle purge
+ * (registerDatabaseLifecyclePurge) exists for writes that bypass the document
+ * service; it asks this whether a lifecycle event belongs to a write the
+ * middleware below will already purge, so that write is purged once rather
+ * than once per row the document service touches (draft, published version,
+ * each locale).
+ *
+ * Scoped by uid rather than "any document service write": a document service
+ * write to one content type that makes a raw strapi.db.query write to a
+ * different cached one is not purged for that other one by this middleware.
+ */
+const documentServiceWrites = new AsyncLocalStorage<ReadonlySet<string>>();
+
+export const isDocumentServiceWriteInProgress = (uid: string): boolean =>
+  documentServiceWrites.getStore()?.has(uid) ?? false;
 
 interface DocumentServiceContext {
   action: string;
@@ -61,11 +83,13 @@ export const registerDocumentServiceMiddleware = function (strapi: Core.Strapi):
   );
 
   strapi.documents.use(async (ctx, next) => {
-    const result = await next();
-
     if (!WRITE_ACTIONS.has(ctx.action as WriteAction)) {
-      return result;
+      return next();
     }
+
+    const inProgress = new Set(documentServiceWrites.getStore());
+    inProgress.add(ctx.uid);
+    const result = await documentServiceWrites.run(inProgress, () => next());
 
     const cacheConfig = strapi.plugin('rest-cache').service('cacheConfig');
 

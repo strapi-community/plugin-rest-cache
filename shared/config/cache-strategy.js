@@ -63,6 +63,17 @@ module.exports = ({ env }) => ({
           },
         ]
       : []),
+    // Same, for a plugin that writes its content type through strapi.db.query
+    // only, never through the document service.
+    ...(env.bool("CACHE_PLUGIN_UPLOAD", false)
+      ? [
+          {
+            contentType: "plugin::upload.file",
+            injectDefaultRoutes: false,
+            routes: ["/api/upload/files"],
+          },
+        ]
+      : []),
     {
       contentType: "api::category.category",
       // Overridable so a test can tell it apart from the strategy's maxAge.
