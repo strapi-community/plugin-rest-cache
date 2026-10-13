@@ -51,6 +51,18 @@ module.exports = ({ env }) => ({
     // Reaches article only through a dynamic zone. See
     // https://github.com/strapi-community/plugin-rest-cache/issues/232
     "api::page.page",
+    // A plugin-owned content type with a listed route, as documented in
+    // docs/guide/caching/custom-routes.md ("Plugin routes"). Opt-in so it does
+    // not change what the other specs see.
+    ...(env.bool("CACHE_PLUGIN_USERS", false)
+      ? [
+          {
+            contentType: "plugin::users-permissions.user",
+            injectDefaultRoutes: false,
+            routes: ["/api/users"],
+          },
+        ]
+      : []),
     {
       contentType: "api::category.category",
       // Overridable so a test can tell it apart from the strategy's maxAge.
