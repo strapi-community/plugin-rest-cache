@@ -1,4 +1,5 @@
 import type { Context } from 'koa';
+import { escapeKeyName, escapeKeyValue } from './escapeKeyPart';
 
 export const generateHeadersKey = function (
   ctx: Context,
@@ -13,7 +14,10 @@ export const generateHeadersKey = function (
     const value = ctx.request.header[header];
 
     if (value !== undefined) {
-      parts.push(`${header}=${value}`);
+      // Escaped so a value like `fr,x-b=1` cannot pose as a second configured
+      // header, nor an "&" move the boundary into the auth part. See
+      // escapeKeyPart.ts for why an ordinary value comes out unchanged.
+      parts.push(`${escapeKeyName(header)}=${escapeKeyValue(`${value}`)}`);
     }
   }
 

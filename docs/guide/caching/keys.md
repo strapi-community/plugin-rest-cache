@@ -82,6 +82,13 @@ A few more, for a content type configured with
   case-sensitive to Strapi.
 - **Nested parameters** (`filters[title][$eq]=x`, which Strapi parses into an
   object) are serialised with `JSON.stringify` before going into the key.
+- **Separators inside names and values are escaped**, so one parameter or
+  header can never spell out a second one. `?locale=x,populate=articles`
+  keys as `locale=x%2Cpopulate=articles`, not as `?locale=x&populate=articles`
+  does. Only what would be ambiguous is escaped: a `%`, an `&`, and a `,`
+  that is followed by a name and `=`. Ordinary values — `populate=a,b`,
+  `sort=title:asc,id`, `Accept-Encoding: gzip, deflate`,
+  `Accept-Language: en-US,en;q=0.9` — go into the key exactly as they arrive.
 - **Header names are lower-cased**, and the configured list is sorted once at
   boot, so the key does not depend on the order you wrote them in. A header
   that is absent from the request contributes nothing.

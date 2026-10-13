@@ -39,5 +39,12 @@ module.exports = {
       path: "/categories/probe/inherits",
       handler: "category.inherits",
     },
+    // Fixture for a route keyed on a query param and two headers, so the
+    // separators between every part of a cache key can be exercised.
+    {
+      method: "GET",
+      path: "/categories/probe/vary",
+      handler: "category.vary",
+    },
   ],
 };

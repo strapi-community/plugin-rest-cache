@@ -195,6 +195,7 @@ async function importSeedData() {
       "withCookie",
       "withCacheControl",
       "inherits",
+      "vary",
     ],
     writer: ["find", "findOne"],
     "api::writer.editor": ["find", "findOne"],
