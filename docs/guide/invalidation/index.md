@@ -81,9 +81,11 @@ whose parameters it can fill in. See
 [route parameters and purging](../caching/custom-routes.md#route-parameters-and-purging)
 for the case where it cannot.
 
-Content types that are not in your configuration are ignored entirely — the
-middleware checks before doing any work, so writes to uncached content types
-cost nothing.
+A content type that is not in your configuration has no entries of its own, so
+a write to it purges nothing of its own. Cached responses can still embed it,
+though, and with `clearRelatedCache` on those are purged — see
+[uncached content types](#uncached-content-types) below. A write to an uncached
+content type that no cached content type can embed costs nothing.
 
 ## Related content types
 
@@ -114,6 +116,20 @@ erDiagram
 Writing to `CATEGORY` purges `CATEGORY`, and also `ARTICLE` — whose responses
 embed it — and `HOMEPAGE`, which reaches it through a component two steps away.
 The traversal runs to a fixed point, so depth is not a limit.
+
+### Uncached content types
+
+The written content type does not have to be cached itself. Suppose `AUTHOR`
+above is not in your configuration but `ARTICLE` is:
+`/api/articles?populate=author` still contains author data. With
+`clearRelatedCache` on, writing to `AUTHOR` purges every cached content type
+that reaches it, the same set it would purge if `AUTHOR` were cached. In this
+example that's `ARTICLE`, plus anything that reaches `ARTICLE`. As with any
+related purge, the purge is wildcard-style.
+
+The set is worked out the first time each uncached content type is written to,
+then reused. If no cached content type can reach it, the write purges nothing.
+With `clearRelatedCache` off, a write to an uncached content type purges nothing.
 
 ::: info This is why purges look wider than the write
 A content type is a member of its own related set, so with `clearRelatedCache`

@@ -2,7 +2,9 @@ import type { Core } from '@strapi/strapi';
 import debug from 'debug';
 
 import colors from '../colors';
+import { getRelatedModelsUid } from '../config/getRelatedModelsUid';
 import type { WriteAction } from '../../types/common';
+import type { RestCachePluginConfig } from '../../types/config';
 
 /**
  * Document service actions that change content and must therefore invalidate
@@ -60,6 +62,38 @@ export const registerDocumentServiceMiddleware = function (strapi: Core.Strapi):
     `[REGISTER] ${colors.blueBright('document service')} invalidation middleware`
   );
 
+  /**
+   * Cached content types whose responses can embed an uncached one, by uid.
+   *
+   * A content type that is not configured for caching has no entries of its
+   * own, but cached responses can still contain it - `/api/articles?populate=author`
+   * embeds a writer whether or not writers are cached. Returning early on an
+   * uncached write left those responses stale until maxAge, although
+   * clearRelatedCache promises they are purged.
+   *
+   * Same direction as a cached type's relatedContentTypeUid: the content types
+   * that reach the written one through relations, components and dynamic zones,
+   * which are the ones whose responses can contain it. Filled lazily, once per
+   * written uid, because the schema cannot change after boot and most uncached
+   * content types are never written to; an empty list keeps a write to an
+   * uncached type nobody embeds as cheap as it was.
+   */
+  const embeddedIn = new Map<string, string[]>();
+
+  const cachedTypesEmbedding = (uid: string): string[] => {
+    let uids = embeddedIn.get(uid);
+
+    if (!uids) {
+      const cacheConfig = strapi.plugin('rest-cache').service('cacheConfig');
+      uids = getRelatedModelsUid(strapi, uid).filter(
+        (relatedUid) => relatedUid !== uid && cacheConfig.isCached(relatedUid)
+      );
+      embeddedIn.set(uid, uids);
+    }
+
+    return uids;
+  };
+
   strapi.documents.use(async (ctx, next) => {
     const result = await next();
 
@@ -68,12 +102,46 @@ export const registerDocumentServiceMiddleware = function (strapi: Core.Strapi):
     }
 
     const cacheConfig = strapi.plugin('rest-cache').service('cacheConfig');
+    const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
 
     if (!cacheConfig.isCached(ctx.uid)) {
+      const { strategy } = strapi.config.get<RestCachePluginConfig>('plugin::rest-cache');
+
+      // Behind the same flag as every other related purge: with it off, a
+      // write purges only the content type written, and that has no entries.
+      if (!strategy.clearRelatedCache) {
+        return result;
+      }
+
+      const related = cachedTypesEmbedding(ctx.uid);
+
+      if (!related.length) {
+        return result;
+      }
+
+      debug('strapi:plugin-rest-cache')(
+        `${colors.redBright('[PURGE]')} ${ctx.action} ${colors.cyan(ctx.uid)} (uncached) related: ${related.join(', ')}`
+      );
+
+      // Awaited, and never allowed to fail the write, for the same reasons as
+      // the purge below. Wildcard, as for any related purge: nothing says which
+      // of their entries embedded this document.
+      try {
+        await cacheStore.clearByRegexp(
+          related.flatMap((relatedUid) =>
+            cacheConfig.getCacheKeysRegexp(relatedUid, {}, true)
+          )
+        );
+      } catch (error) {
+        strapi.log.error(
+          `REST Cache: failed to purge content types related to "${ctx.uid}" after "${ctx.action}"`
+        );
+        strapi.log.error(error);
+      }
+
       return result;
     }
 
-    const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
     const documentId = resolveDocumentId(ctx as DocumentServiceContext, result);
 
     debug('strapi:plugin-rest-cache')(
