@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [5.1.1](https://github.com/strapi-community/plugin-rest-cache/compare/v5.1.0...v5.1.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **admin:** offer purge controls to admins who may only purge ([#257](https://github.com/strapi-community/plugin-rest-cache/issues/257)) ([de176e6](https://github.com/strapi-community/plugin-rest-cache/commit/de176e691e7d2015d0be4dd0e432f3de3ae644ed))
+* **admin:** purge the open entry from the edit view, and let the purge button be used twice ([#253](https://github.com/strapi-community/plugin-rest-cache/issues/253)) ([222a656](https://github.com/strapi-community/plugin-rest-cache/commit/222a6561f00a40b323a276f134e271e2f176d631))
+* cache listed routes of plugin content types ([#254](https://github.com/strapi-community/plugin-rest-cache/issues/254)) ([b0237e2](https://github.com/strapi-community/plugin-rest-cache/commit/b0237e2f6970519272f7226e929032396fd4ac94))
+* **deps:** keep a single Strapi in the workspace ([#260](https://github.com/strapi-community/plugin-rest-cache/issues/260)) ([fc7e5d2](https://github.com/strapi-community/plugin-rest-cache/commit/fc7e5d2f54b1768924998225b3e44895d8f67155))
+* judge "Shared across callers" per route, as the boot warning does ([#259](https://github.com/strapi-community/plugin-rest-cache/issues/259)) ([fdfb747](https://github.com/strapi-community/plugin-rest-cache/commit/fdfb747ffa10c6e5dd87aab6b2ed1a00d18750b5))
+* **keys:** encode names and values that could be read as key structure ([#251](https://github.com/strapi-community/plugin-rest-cache/issues/251)) ([06e792a](https://github.com/strapi-community/plugin-rest-cache/commit/06e792ad699a1606ef9807c377c8808a0cc765c4))
+* listed routes inherit maxAge and hitpass from their content type ([#236](https://github.com/strapi-community/plugin-rest-cache/issues/236)) ([686bea8](https://github.com/strapi-community/plugin-rest-cache/commit/686bea83fe7f9a85ec5b0cb90c41d5b09e641957)), refs [#230](https://github.com/strapi-community/plugin-rest-cache/issues/230)
+* make resetOnStartup actually empty the cache ([#250](https://github.com/strapi-community/plugin-rest-cache/issues/250)) ([2fa03ed](https://github.com/strapi-community/plugin-rest-cache/commit/2fa03ed44357321ed8fe803638737148b22ddfd2))
+* never hand a response the cache refuses to concurrent callers ([#247](https://github.com/strapi-community/plugin-rest-cache/issues/247)) ([ad4711f](https://github.com/strapi-community/plugin-rest-cache/commit/ad4711f5347f926a8f5e0ec7806d58637ea143ba))
+* **provider-redis:** cache anything at all on a Redis Cluster ([#244](https://github.com/strapi-community/plugin-rest-cache/issues/244)) ([e7016f7](https://github.com/strapi-community/plugin-rest-cache/commit/e7016f7aa307dd95e034740b6ded1854fcb647b8))
+* **provider-redis:** keep the tracking set in step with live entries ([#249](https://github.com/strapi-community/plugin-rest-cache/issues/249)) ([e92d88a](https://github.com/strapi-community/plugin-rest-cache/commit/e92d88a57d1bc182ccf75ce3aa522c1e8770f2a0))
+* **provider-redis:** let purges find entries when useRedisSets is off ([#245](https://github.com/strapi-community/plugin-rest-cache/issues/245)) ([346272d](https://github.com/strapi-community/plugin-rest-cache/commit/346272d4d1418dfdd15d1f828ad4c0c097c53e1e))
+* **purge:** match keys for upper-case route paths and literal params ([#252](https://github.com/strapi-community/plugin-rest-cache/issues/252)) ([c7cca82](https://github.com/strapi-community/plugin-rest-cache/commit/c7cca82dc22a44d9b8092fcc6b56ecf4d0ab37cc))
+* **purge:** purge cached types that embed an uncached content type ([#255](https://github.com/strapi-community/plugin-rest-cache/issues/255)) ([24759e7](https://github.com/strapi-community/plugin-rest-cache/commit/24759e7c4716f9215c92d030e1cc6aea4e030e69))
+* **recv:** do not cache Buffer bodies, which replay as JSON ([#256](https://github.com/strapi-community/plugin-rest-cache/issues/256)) ([6ec317e](https://github.com/strapi-community/plugin-rest-cache/commit/6ec317eae5a7c8b4e10f71727a221d0dc058da33))
+* **recv:** do not store or share a read that raced a purge ([#258](https://github.com/strapi-community/plugin-rest-cache/issues/258)) ([0806e45](https://github.com/strapi-community/plugin-rest-cache/commit/0806e45df7cd8da7e7518828993497be8c121041))
+* say private for every route keyed per caller under scope public ([#262](https://github.com/strapi-community/plugin-rest-cache/issues/262)) ([62a0799](https://github.com/strapi-community/plugin-rest-cache/commit/62a07999ca0b8f63336ad45267b2df8e2fa705f4))
+* serve a cache HIT with the Content-Type the handler chose ([#261](https://github.com/strapi-community/plugin-rest-cache/issues/261)) ([df01f7b](https://github.com/strapi-community/plugin-rest-cache/commit/df01f7bb3d5ea00cfc73475c91d56f0441920142))
+* traverse dynamic zones when clearing related cache ([#233](https://github.com/strapi-community/plugin-rest-cache/issues/233)) ([940922d](https://github.com/strapi-community/plugin-rest-cache/commit/940922d8f2b6cd26fca843b9ae70db6de106a796)), refs [#232](https://github.com/strapi-community/plugin-rest-cache/issues/232)
+* treat options set to undefined as omitted ([#248](https://github.com/strapi-community/plugin-rest-cache/issues/248)) ([f65cbbe](https://github.com/strapi-community/plugin-rest-cache/commit/f65cbbe10135ce90ee05b62fd4113fe641818374))
+
+
+### Documentation
+
+* move agent guidance to AGENTS.md and record two standing rules ([#240](https://github.com/strapi-community/plugin-rest-cache/issues/240)) ([3bee5ec](https://github.com/strapi-community/plugin-rest-cache/commit/3bee5ecc40aca0a679a4cc7450c3e8713f8b6a42))
+
 ## [5.1.0](https://github.com/strapi-community/plugin-rest-cache/compare/v5.0.0...v5.1.0) (2026-08-14)
 
 ### Features
