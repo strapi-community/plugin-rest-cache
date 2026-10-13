@@ -197,6 +197,7 @@ async function importSeedData() {
       "inherits",
       "csv",
       "xml",
+      "negotiated",
     ],
     writer: ["find", "findOne"],
     "api::writer.editor": ["find", "findOne"],

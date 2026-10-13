@@ -56,8 +56,8 @@ async function installOwnProvider() {
   await store().init(provider);
 }
 
-async function get(urlPath) {
-  const res = await fetch(`${baseUrl}${urlPath}`);
+async function get(urlPath, headers = {}) {
+  const res = await fetch(`${baseUrl}${urlPath}`, { headers });
   return {
     status: res.status,
     text: await res.text(),
@@ -146,6 +146,97 @@ describe("Content-Type on a cache HIT", () => {
       // so that an older plugin version sharing the store reads it unchanged.
       expect(Object.keys(JSON.parse(raw))).toEqual(["data"]);
     });
+  });
+
+  /**
+   * The type comes from the one caller whose request reached the origin. Where
+   * a handler chooses it from something outside the cache key, replaying it
+   * lets that caller choose it for everyone: ask for HTML once, and every
+   * later caller is served user-supplied markup as HTML - stored XSS. Before
+   * types were kept, Koa inferred the type from the body alone, the same way
+   * for every caller, so no caller could choose it.
+   */
+  describe("a type chosen by one caller", () => {
+    const NEGOTIATED = "/api/categories/probe/negotiated";
+    const BODY = "hello <script>alert(1)</script>\n";
+    // What Koa infers for that body, and so what every HIT served before.
+    const INFERRED = "text/plain; charset=utf-8";
+
+    it("is not replayed as HTML to later callers", async () => {
+      const first = await get(NEGOTIATED, { Accept: "text/html" });
+      // The first caller asked for HTML and is given it: that is their own
+      // response, straight from the handler.
+      expect(first.xCache).toBe("MISS");
+      expect(first.type).toBe("text/html; charset=utf-8");
+
+      // Refused when storing, too: the entry keeps the older, type-less shape.
+      const raw = await provider.get(
+        `${keysPrefix}${await keyFor("/categories/probe/negotiated")}`
+      );
+      expect(Object.keys(JSON.parse(raw))).toEqual(["data"]);
+
+      const later = await get(NEGOTIATED);
+
+      expect(later.xCache).toBe("HIT");
+      expect(later.text).toBe(BODY);
+      expect(later.type).toBe(INFERRED);
+    });
+
+    it("is not handed to coalesced requests as HTML", async () => {
+      const url = `${NEGOTIATED}?delay=300`;
+      const leader = get(url, { Accept: "text/html" });
+      // Let the leader reach the origin first, so the rest wait on it.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const waiters = await Promise.all(Array.from({ length: 4 }, () => get(url)));
+
+      expect((await leader).type).toBe("text/html; charset=utf-8");
+      for (const res of waiters) {
+        expect(res.xCache).toBe("MISS");
+        expect(res.text).toBe(BODY);
+        expect(res.type).toBe(INFERRED);
+      }
+    });
+
+    // Entries are checked again when read, not only when written, so an entry
+    // stored by anything else - or before this check existed - cannot carry
+    // an active type into a response either.
+    it.each([
+      "text/html; charset=utf-8",
+      "application/xhtml+xml",
+      "image/svg+xml",
+      "text/xml",
+      "application/xml",
+      "text/javascript; charset=utf-8",
+      "text/css",
+      "text/plain; charset=utf-7",
+    ])("does not replay a stored %s for a body Koa would serve as text", async (type) => {
+      await get(NEGOTIATED);
+      const key = await keyFor("/categories/probe/negotiated");
+
+      await provider.set(`${keysPrefix}${key}`, JSON.stringify({ data: BODY, type }), 60000);
+
+      const hit = await get(NEGOTIATED);
+
+      expect(hit.xCache).toBe("HIT");
+      expect(hit.text).toBe(BODY);
+      expect(hit.type).toBe(INFERRED);
+    });
+
+    it.each(["application/xhtml+xml", "image/svg+xml", "text/xml", "text/javascript"])(
+      "does not replay a stored %s for markup either",
+      async (type) => {
+        await get("/api/categories/probe/xml");
+        const key = await keyFor("/categories/probe/xml");
+
+        await provider.set(`${keysPrefix}${key}`, JSON.stringify({ data: XML, type }), 60000);
+
+        const hit = await get("/api/categories/probe/xml");
+
+        expect(hit.xCache).toBe("HIT");
+        // Koa's inference for a body starting with `<`, as before types were kept.
+        expect(hit.type).toBe("text/html; charset=utf-8");
+      }
+    );
   });
 
   describe("an entry written before the type was stored", () => {

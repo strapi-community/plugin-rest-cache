@@ -94,6 +94,13 @@ module.exports = ({ env }) => ({
           keys: { useQueryParams: true, useHeaders: [], useAuth: true },
         },
         {
+          // Accept is deliberately not in the key: the handler varies its
+          // type on it, which is the cache-poisoning case under test.
+          path: "/api/categories/probe/negotiated",
+          method: "GET",
+          keys: { useQueryParams: true, useHeaders: [], useAuth: true },
+        },
+        {
           path: "/api/categories/slug/:slug+",
           keys: {
             useQueryParams: ["populate", "locale"],

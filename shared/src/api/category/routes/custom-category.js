@@ -51,5 +51,10 @@ module.exports = {
       path: "/categories/probe/xml",
       handler: "category.xml",
     },
+    {
+      method: "GET",
+      path: "/categories/probe/negotiated",
+      handler: "category.negotiated",
+    },
   ],
 };

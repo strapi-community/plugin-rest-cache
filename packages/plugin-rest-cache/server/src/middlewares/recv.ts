@@ -23,8 +23,79 @@ interface SharedResponse {
 }
 
 /**
+ * Types that can never make a browser run anything: it shows them as text or
+ * offers them as a download. Replaying one is never more dangerous than the
+ * `text/plain` Koa infers for a string body.
+ */
+const PASSIVE_TYPES = new Set([
+  'text/plain',
+  'text/csv',
+  'text/tab-separated-values',
+  'application/json',
+]);
+
+/**
+ * Types replayed only for a body Koa would serve as `text/html` anyway.
+ *
+ * A browser renders XML and can run script through it - an
+ * `<?xml-stylesheet?>` instruction applies XSLT, which can emit HTML. That is
+ * no more than `text/html` already allows, so for a body starting with `<`
+ * (Koa's `text/html` case) restoring it cannot make the response more active
+ * than every HIT already was. For any other body it would, so it is not
+ * restored there.
+ *
+ * Deliberately excluded everywhere: `text/html`, `application/xhtml+xml`,
+ * `image/svg+xml` and `text/xml`, which are markup a browser runs script from
+ * directly, and script and style types (`text/javascript`, `text/css`), which
+ * a page can load cross-origin by type where `text/html` would be refused.
+ * Those, and any type not listed here, fall back to Koa's inference - exactly
+ * what a HIT served before types were kept.
+ */
+const MARKUP_TYPES = new Set(['application/xml']);
+
+/**
+ * Whether a stored type may be replayed with this body.
+ *
+ * The type comes from the one request that reached the origin, and a handler
+ * may choose it from something that is not part of the cache key - Accept, a
+ * header, an ignored query parameter. Replayed unchecked, that one caller
+ * chooses the type for everyone sharing the entry: ask for `text/html` once
+ * and every later caller is served the body as HTML, which for a body holding
+ * user content is stored XSS. Before types were kept Koa inferred the type
+ * from the body alone, identically for every caller, so no caller could
+ * choose it. A type is therefore only replayed when it cannot make the body
+ * more active than that inference would.
+ *
+ * Checked on every replay rather than only when storing, so an entry written
+ * by anything else cannot carry an active type into a response either.
+ */
+const isReplayable = (type: string, body: string): boolean => {
+  const [essence, ...params] = type.toLowerCase().split(';');
+  const mime = essence.trim();
+
+  // Koa encodes a string body as UTF-8 whatever the header says, so any other
+  // declared charset is wrong for the bytes on the wire - and an exotic one
+  // such as UTF-7 is itself an old XSS vector.
+  const charsetOk = params.every((param) => {
+    const [name, value = ''] = param.split('=').map((part) => part.trim());
+    return name !== 'charset' || value.replace(/"/g, '') === 'utf-8';
+  });
+
+  if (!charsetOk) {
+    return false;
+  }
+
+  if (PASSIVE_TYPES.has(mime)) {
+    return true;
+  }
+
+  // The same test Koa applies when it infers `text/html` for a string.
+  return MARKUP_TYPES.has(mime) && /^\s*</.test(body);
+};
+
+/**
  * The Content-Type to store and replay with this response, if Koa would not
- * arrive at the same one by itself.
+ * arrive at the same one by itself and it is safe to replay.
  *
  * Replaying a body means assigning it to ctx.body, and Koa then guesses the
  * type from it. For an object that guess is JSON - which is what Koa set on the
@@ -32,13 +103,18 @@ interface SharedResponse {
  * exactly the shape earlier versions wrote. For a string the guess is
  * `text/plain`, or `text/html` if it starts with `<`, whatever the handler
  * said: CSV turned into `text/plain` and XML into `text/html` on every HIT.
+ *
+ * A type that {@link isReplayable} refuses is not stored at all, so its entry
+ * keeps the older `{data}` shape.
  */
 const typeToKeep = (ctx: Context): string | undefined => {
   if (typeof ctx.body !== 'string') {
     return undefined;
   }
 
-  return String(ctx.response.get('Content-Type') || '') || undefined;
+  const type = String(ctx.response.get('Content-Type') || '');
+
+  return type && isReplayable(type, ctx.body) ? type : undefined;
 };
 
 /**
@@ -46,11 +122,12 @@ const typeToKeep = (ctx: Context): string | undefined => {
  *
  * The header has to be in place before the body is assigned: Koa only infers a
  * type for a string body when none is set yet. Absent a type - every JSON
- * entry, and every entry written before types were kept - nothing is set and
- * Koa infers exactly as it always did.
+ * entry, every entry written before types were kept, and every type
+ * {@link isReplayable} refuses - nothing is set and Koa infers exactly as it
+ * always did.
  */
 const replay = (ctx: Context, body: unknown, type: string | undefined): void => {
-  if (type) {
+  if (type && typeof body === 'string' && isReplayable(type, body)) {
     ctx.set('Content-Type', type);
   }
 

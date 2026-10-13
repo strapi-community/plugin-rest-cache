@@ -70,6 +70,18 @@ module.exports = createCoreController(
       ctx.body = '<?xml version="1.0" encoding="UTF-8"?>\n<probe>xml</probe>\n';
     },
 
+    /**
+     * Picks its type from Accept, which is not part of this route's cache key,
+     * over a body holding markup that does not start with `<` - so Koa's own
+     * inference for it is `text/plain`. One caller asking for HTML must not
+     * decide that every later caller is served HTML.
+     */
+    async negotiated(ctx) {
+      await new Promise((resolve) => setTimeout(resolve, Number(ctx.query.delay) || 0));
+      ctx.type = ctx.accepts("text/plain", "text/html") === "text/html" ? "text/html" : "text/plain";
+      ctx.body = "hello <script>alert(1)</script>\n";
+    },
+
     async findBySlug(ctx) {
       const { slug } = ctx.params;
       const { query } = ctx;
