@@ -41,7 +41,10 @@ const EditViewInfoDocumentPanel = (props: EditViewInfoDocumentPanelProps): EditV
   const { formatMessage } = useIntl();
   const { isEligible, config } = useCachedDocument(props);
 
-  if (!isEligible) {
+  // The panel's whole content is the strategy's max age. An admin who may
+  // purge but not read the strategy is eligible for the purge action, but
+  // there is nothing this panel could truthfully tell them.
+  if (!isEligible || !config) {
     return null;
   }
 

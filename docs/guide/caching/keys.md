@@ -82,6 +82,33 @@ A few more, for a content type configured with
   case-sensitive to Strapi.
 - **Nested parameters** (`filters[title][$eq]=x`, which Strapi parses into an
   object) are serialised with `JSON.stringify` before going into the key.
+- **Names and values that could be read as structure are encoded**, so one
+  parameter or header can never spell out another. A value containing `%`,
+  `&` or `=`, or starting with `{`, `[` or `"`, goes into the key through
+  `encodeURIComponent`. A name is encoded on the same terms, and also when it
+  contains a `,`. `?locale=x,populate=articles` keys as
+  `locale=x%2Cpopulate%3Darticles` and no longer as
+  `?locale=x&populate=articles` does. Anything else goes in exactly as it
+  arrives, commas included, so `populate=a,b`, `sort=title:asc,id`,
+  `populate[author]=true` and `Accept-Encoding: gzip, deflate` key exactly
+  as they always have.
+- **A bare parameter is keyed apart from the string `"null"`.** Strapi parses
+  `?preview` (no `=`) as `null`, which used to key as `preview=null`, the
+  same as `?preview=null`. It now keys as `preview=%`; `?preview=null` keeps
+  its key.
+- **Which keys moved when this escaping was introduced.** Any query value or
+  `useHeaders` value that contains `%`, `&` or `=`, or starts with `{`, `[`
+  or `"` (including a string, or an object key, nested inside a parameter
+  such as `filters[...]`); any parameter name that would be escaped on the
+  same terms or contains `,`; and any bare parameter. Ordinary values do not
+  reach any of these, but real ones do:
+  a base64 cursor with padding (`cursor=eyJpZCI6MX0=`), `50%`,
+  `Tom & Jerry`, `[draft]`, a value that starts with a quote, a URL carrying
+  its own query string, and a q-weighted `Accept-Language: en-US,en;q=0.9`
+  (`en-US%2Cen%3Bq%3D0.9`). Each distinct value costs one cold entry after
+  the upgrade. Entries stored under the old keys are not orphaned: purge
+  patterns match on the path, so they are still cleared on the next
+  invalidation, and otherwise expire at `maxAge`.
 - **Header names are lower-cased**, and the configured list is sorted once at
   boot, so the key does not depend on the order you wrote them in. A header
   that is absent from the request contributes nothing.

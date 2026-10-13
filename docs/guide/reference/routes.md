@@ -16,6 +16,7 @@ authenticated admin plus the listed permission, enforced server-side by an
 | `GET` | `/rest-cache/config/provider` | `cache.read-provider` | The provider's `name` and `getTimeout`. |
 | `GET` | `/rest-cache/stats` | `cache.read-strategy` | What the cache currently holds. <Badge type="tip" text="since 5.1.0" /> |
 | `POST` | `/rest-cache/purge` | `cache.purge` | Purge a content type. |
+| `GET` | `/rest-cache/purge/content-types` | `cache.purge` | The uids of the cached content types, and nothing else. Lets the panel offer purge controls to an admin who may purge but not read the strategy. |
 
 Permissions are granted under **Settings → Roles**, and are named in full as
 `plugin::rest-cache.cache.purge` and so on.
@@ -33,7 +34,7 @@ endpoint does not make someone an operator entitled to credentials.
 ```json
 {
   "contentType": "api::article.article",
-  "params": { "id": 42 },
+  "params": { "id": "lxr8ai1cs0a1234" },
   "wildcard": false
 }
 ```
@@ -41,7 +42,7 @@ endpoint does not make someone an operator entitled to credentials.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `contentType` | `string` | yes | The uid to purge. `400` if it is not a cached content type. |
-| `params` | `object` | no | Route parameters used to narrow the purge. |
+| `params` | `object` | no | Route parameters used to narrow the purge. `id` is the **documentId**, as it appears in `/api/articles/:id` - not the numeric database id. |
 | `wildcard` | `boolean` | no | Ignore `params` and clear everything for the content type. |
 
 ### GET /rest-cache/stats

@@ -75,6 +75,23 @@ function listedRouteHitpass(
     !(await shouldLookup(ctx, contentTypeHitpass));
 }
 
+/**
+ * The same object without the keys whose value is undefined.
+ *
+ * Options are merged by spreading them over what they inherit, and a key that
+ * is present but undefined - `maxAge: env.int("UNSET")` is the everyday way to
+ * get one - overwrote the inherited value instead of falling back to it. The
+ * config classes then substituted their own hard-coded defaults: maxAge
+ * 3600000, hitpass false (caching cookie-carrying requests, so one caller was
+ * served another's response), and no injected routes at all. Dropping such
+ * keys makes them behave exactly like omitted ones, as documented.
+ */
+function definedOnly<T extends object>(options: T): T {
+  return Object.fromEntries(
+    Object.entries(options).filter(([, value]) => value !== undefined)
+  ) as T;
+}
+
 export const resolveUserStrategy = function (
   strapi: Core.Strapi,
   userOptions: CachePluginStrategyInput
@@ -92,9 +109,9 @@ export const resolveUserStrategy = function (
   };
 
   // Creating cache Config
-  for (const contentTypeOption of contentTypes as Array<
-    string | CacheContentTypeConfigInput
-  >) {
+  for (const entry of contentTypes as Array<string | CacheContentTypeConfigInput>) {
+    const contentTypeOption = typeof entry === 'string' ? entry : definedOnly(entry);
+
     // string
     if (typeof contentTypeOption === 'string') {
       cacheConfigs.push({
@@ -139,8 +156,9 @@ export const resolveUserStrategy = function (
           })
         );
       } else {
-        const keys = value.keys
-          ? new CacheKeysConfig(value.keys)
+        const route = definedOnly(value);
+        const keys = route.keys
+          ? new CacheKeysConfig(route.keys)
           : new CacheKeysConfig(contentTypeKeys);
         // @TODO get the route of the value maby replace route with handler.
         acc.push(
@@ -151,10 +169,10 @@ export const resolveUserStrategy = function (
               contentTypeOption.hitpass,
               keys
             ),
-            paramNames: (value.path.match(routeParamNameRegex) ?? []).map((param) =>
+            paramNames: (route.path.match(routeParamNameRegex) ?? []).map((param) =>
               param.replace(':', '')
             ),
-            ...value,
+            ...route,
             keys,
           })
         );
@@ -319,7 +337,8 @@ export const resolveUserStrategy = function (
   ) {
     for (const cacheConfig of cacheConfigs) {
       const keyedPerCaller = cacheConfig.routes.filter(
-        (route) => route.keys?.useAuth === true
+        // Truthiness, as buildCacheControl and the key generator decide it.
+        (route) => Boolean(route.keys?.useAuth)
       );
 
       if (!keyedPerCaller.length) {

@@ -58,6 +58,10 @@ The dashboard requires `plugin::rest-cache.cache.read-strategy`, and purging
 requires `plugin::rest-cache.cache.purge`. Grant them under
 **Settings → Roles**.
 
+They are independent. An admin with only `cache.purge` is offered the purge
+controls in the content manager; they do not see the dashboard or the edit
+view's cache panel, which show the strategy.
+
 Hiding a control is presentation, not protection: every admin route carries a
 permission policy for the same action, so the server refuses regardless of
 what the panel renders.

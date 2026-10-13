@@ -5,6 +5,7 @@ import { pluginId } from '../pluginId';
 import type {
   CacheSummary,
   ProviderResponse,
+  PurgeableContentTypesResponse,
   PurgeRequest,
   StrategyResponse,
 } from '../../../server/src/types/api';
@@ -95,6 +96,7 @@ export const invalidateCache = (keys: string[] = [...cache.keys()]) => {
 export const STRATEGY_KEY = 'config/strategy';
 export const PROVIDER_KEY = 'config/provider';
 export const STATS_KEY = 'stats';
+export const PURGEABLE_KEY = 'purge/content-types';
 
 interface QueryResult<T> {
   data?: T;
@@ -103,7 +105,12 @@ interface QueryResult<T> {
   refetch: () => void;
 }
 
-const useEndpoint = <T,>(key: string): QueryResult<T> => {
+/**
+ * `enabled: false` subscribes without fetching. Hooks cannot be called
+ * conditionally, so this is how a fallback request is held back until the
+ * response it falls back from says it is needed.
+ */
+const useEndpoint = <T,>(key: string, enabled = true): QueryResult<T> => {
   const { get } = useFetchClient();
   const entry = entryFor<T>(key);
   // Re-render on any change to the entry - a fetch completing as well as an
@@ -122,7 +129,12 @@ const useEndpoint = <T,>(key: string): QueryResult<T> => {
   }, [entry]);
 
   useEffect(() => {
-    if (entry.data !== undefined || entry.error !== undefined || entry.promise) {
+    if (
+      !enabled ||
+      entry.data !== undefined ||
+      entry.error !== undefined ||
+      entry.promise
+    ) {
       return;
     }
 
@@ -142,7 +154,7 @@ const useEndpoint = <T,>(key: string): QueryResult<T> => {
       });
     // entry.version is read during render, so an invalidation - which bumps it
     // and notifies - re-runs this effect and refetches.
-  }, [entry, get, key, entry.version]);
+  }, [entry, get, key, entry.version, enabled]);
 
   const refetch = useCallback(() => invalidateCache([key]), [key]);
 
@@ -157,6 +169,48 @@ const useEndpoint = <T,>(key: string): QueryResult<T> => {
 export const useCacheStrategy = () => useEndpoint<StrategyResponse>(STRATEGY_KEY);
 export const useCacheProvider = () => useEndpoint<ProviderResponse>(PROVIDER_KEY);
 export const useCacheStats = () => useEndpoint<CacheSummary>(STATS_KEY);
+
+/**
+ * Whether a request was refused for lack of permission.
+ *
+ * Checks both places the status can be: useFetchClient's FetchError carries
+ * it on `status`, an axios-shaped error on `response.status`. Structural
+ * rather than `instanceof`, because the FetchError class this chunk would
+ * import is not the one the host's fetch client throws in a production build.
+ */
+export const isForbidden = (error: unknown): boolean => {
+  const { status, response } = (error ?? {}) as {
+    status?: number;
+    response?: { status?: number };
+  };
+
+  return status === 403 || response?.status === 403;
+};
+
+/**
+ * The uids of the cached content types, for deciding whether to offer a purge
+ * control.
+ *
+ * Read from the strategy when this admin may read it - every component on
+ * the page shares that request anyway. An admin holding cache.purge without
+ * cache.read-strategy gets a 403 there, and would otherwise never see the
+ * control their permission is for; for them, and only after that 403, this
+ * asks the endpoint that is gated by cache.purge itself. An admin with
+ * neither gets a 403 from both, and sees no control, as before.
+ */
+export const usePurgeableContentTypes = (): string[] | undefined => {
+  const strategy = useCacheStrategy();
+  const fallback = useEndpoint<PurgeableContentTypesResponse>(
+    PURGEABLE_KEY,
+    isForbidden(strategy.error)
+  );
+
+  if (strategy.data) {
+    return strategy.data.strategy?.contentTypes?.map((config) => config.contentType);
+  }
+
+  return fallback.data?.contentTypes;
+};
 
 export const usePurgeCache = () => {
   const { post } = useFetchClient();

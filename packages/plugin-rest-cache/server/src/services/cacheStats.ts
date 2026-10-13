@@ -19,6 +19,14 @@ export interface CacheStatsService {
  * one enumeration - cheap on redis since #131 made it a single SMEMBERS, but
  * still not something to poll aggressively.
  *
+ * On redis the counts can include entries that expired recently. Expiry does
+ * not remove a key from @keyv/redis' tracking set; the provider prunes the set
+ * in the background, at most every five minutes per process, rather than check
+ * every key on each listing - that check sat on every purge and took a 100k-key
+ * purge from tens of milliseconds to seconds. So on a cache in use the counts
+ * can be up to about five minutes behind expiries, and after an idle period
+ * the first call can count everything that expired during it.
+ *
  * @see https://github.com/strapi-community/plugin-rest-cache/issues/114
  */
 export default function createCacheStatsService({
