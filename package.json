@@ -37,7 +37,8 @@
     "test:admin:ui": "playwright test -c e2e/playwright.config.ts --ui",
     "docs:api": "typedoc",
     "docs:build:only": "vitepress build docs",
-    "build:providers": "pnpm --filter \"./packages/provider-*\" run build"
+    "build:providers": "pnpm --filter \"./packages/provider-*\" run build",
+    "test:cluster:live": "node scripts/redis-cluster-live.cjs"
   },
   "license": "MIT",
   "devDependencies": {
