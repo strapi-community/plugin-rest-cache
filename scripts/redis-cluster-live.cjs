@@ -117,6 +117,29 @@ async function allKeys(cluster) {
     assert.deepStrictEqual(await allKeys(cluster), []);
   });
 
+  // Without redis sets there is no tracking set to read, so keys() has to find
+  // entries itself - on every master, since SCAN only sees the node it is sent
+  // to. Reading one node, or the empty set, made pattern purges match nothing.
+  const unset = new RedisCacheProvider(cluster, { useRedisSets: false });
+  unset.cache.stores[0].on('error', (error) => storeErrors.push(error.message));
+
+  await check('without redis sets: keys() finds entries on every master', async () => {
+    await flushAll(cluster);
+    for (const key of KEYS) await unset.set(key, { key }, MAX_AGE);
+    noStoreErrors();
+    const populated = (
+      await Promise.all(cluster.nodes('master').map((node) => node.dbsize()))
+    ).filter((size) => size > 0).length;
+    assert.ok(populated > 1, 'entries did not spread across masters');
+    assert.deepStrictEqual((await unset.keys()).sort(), [...KEYS].sort());
+  });
+
+  await check('without redis sets: purging what keys() lists removes it', async () => {
+    await unset.delMany(await unset.keys());
+    noStoreErrors();
+    assert.deepStrictEqual(await allKeys(cluster), []);
+  });
+
   await flushAll(cluster);
   cluster.disconnect();
 

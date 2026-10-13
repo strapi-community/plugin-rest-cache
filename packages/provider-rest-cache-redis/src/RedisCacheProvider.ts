@@ -44,6 +44,9 @@ export interface RedisClient {
   unlink(...keys: string[]): Promise<unknown>;
   srem(key: string, ...members: string[]): Promise<unknown>;
   multi(): RedisMulti;
+  scan?(cursor: string, ...args: Array<string | number>): Promise<[string, string[]]>;
+  /** On an ioredis Cluster: one client per node. */
+  nodes?(role: 'master'): RedisClient[];
 }
 
 /**
@@ -247,6 +250,31 @@ export class RedisCacheProvider extends CacheProvider {
     // See https://github.com/strapi-community/plugin-rest-cache/issues/131
     const store = redisStoreOf(this.cache);
     const namespace = store._getNamespace?.();
+
+    // With useRedisSets off, @keyv/redis keeps no tracking set and names every
+    // entry `sets:namespace:<ns>:<ns>:<key>`. Reading the set below returned
+    // nothing, so every pattern purge matched nothing and entries survived until
+    // maxAge. Find them by that name instead, on every master when clustered:
+    // SCAN only sees the node it is sent to.
+    if (store.opts?.useRedisSets === false && store.redis && namespace && store.namespace) {
+      const named = `sets:${namespace}:`;
+      const prefix = `${store.namespace}:`;
+      const nodes = store.redis.isCluster ? store.redis.nodes?.('master') ?? [] : [store.redis];
+      const found: string[] = [];
+
+      for (const node of nodes) {
+        let cursor = '0';
+        do {
+          const [next, batch] = await node.scan!(cursor, 'MATCH', `${named}*`, 'COUNT', 1000);
+          cursor = next;
+          found.push(...batch);
+        } while (cursor !== '0');
+      }
+
+      return found
+        .map((key) => key.slice(named.length))
+        .map((key) => (key.startsWith(prefix) ? key.slice(prefix.length) : key));
+    }
 
     if (typeof store.redis?.smembers === 'function' && namespace && store.namespace) {
       const members = await store.redis.smembers(namespace);
