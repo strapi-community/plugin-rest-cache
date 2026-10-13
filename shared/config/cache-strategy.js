@@ -100,6 +100,13 @@ module.exports = ({ env }) => ({
           keys: { useQueryParams: true, useHeaders: [], useAuth: true },
         },
         {
+          // Keyed on a query param and two headers, so every separator in a
+          // cache key is reachable from a request.
+          path: "/api/categories/probe/vary",
+          method: "GET",
+          keys: { useQueryParams: ["q"], useHeaders: ["x-a", "x-b"], useAuth: true },
+        },
+        {
           path: "/api/categories/slug/:slug+",
           keys: {
             useQueryParams: ["populate", "locale"],

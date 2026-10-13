@@ -78,6 +78,18 @@ module.exports = createCoreController(
       ctx.body = { inherits: true, at: Date.now() };
     },
 
+    /**
+     * Echoes everything its cache key is built from, so a response served
+     * under another request's key is visible in the body.
+     */
+    async vary(ctx) {
+      ctx.body = {
+        q: ctx.query.q ?? null,
+        a: ctx.get("x-a") || null,
+        b: ctx.get("x-b") || null,
+      };
+    },
+
     async findBySlug(ctx) {
       const { slug } = ctx.params;
       const { query } = ctx;

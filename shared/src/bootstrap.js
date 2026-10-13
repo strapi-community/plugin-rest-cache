@@ -196,6 +196,7 @@ async function importSeedData() {
       "throwingBody",
       "withCacheControl",
       "inherits",
+      "vary",
     ],
     writer: ["find", "findOne"],
     "api::writer.editor": ["find", "findOne"],
