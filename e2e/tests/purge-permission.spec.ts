@@ -124,7 +124,51 @@ test.describe('purge permission without strategy access', () => {
       .last()
       .click();
     await expect(page.getByRole('menuitem', { name: PURGE })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // The menu item above proves this admin is eligible, so the side panel
+    // has had every input it needs to render by now. Its only content is the
+    // strategy's max age, which this admin may not read: without a guard it
+    // would render "cached for up to -" and tell them nothing true.
+    await expect(page.getByText(/cached for up to/i)).toHaveCount(0);
 
     await context.close();
+  });
+});
+
+/**
+ * The fallback endpoint exists for admins the strategy route refuses. One who
+ * can read the strategy already has the uids from it, and must keep making
+ * exactly the requests they made before the fallback existed.
+ */
+test.describe('purge permission with strategy access', () => {
+  test('never asks for the purge-only content type list', async ({ page, baseURL }) => {
+    const requested: string[] = [];
+    page.on('request', (req) => requested.push(new URL(req.url()).pathname));
+
+    // Default storage state: the super admin, who holds cache.read-strategy.
+    const strategy = page.waitForResponse((res) =>
+      res.url().endsWith('/rest-cache/config/strategy')
+    );
+    await page.goto(ARTICLES);
+    expect((await strategy).status()).toBe(200);
+    await expect(page.getByRole('button', { name: PURGE }).first()).toBeVisible();
+
+    const anonymous = await request.newContext({ baseURL, storageState: undefined });
+    const { data } = (await (await anonymous.get('/api/articles')).json()) as {
+      data: Array<{ documentId: string }>;
+    };
+    await anonymous.dispose();
+
+    await page.goto(`${ARTICLES}/${data[0].documentId}`);
+    await expect(page.getByText(/cached for up to/i)).toBeVisible();
+    // Anything the panel would have asked for has been asked for by now.
+    await page.waitForLoadState('networkidle');
+
+    // Guard against passing because nothing was recorded at all.
+    expect(requested.some((path) => path.endsWith('/rest-cache/config/strategy'))).toBe(true);
+    expect(requested.filter((path) => path.endsWith('/rest-cache/purge/content-types'))).toEqual(
+      []
+    );
   });
 });
