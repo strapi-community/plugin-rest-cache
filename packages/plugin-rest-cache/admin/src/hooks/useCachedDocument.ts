@@ -29,6 +29,31 @@ const toPurgeParams = (values: unknown): PurgeRequest['params'] => {
   return params;
 };
 
+/**
+ * The route params that address this entry in the REST API.
+ *
+ * `:id` in a Strapi 5 REST route is the documentId - `/api/articles/:id` is
+ * requested as `/api/articles/<documentId>`, and that is what the cache key
+ * holds. The document's own `id` field is the numeric database row id, which
+ * never appears in a URL, so passing the document through as-is purged a key
+ * that cannot exist. With clearRelatedCache on that went unnoticed, because a
+ * content type is related to itself and its routes are wildcarded anyway; with
+ * it off, the edit-view purge removed nothing for the entry it was opened on.
+ *
+ * The other scalar fields stay, so a custom route such as `/api/articles/:slug`
+ * is still narrowed to this entry. The server's document service middleware
+ * scopes its own purges the same way, with `{ id: documentId }`.
+ */
+const toEntryParams = (values: unknown, documentId?: string): PurgeRequest['params'] => {
+  const params = toPurgeParams(values) ?? {};
+
+  if (documentId) {
+    params.id = documentId;
+  }
+
+  return params;
+};
+
 export interface CachedDocument {
   /**
    * Whether a purge control should be offered for the document currently open.
@@ -86,7 +111,7 @@ export const useCachedDocument = ({
     // the purge action.
     isEligible: Boolean(documentId) && purgeable?.includes(model) === true,
     config,
-    params: isSingleType ? {} : toPurgeParams(document),
+    params: isSingleType ? {} : toEntryParams(document, documentId),
     isSingleType,
   };
 };

@@ -41,5 +41,10 @@ export const generateCacheKey = function (
     .toLowerCase()
     .replace(/\/$/, '');
 
+  // The query and header parts escape every "&" they contain, so these two
+  // are the only bare ones and a request cannot move a boundary - in
+  // particular it cannot make part of its query or headers read as the auth
+  // part. The path cannot carry a literal "?": ctx.request.path is still
+  // percent-encoded, which is what keeps the `^/path\?` purge patterns exact.
   return `${requestPath}?${querySuffix}&${headersSuffix}&${authSuffix}` as CacheKey;
 };

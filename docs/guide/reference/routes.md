@@ -34,7 +34,7 @@ endpoint does not make someone an operator entitled to credentials.
 ```json
 {
   "contentType": "api::article.article",
-  "params": { "id": 42 },
+  "params": { "id": "lxr8ai1cs0a1234" },
   "wildcard": false
 }
 ```
@@ -42,7 +42,7 @@ endpoint does not make someone an operator entitled to credentials.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `contentType` | `string` | yes | The uid to purge. `400` if it is not a cached content type. |
-| `params` | `object` | no | Route parameters used to narrow the purge. |
+| `params` | `object` | no | Route parameters used to narrow the purge. `id` is the **documentId**, as it appears in `/api/articles/:id` - not the numeric database id. |
 | `wildcard` | `boolean` | no | Ignore `params` and clear everything for the content type. |
 
 ### GET /rest-cache/stats

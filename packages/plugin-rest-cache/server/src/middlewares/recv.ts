@@ -18,7 +18,128 @@ import type { RestCachePluginConfig } from '../types/config';
 interface SharedResponse {
   body: unknown;
   status: number;
+  /** See {@link typeToKeep}. */
+  type?: string;
 }
+
+/** A request that is fetching from the origin, as seen by later requests. */
+interface InFlightRead {
+  shared: Promise<SharedResponse>;
+  /** cacheStore.generation when this read started, before calling the origin. */
+  generation: number;
+}
+
+/**
+ * Types that can never make a browser run anything: it shows them as text or
+ * offers them as a download. Replaying one is never more dangerous than the
+ * `text/plain` Koa infers for a string body.
+ */
+const PASSIVE_TYPES = new Set([
+  'text/plain',
+  'text/csv',
+  'text/tab-separated-values',
+  'application/json',
+]);
+
+/**
+ * Types replayed only for a body Koa would serve as `text/html` anyway.
+ *
+ * A browser renders XML and can run script through it - an
+ * `<?xml-stylesheet?>` instruction applies XSLT, which can emit HTML. That is
+ * no more than `text/html` already allows, so for a body starting with `<`
+ * (Koa's `text/html` case) restoring it cannot make the response more active
+ * than every HIT already was. For any other body it would, so it is not
+ * restored there.
+ *
+ * Deliberately excluded everywhere: `text/html`, `application/xhtml+xml`,
+ * `image/svg+xml` and `text/xml`, which are markup a browser runs script from
+ * directly, and script and style types (`text/javascript`, `text/css`), which
+ * a page can load cross-origin by type where `text/html` would be refused.
+ * Those, and any type not listed here, fall back to Koa's inference - exactly
+ * what a HIT served before types were kept.
+ */
+const MARKUP_TYPES = new Set(['application/xml']);
+
+/**
+ * Whether a stored type may be replayed with this body.
+ *
+ * The type comes from the one request that reached the origin, and a handler
+ * may choose it from something that is not part of the cache key - Accept, a
+ * header, an ignored query parameter. Replayed unchecked, that one caller
+ * chooses the type for everyone sharing the entry: ask for `text/html` once
+ * and every later caller is served the body as HTML, which for a body holding
+ * user content is stored XSS. Before types were kept Koa inferred the type
+ * from the body alone, identically for every caller, so no caller could
+ * choose it. A type is therefore only replayed when it cannot make the body
+ * more active than that inference would.
+ *
+ * Checked on every replay rather than only when storing, so an entry written
+ * by anything else cannot carry an active type into a response either.
+ */
+const isReplayable = (type: string, body: string): boolean => {
+  const [essence, ...params] = type.toLowerCase().split(';');
+  const mime = essence.trim();
+
+  // Koa encodes a string body as UTF-8 whatever the header says, so any other
+  // declared charset is wrong for the bytes on the wire - and an exotic one
+  // such as UTF-7 is itself an old XSS vector.
+  const charsetOk = params.every((param) => {
+    const [name, value = ''] = param.split('=').map((part) => part.trim());
+    return name !== 'charset' || value.replace(/"/g, '') === 'utf-8';
+  });
+
+  if (!charsetOk) {
+    return false;
+  }
+
+  if (PASSIVE_TYPES.has(mime)) {
+    return true;
+  }
+
+  // The same test Koa applies when it infers `text/html` for a string.
+  return MARKUP_TYPES.has(mime) && /^\s*</.test(body);
+};
+
+/**
+ * The Content-Type to store and replay with this response, if Koa would not
+ * arrive at the same one by itself and it is safe to replay.
+ *
+ * Replaying a body means assigning it to ctx.body, and Koa then guesses the
+ * type from it. For an object that guess is JSON - which is what Koa set on the
+ * MISS too, unconditionally - so JSON entries need nothing kept and stay
+ * exactly the shape earlier versions wrote. For a string the guess is
+ * `text/plain`, or `text/html` if it starts with `<`, whatever the handler
+ * said: CSV turned into `text/plain` and XML into `text/html` on every HIT.
+ *
+ * A type that {@link isReplayable} refuses is not stored at all, so its entry
+ * keeps the older `{data}` shape.
+ */
+const typeToKeep = (ctx: Context): string | undefined => {
+  if (typeof ctx.body !== 'string') {
+    return undefined;
+  }
+
+  const type = String(ctx.response.get('Content-Type') || '');
+
+  return type && isReplayable(type, ctx.body) ? type : undefined;
+};
+
+/**
+ * Serve a stored or borrowed body with the type it was produced with.
+ *
+ * The header has to be in place before the body is assigned: Koa only infers a
+ * type for a string body when none is set yet. Absent a type - every JSON
+ * entry, every entry written before types were kept, and every type
+ * {@link isReplayable} refuses - nothing is set and Koa infers exactly as it
+ * always did.
+ */
+const replay = (ctx: Context, body: unknown, type: string | undefined): void => {
+  if (type && typeof body === 'string' && isReplayable(type, body)) {
+    ctx.set('Content-Type', type);
+  }
+
+  ctx.body = body;
+};
 
 /**
  * Requests currently fetching from the origin, keyed by cache key.
@@ -32,7 +153,7 @@ interface SharedResponse {
  *
  * @see https://github.com/strapi-community/plugin-rest-cache/issues/130
  */
-const inFlight = new Map<CacheKey, Promise<SharedResponse>>();
+const inFlight = new Map<CacheKey, InFlightRead>();
 
 export default function createRecv(
   options: { cacheRouteConfig?: CacheRouteConfig },
@@ -114,10 +235,10 @@ export default function createRecv(
         // etag miss
       }
 
-      const cacheEntry = await store.get(cacheKey);
+      const cacheEntry = await store.getEntry(cacheKey);
 
       // hit cache
-      if (cacheEntry) {
+      if (cacheEntry?.data) {
         debug('strapi:plugin-rest-cache')(
           `[RECV] GET ${cacheKey} ${colors.green('HIT')}`
         );
@@ -134,17 +255,21 @@ export default function createRecv(
         setCacheControl(ctx);
 
         ctx.status = 200;
-        ctx.body = cacheEntry;
+        replay(ctx, cacheEntry.data, cacheEntry.type);
         return;
       }
 
       // Cache miss. If an identical request is already fetching, wait for its
       // result instead of making our own trip to the origin.
+      //
+      // Not if a purge for this key has started since that request read the
+      // origin: it is carrying pre-write data, and a request that arrives after
+      // the write returned must see the write. Fetch independently instead.
       const pending = inFlight.get(cacheKey);
 
-      if (pending) {
+      if (pending && !store.purgedSince(pending.generation, cacheKey)) {
         try {
-          const shared = await pending;
+          const shared = await pending.shared;
 
           debug('strapi:plugin-rest-cache')(
             `[RECV] GET ${cacheKey} ${colors.yellow('MISS')} ${colors.grey('(coalesced)')}`
@@ -155,13 +280,15 @@ export default function createRecv(
           }
 
           // Deliberately no Cache-Control here. We borrowed a body from the
-          // request that went to the origin and never saw its response headers,
-          // so we cannot know whether that request's response was stored or
-          // refused by isCacheable. Staying quiet costs one client one
-          // revalidation; guessing wrong tells a browser to cache something the
-          // plugin itself declined to.
+          // request that went to the origin and never saw its response headers.
+          // It is only ever handed a response that passed isCacheable - a
+          // refused one releases us to fetch for ourselves below - but the
+          // store write may still fail, or be skipped because the read raced
+          // a purge, and staying quiet costs one client one
+          // revalidation where guessing wrong tells a browser to cache
+          // something the plugin did not.
           ctx.status = shared.status;
-          ctx.body = shared.body;
+          replay(ctx, shared.body, shared.type);
           return;
         } catch {
           // The request we were waiting on failed. Fall through and fetch
@@ -175,6 +302,11 @@ export default function createRecv(
     let publish: ((value: SharedResponse) => void) | undefined;
     let abandon: ((reason?: unknown) => void) | undefined;
 
+    // Read before the origin is called, so any purge that starts after this
+    // point is one this response may have raced. See purgedSince.
+    const generation = store.generation;
+    let ownRead: InFlightRead | undefined;
+
     if (lookup) {
       const shared = new Promise<SharedResponse>((resolve, reject) => {
         publish = resolve;
@@ -182,7 +314,8 @@ export default function createRecv(
       });
       // Nothing may be waiting yet, and an unobserved rejection would warn.
       shared.catch(() => {});
-      inFlight.set(cacheKey, shared);
+      ownRead = { shared, generation };
+      inFlight.set(cacheKey, ownRead);
     }
 
     try {
@@ -192,7 +325,10 @@ export default function createRecv(
       abandon?.(error);
       throw error;
     } finally {
-      if (lookup) {
+      // Only our own entry. A request that declined to join us after a purge
+      // has registered its own read under the same key, and removing it would
+      // let a third request stampede the origin alongside it.
+      if (ownRead && inFlight.get(cacheKey) === ownRead) {
         inFlight.delete(cacheKey);
       }
     }
@@ -218,15 +354,48 @@ export default function createRecv(
       ctx.set('X-Cache', 'MISS');
     }
 
-    // Hand the response to anything waiting on us before writing to the cache,
-    // so waiters are not blocked on the store.
-    publish?.({ body: ctx.body, status: ctx.status });
-
-    const { cacheable, reason } = isCacheable(ctx);
+    let verdict: ReturnType<typeof isCacheable>;
+    try {
+      verdict = isCacheable(ctx);
+    } catch (error) {
+      // Waiters are only ever released by a publish or an abandon. Deciding
+      // the verdict before publishing means a throw here would otherwise leave
+      // every concurrent caller waiting forever.
+      abandon?.(error);
+      throw error;
+    }
+    const { cacheable, reason } = verdict;
 
     if (!cacheable) {
+      // Waiters must not get a response the plugin refuses to store. Coalescing
+      // only merges requests that would have shared a cache entry, and this one
+      // would not have: a `private` or `no-store` body belongs to the caller
+      // who asked, a Set-Cookie is that caller's alone, and a raw or streamed
+      // response has no body to hand over at all. Handing it over anyway gave
+      // every concurrent caller the leader's private response. Release them to
+      // fetch for themselves, exactly as when the leader fails.
+      abandon?.(new Error('response is not shareable'));
+
       debug('strapi:plugin-rest-cache')(
         `[RECV] GET ${cacheKey} ${colors.grey(`not cached: ${reason}`)}`
+      );
+      return;
+    }
+
+    // Hand the response to anything waiting on us before writing to the cache,
+    // so waiters are not blocked on the store.
+    const type = typeToKeep(ctx);
+    publish?.({ body: ctx.body, status: ctx.status, type });
+
+    // A purge for this key started while we were reading the origin, so this
+    // body may predate the write that triggered it. Storing it now would undo
+    // the purge until maxAge. It is still returned to this caller, and to the
+    // requests that joined us before the purge, all of which were issued
+    // before the write returned. Requests arriving later fetch for
+    // themselves. No Cache-Control either: nothing is going into the cache.
+    if (store.purgedSince(generation, cacheKey)) {
+      debug('strapi:plugin-rest-cache')(
+        `[RECV] GET ${cacheKey} ${colors.grey('not cached: purged while in flight')}`
       );
       return;
     }
@@ -253,7 +422,7 @@ export default function createRecv(
       }
 
       writes.push(
-        store.set(cacheKey, ctx.body, maxAge).catch(() => {
+        store.set(cacheKey, ctx.body, maxAge, { type }).catch(() => {
           debug('strapi:plugin-rest-cache')(
             `[RECV] GET ${cacheKey} ${colors.yellow('Unable to store Content in cache')}`
           );
@@ -271,6 +440,13 @@ export default function createRecv(
       //
       // See https://github.com/strapi-community/plugin-rest-cache/issues/132
       await Promise.all(writes);
+
+      // A purge that started while those writes were in progress may have
+      // listed the keys before ours landed, and so not deleted it. Remove it
+      // ourselves rather than leave a pre-write body cached until maxAge.
+      if (store.purgedSince(generation, cacheKey)) {
+        await store.delMany([cacheKey, `${cacheKey}_etag`]);
+      }
     }
   };
 }
