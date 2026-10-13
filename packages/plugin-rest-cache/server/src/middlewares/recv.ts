@@ -155,11 +155,12 @@ export default function createRecv(
           }
 
           // Deliberately no Cache-Control here. We borrowed a body from the
-          // request that went to the origin and never saw its response headers,
-          // so we cannot know whether that request's response was stored or
-          // refused by isCacheable. Staying quiet costs one client one
-          // revalidation; guessing wrong tells a browser to cache something the
-          // plugin itself declined to.
+          // request that went to the origin and never saw its response headers.
+          // It is only ever handed a response that passed isCacheable - a
+          // refused one releases us to fetch for ourselves below - but the
+          // store write may still fail, and staying quiet costs one client one
+          // revalidation where guessing wrong tells a browser to cache
+          // something the plugin did not.
           ctx.status = shared.status;
           ctx.body = shared.body;
           return;
@@ -218,18 +219,37 @@ export default function createRecv(
       ctx.set('X-Cache', 'MISS');
     }
 
-    // Hand the response to anything waiting on us before writing to the cache,
-    // so waiters are not blocked on the store.
-    publish?.({ body: ctx.body, status: ctx.status });
-
-    const { cacheable, reason } = isCacheable(ctx);
+    let verdict: ReturnType<typeof isCacheable>;
+    try {
+      verdict = isCacheable(ctx);
+    } catch (error) {
+      // Waiters are only ever released by a publish or an abandon. Deciding
+      // the verdict before publishing means a throw here would otherwise leave
+      // every concurrent caller waiting forever.
+      abandon?.(error);
+      throw error;
+    }
+    const { cacheable, reason } = verdict;
 
     if (!cacheable) {
+      // Waiters must not get a response the plugin refuses to store. Coalescing
+      // only merges requests that would have shared a cache entry, and this one
+      // would not have: a `private` or `no-store` body belongs to the caller
+      // who asked, a Set-Cookie is that caller's alone, and a raw or streamed
+      // response has no body to hand over at all. Handing it over anyway gave
+      // every concurrent caller the leader's private response. Release them to
+      // fetch for themselves, exactly as when the leader fails.
+      abandon?.(new Error('response is not shareable'));
+
       debug('strapi:plugin-rest-cache')(
         `[RECV] GET ${cacheKey} ${colors.grey(`not cached: ${reason}`)}`
       );
       return;
     }
+
+    // Hand the response to anything waiting on us before writing to the cache,
+    // so waiters are not blocked on the store.
+    publish?.({ body: ctx.body, status: ctx.status });
 
     // Only now, past the verdict: this response is going into the cache, and
     // isCacheable has already read whatever Cache-Control the handler set.

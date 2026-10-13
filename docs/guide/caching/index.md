@@ -259,6 +259,12 @@ Two details worth knowing:
 - **Waiters are released before the write.** The leader hands its response to
   the waiters first and writes to the store afterwards, so a slow store does
   not hold anyone up.
+- **A response the cache refuses is not shared.** If the leader's response
+  would not be stored - `Cache-Control: private` or `no-store`, a
+  `Set-Cookie`, a streamed or raw body - the waiters are released to fetch for
+  themselves instead of receiving it. Such a route therefore gains nothing from
+  coalescing, and a waiter there takes roughly twice the origin time: one wait
+  for the leader, then its own request.
 
 Coalescing is keyed on the cache key, so it only ever merges requests that
 would have shared an entry anyway.
