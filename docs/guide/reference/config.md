@@ -348,6 +348,8 @@ Independently of configuration, a response is not stored when:
 - the body is empty, or the status is not `2xx`;
 - the body is a stream — it can only be consumed once, so a stored copy could
   not be replayed;
+- the body is a `Buffer` — entries are stored as JSON, which cannot carry
+  raw bytes or their `Content-Type`;
 - the response sets a `Set-Cookie` — replaying it would hand one caller's
   session to everybody sharing the key;
 - the response says `Cache-Control: no-store` or `private`.

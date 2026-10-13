@@ -103,6 +103,7 @@ module.exports = ({ env }) => ({
         { path: "/api/categories/probe/raw", method: "GET" },
         { path: "/api/categories/probe/stream", method: "GET" },
         { path: "/api/categories/probe/with-cookie", method: "GET" },
+        { path: "/api/categories/probe/buffer", method: "GET" },
         { path: "/api/categories/probe/throwing-body", method: "GET" },
         // No maxAge, hitpass or keys of its own: all three must come from
         // this content type, not from the strategy. See
