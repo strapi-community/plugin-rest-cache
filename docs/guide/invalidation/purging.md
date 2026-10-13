@@ -228,6 +228,11 @@ type, so `{ id: "abc" }` resolves `/api/articles/:id` to `/api/articles/abc`. A
 route whose parameters cannot all be filled in is skipped rather than guessed
 at — so a `/api/articles/slug/:slug` route is not matched by an `id`.
 
+Pass values as you have them — `{ slug: "café" }`, not `{ slug: "caf%C3%A9" }`.
+They are encoded the way a browser puts them in the URL before they are matched,
+and a value that is already percent-encoded is left as it is, so both forms
+work.
+
 `wildcard: true` replaces every parameter with a match-anything pattern and
 clears the lot. Use it when you cannot enumerate what changed, which is most of
 the time for manual purges.

@@ -36,6 +36,16 @@ export const isCacheable = function (ctx: Context): CacheabilityVerdict {
     return { cacheable: false, reason: 'streamed body' };
   }
 
+  // Entries are stored as JSON.stringify({ data }), and a Buffer stringifies
+  // to { type: "Buffer", data: [...] }, which JSON.parse never turns back into
+  // a Buffer. Nor is the Content-Type stored. So every HIT served a JSON array
+  // of byte values in place of the file or CSV the handler sent. Koa sends only
+  // a Buffer as raw bytes - any other typed array it serialises as JSON itself,
+  // which round-trips - so a Buffer is the one binary body refused here.
+  if (Buffer.isBuffer(ctx.body)) {
+    return { cacheable: false, reason: 'binary (Buffer) body' };
+  }
+
   // Set-Cookie is issued to one caller. Replaying it hands that caller's
   // session, CSRF token or consent state to everybody else who shares the key.
   const setCookie = ctx.response.get('Set-Cookie');
