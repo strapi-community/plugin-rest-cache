@@ -34,6 +34,16 @@ export interface CacheStoreService {
   reset(): Promise<unknown>;
   readonly ready: boolean;
   clearByRegexp(regExps?: RegExp[]): Promise<void>;
+  /**
+   * The number of purges this process has started. Read it before fetching a
+   * response from the origin, then hand it to purgedSince.
+   */
+  readonly generation: number;
+  /**
+   * Whether a purge that could have removed `key` started after `generation`
+   * was read. Errs towards true when it can no longer tell.
+   */
+  purgedSince(generation: number, key: CacheKey | string): boolean;
   clearByUid(
     uid: ContentTypeUID | string,
     params?: Record<string, string | number>,
@@ -93,6 +103,46 @@ export default function createCacheStoreService({
    */
   const hasPrefix = (key: string): boolean => key.startsWith(keysPrefix);
   const stripPrefix = (key: string): string => key.slice(keysPrefix.length);
+
+  /**
+   * Recent purges, so a response read from the origin before a purge is not
+   * stored after it.
+   *
+   * A cache miss reads the origin, and only then stores what it read. A write
+   * landing in between purges first, and the miss then stores its pre-write
+   * body on top of the purge, where it survives until maxAge. Awaiting the
+   * store (#132) does not help: the read itself happened before the write.
+   * recv reads `generation` before calling the origin and asks purgedSince
+   * before storing.
+   *
+   * Each entry keeps the purge's patterns rather than bumping a single
+   * counter, so the check is scoped to the key: a purge of an unrelated content
+   * type does not stop an in-flight response from being stored. Without that, a
+   * steady stream of unrelated writes would stop anything from being cached.
+   * `null` patterns stand for reset, which removes everything.
+   *
+   * Bounded, since nothing reads an entry once every request that started
+   * before it has finished. A request older than the oldest entry still kept
+   * is treated as purged, which costs it one store and never serves stale data.
+   */
+  const PURGE_LOG_SIZE = 1000;
+  const purgeLog: Array<{ generation: number; regExps: RegExp[] | null }> = [];
+  let generation = 0;
+
+  /**
+   * Record a purge before it reads the key list.
+   *
+   * Before, not after: a store landing after the purge has listed the keys is
+   * not deleted by it, so it has to be visible to purgedSince from the moment
+   * the purge starts.
+   */
+  const recordPurge = (regExps: RegExp[] | null): void => {
+    generation += 1;
+    purgeLog.push({ generation, regExps });
+    if (purgeLog.length > PURGE_LOG_SIZE) {
+      purgeLog.shift();
+    }
+  };
 
   return {
     async init(newProvider) {
@@ -174,6 +224,8 @@ export default function createCacheStoreService({
     async reset() {
       if (unusable()) return null;
 
+      recordPurge(null);
+
       try {
         // A prefixed store shares its keyspace with other consumers, so only
         // the keys belonging to this cache may be removed. Without a prefix the
@@ -188,6 +240,31 @@ export default function createCacheStoreService({
       }
     },
 
+    get generation() {
+      return generation;
+    },
+
+    purgedSince(since, key) {
+      if (since === generation) {
+        return false;
+      }
+
+      // Entries since `since` have been dropped: we cannot tell, so assume it
+      // was purged.
+      if (!purgeLog.length || purgeLog[0].generation > since + 1) {
+        return true;
+      }
+
+      for (let i = purgeLog.length - 1; i >= 0 && purgeLog[i].generation > since; i--) {
+        const { regExps } = purgeLog[i];
+        if (!regExps || regExps.some((r) => r.test(key))) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+
     get ready() {
       if (!initialized) {
         strapi.log.error('REST Cache provider not initialized');
@@ -198,6 +275,8 @@ export default function createCacheStoreService({
     },
 
     async clearByRegexp(regExps = []) {
+      recordPurge([...regExps]);
+
       // Already logical keys: keys() filters on the prefix and strips it. This
       // used to strip it a second time with a plain String.replace, which
       // removes the first occurrence anywhere rather than an anchored prefix -
