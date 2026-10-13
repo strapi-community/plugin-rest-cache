@@ -36,6 +36,11 @@ const WRITE_ACTIONS = new Set<WriteAction>([
  * than once per row the document service touches (draft, published version,
  * each locale).
  *
+ * AsyncLocalStorage rather than a process-wide "write in flight" flag: only
+ * the database events of this very call see the scope. A user.remove() from
+ * another request that overlaps a slow user update must still purge, or the
+ * removed user stays in the cached list until maxAge.
+ *
  * Scoped by uid rather than "any document service write": a document service
  * write to one content type that makes a raw strapi.db.query write to a
  * different cached one is not purged for that other one by this middleware.
