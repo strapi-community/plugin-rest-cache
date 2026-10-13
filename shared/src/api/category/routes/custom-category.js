@@ -21,6 +21,11 @@ module.exports = {
     },
     {
       method: "GET",
+      path: "/categories/probe/throwing-body",
+      handler: "category.throwingBody",
+    },
+    {
+      method: "GET",
       path: "/categories/probe/with-cookie",
       handler: "category.withCookie",
     },

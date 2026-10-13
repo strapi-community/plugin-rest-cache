@@ -41,7 +41,17 @@ module.exports = ({ env }) => ({
       env.int("CACHE_CONTROL_STALE_WHILE_REVALIDATE", 0) || null,
   },
   contentTypes: [
-    "api::article.article",
+    // An entry whose maxAge / hitpass are present but undefined, as
+    // `maxAge: env.int("SOME_UNSET_VAR")` produces. They must inherit exactly
+    // like omitted keys. Opt-in, so the other specs see the plain entry.
+    env.bool("ARTICLE_EXPLICIT_UNDEFINED", false)
+      ? {
+          contentType: "api::article.article",
+          maxAge: undefined,
+          hitpass: undefined,
+          injectDefaultRoutes: undefined,
+        }
+      : "api::article.article",
     // A content type whose singular name ("editor") differs from its parent
     // API ("writer"). See
     // https://github.com/strapi-community/plugin-rest-cache/issues/125
@@ -70,10 +80,18 @@ module.exports = ({ env }) => ({
         { path: "/api/categories/probe/raw", method: "GET" },
         { path: "/api/categories/probe/stream", method: "GET" },
         { path: "/api/categories/probe/with-cookie", method: "GET" },
+        { path: "/api/categories/probe/throwing-body", method: "GET" },
         // No maxAge, hitpass or keys of its own: all three must come from
         // this content type, not from the strategy. See
         // https://github.com/strapi-community/plugin-rest-cache/issues/230
-        { path: "/api/categories/probe/inherits", method: "GET" },
+        {
+          path: "/api/categories/probe/inherits",
+          method: "GET",
+          // Same switch: a listed route's undefined options inherit too.
+          ...(env.bool("ARTICLE_EXPLICIT_UNDEFINED", false)
+            ? { maxAge: undefined, hitpass: undefined }
+            : {}),
+        },
         {
           // The handler sets its own Cache-Control, chosen by ?value=, so the
           // query string has to be part of the key here.
