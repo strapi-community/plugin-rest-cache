@@ -7,6 +7,41 @@ module.exports = {
       path: "/categories/slug/:slug+",
       handler: "category.findBySlug",
     },
+    // Fixture for a custom route whose configured path has upper-case
+    // characters. Cache keys are lower-cased; purge patterns must match them.
+    {
+      method: "GET",
+      path: "/categories/bySlug/:slug",
+      handler: "category.findBySlug",
+    },
+    // Fixtures for purge patterns, one per parameter form: plain,
+    // repeatable, optional and regex-constrained. The handler echoes, so any
+    // value answers 200 and is cached without a matching row.
+    {
+      method: "GET",
+      path: "/categories/echo/one/:slug",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/many/:slug+",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/maybe/:slug?",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/num/:id(\\d+)",
+      handler: "category.echo",
+    },
+    {
+      method: "GET",
+      path: "/categories/echo/code/:code(\\D+)",
+      handler: "category.echo",
+    },
     // Fixtures for responses the cache must refuse to buffer. See
     // https://github.com/strapi-community/plugin-rest-cache/issues/133
     {
@@ -23,6 +58,11 @@ module.exports = {
       method: "GET",
       path: "/categories/probe/buffer",
       handler: "category.buffer",
+    },
+    {
+      method: "GET",
+      path: "/categories/probe/throwing-body",
+      handler: "category.throwingBody",
     },
     {
       method: "GET",
@@ -43,6 +83,13 @@ module.exports = {
       method: "GET",
       path: "/categories/probe/inherits",
       handler: "category.inherits",
+    },
+    // Fixture for a route keyed on a query param and two headers, so the
+    // separators between every part of a cache key can be exercised.
+    {
+      method: "GET",
+      path: "/categories/probe/vary",
+      handler: "category.vary",
     },
   ],
 };

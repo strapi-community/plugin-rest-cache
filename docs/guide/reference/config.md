@@ -85,8 +85,8 @@ What to cache, for how long, and how to key it.
 | `enableDocumentServiceMiddleware` | `boolean` | `true` | Invalidate from the document service rather than from HTTP routes. See [Invalidation](../invalidation/index.md). <Badge type="tip" text="since 5.1.0" /> |
 | `enableContentApiPurge` | `boolean` | `false` | Expose `POST /api/rest-cache/purge`. Off by default; see [Purging](../invalidation/purging.md). <Badge type="tip" text="since 5.1.0" /> |
 | `enableAdminCTBMiddleware` | `boolean` | `true` | Inject purge middleware into the content-manager's admin routes. Superseded by `enableDocumentServiceMiddleware` and ignored while that is on. |
-| `clearRelatedCache` | `boolean` | `true` | When a content type is purged, also purge content types related to it through relations and components, transitively. |
-| `resetOnStartup` | `boolean` | `false` | Empty the cache when Strapi boots. |
+| `clearRelatedCache` | `boolean` | `true` | When a content type is purged, also purge content types related to it through relations and components, transitively. Also applies when the written content type is not cached itself: the cached types that embed it through non-private relations are still purged, one wildcard purge per write. See [Uncached content types](../invalidation/index.md#uncached-content-types). |
+| `resetOnStartup` | `boolean` | `false` | Empty the cache when the HTTP server starts. See [resetOnStartup](#resetonstartup). |
 | `debug` | `boolean` | `false` | Enable the plugin's `debug` logging namespace. See [Debugging](../troubleshooting.md). |
 
 ### contentTypes
@@ -310,6 +310,35 @@ export default {
 ```
 
 ::::
+
+### resetOnStartup
+
+Empties the cache when this instance's HTTP server starts listening:
+`strapi start`, `strapi develop` (including every auto-reload), and
+`strapi console`, which also starts the server. The reset completes before the
+server accepts its first request. With a `keysPrefix` only this cache's keys are
+removed; without one the provider is cleared.
+
+Commands that load Strapi without serving do **not** reset: `routes:list`,
+`export`, `import`, `transfer`, the `admin:*` user commands,
+`configuration:dump`, `openapi:generate`, and any script of your own that calls
+`strapi.load()` without `strapi.listen()`.
+
+::: warning This option used to do nothing
+Up to and including 5.1.0 the reset was issued before the provider was ready,
+so it was refused and `resetOnStartup: true` silently left the cache as it
+was. If you set it to `true` back then, it now takes effect: each server start
+empties the cache. With the memory provider that changes nothing, since a new process
+starts empty anyway. With Redis it removes whatever the previous run left.
+:::
+
+::: danger Several instances sharing one Redis
+Every instance that starts empties the cache every other instance is serving
+from. A rolling deploy of N instances empties it N times, and an autoscaler or
+a crash-looping instance empties it on every start. Leave this off when more
+than one instance shares the cache, and purge once from your deploy pipeline
+instead. See [Multiple instances](../recipes/multi-instance.md).
+:::
 
 ## What is never cached
 
