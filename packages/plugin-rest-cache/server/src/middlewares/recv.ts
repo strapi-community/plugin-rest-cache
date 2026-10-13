@@ -404,6 +404,16 @@ export default function createRecv(
     // isCacheable has already read whatever Cache-Control the handler set.
     setCacheControl(ctx);
 
+    // A route with maxAge 0 (or less) is not cached: no entry, and no ETag the
+    // server could never revalidate. Its Cache-Control, when enabled, already
+    // says max-age=0.
+    if (maxAge <= 0) {
+      debug('strapi:plugin-rest-cache')(
+        `[RECV] GET ${cacheKey} ${colors.grey('not cached: maxAge 0')}`
+      );
+      return;
+    }
+
     {
       const writes: Array<Promise<unknown>> = [];
 

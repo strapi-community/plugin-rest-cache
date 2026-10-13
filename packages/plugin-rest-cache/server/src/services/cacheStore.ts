@@ -189,6 +189,10 @@ export default function createCacheStoreService({
     async set(key, val, maxAge = 3600000, meta = {}) {
       if (unusable()) return null;
 
+      // maxAge 0 (or less) means "do not cache". keyv and cache-manager read a
+      // ttl of 0 as "no expiry", so passing it through stored the entry forever.
+      if (typeof maxAge === 'number' && maxAge <= 0) return null;
+
       try {
         return provider.set(`${keysPrefix}${key}`, serialize(val, meta), maxAge);
       } catch (error) {
