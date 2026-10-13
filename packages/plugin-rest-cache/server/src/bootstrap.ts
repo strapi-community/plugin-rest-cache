@@ -152,6 +152,15 @@ export default async function bootstrap({ strapi }: { strapi: Core.Strapi }) {
   const provider = await createProvider(pluginOption.provider, { strapi });
   await cacheStore.init(provider);
 
+  // Must run after init(), never in register. It used to be issued from
+  // register.ts, before the store had a provider, so the store refused it
+  // ("REST Cache provider not initialized") and the option silently did
+  // nothing - a persistent provider kept serving entries from the previous run.
+  if (pluginOption.strategy.resetOnStartup) {
+    strapi.log.warn('Reset cache on startup is enabled');
+    await cacheStore.reset();
+  }
+
   strapi.log.info(
     `Using REST Cache plugin with provider "${colors.cyan(pluginOption.provider.name)}"`
   );

@@ -9,7 +9,6 @@ import type { RestCachePluginConfig } from './types/config';
 export default async function register({ strapi }: { strapi: Core.Strapi }) {
   // resolve user configuration, check for missing or invalid optinos
   const pluginOption = strapi.config.get<RestCachePluginConfig>('plugin::rest-cache');
-  const cacheStore = strapi.plugin('rest-cache').service('cacheStore');
 
   if (pluginOption.strategy.debug === true) {
     debug.enable('strapi:plugin-rest-cache');
@@ -33,8 +32,6 @@ export default async function register({ strapi }: { strapi: Core.Strapi }) {
     registerDocumentServiceMiddleware(strapi);
   }
 
-  if (strategy.resetOnStartup) {
-    strapi.log.warn('Reset cache on startup is enabled');
-    await cacheStore.reset();
-  }
+  // resetOnStartup is handled in bootstrap, not here: the provider is only
+  // handed to the store there, and a reset issued now is refused.
 }
