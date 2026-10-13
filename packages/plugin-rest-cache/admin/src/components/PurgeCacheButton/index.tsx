@@ -5,7 +5,7 @@ import { ArrowsCounterClockwise } from '@strapi/icons';
 import { useNotification } from '@strapi/strapi/admin';
 
 import { getTranslation } from '../../utils/getTranslation';
-import { useCacheStrategy, usePurgeCache } from '../../services/restCache';
+import { usePurgeCache, usePurgeableContentTypes } from '../../services/restCache';
 import type { PurgeRequest } from '../../../../server/src/types/api';
 
 export interface PurgeCacheButtonProps {
@@ -61,9 +61,9 @@ const PurgeCacheButton = ({
   const { formatMessage } = useIntl();
   const { toggleNotification } = useNotification();
 
-  // Shared with every other subscriber to the strategy on the page - RTK Query
-  // collapses them onto one request, and unsubscribing cancels it.
-  const { data } = useCacheStrategy();
+  // Shared with every other subscriber to the strategy on the page - the
+  // module-level cache in services/restCache collapses them onto one request.
+  const purgeable = usePurgeableContentTypes();
   const purgeCache = usePurgeCache();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -107,9 +107,7 @@ const PurgeCacheButton = ({
     }
   };
 
-  const isCached = data?.strategy?.contentTypes?.some(
-    (config) => config.contentType === contentType
-  );
+  const isCached = purgeable?.includes(contentType);
 
   if (!isCached) {
     return null;

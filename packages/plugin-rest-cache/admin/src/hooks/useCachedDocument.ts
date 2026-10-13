@@ -1,4 +1,4 @@
-import { useCacheStrategy } from '../services/restCache';
+import { useCacheStrategy, usePurgeableContentTypes } from '../services/restCache';
 import type { CacheContentTypeConfig } from '../../../server/src/types';
 import type { PurgeRequest } from '../../../server/src/types/api';
 import type { EditViewContext } from '../types/contentManager';
@@ -63,7 +63,10 @@ export interface CachedDocument {
    * configured strategy.
    */
   isEligible: boolean;
-  /** The strategy entry for this content type, when there is one. */
+  /**
+   * The strategy entry for this content type, when there is one and this
+   * admin may read the strategy. Absent for an admin who may only purge.
+   */
   config?: CacheContentTypeConfig;
   /** Route params to scope the purge by. Empty for a single type. */
   params: PurgeRequest['params'];
@@ -93,6 +96,7 @@ export const useCachedDocument = ({
   collectionType,
 }: EditViewContext): CachedDocument => {
   const { data } = useCacheStrategy();
+  const purgeable = usePurgeableContentTypes();
 
   const config = data?.strategy?.contentTypes?.find(
     (contentType) => contentType.contentType === model
@@ -102,7 +106,10 @@ export const useCachedDocument = ({
 
   return {
     // Nothing has been written yet, so nothing can be cached.
-    isEligible: Boolean(documentId) && config !== undefined,
+    // From the purgeable list rather than `config`, which is only there for
+    // admins who may read the strategy: one who may only purge still gets
+    // the purge action.
+    isEligible: Boolean(documentId) && purgeable?.includes(model) === true,
     config,
     params: isSingleType ? {} : toEntryParams(document, documentId),
     isSingleType,
