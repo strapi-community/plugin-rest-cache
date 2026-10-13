@@ -164,11 +164,32 @@ const ContentTypeTable = ({ contentTypes, canPurge }: ContentTypeTableProps) => 
                     ) : null}
                     {sharesAuthenticatedEntries ? (
                       <Tooltip
-                        label={formatMessage({
-                          id: getTranslation('contentTypes.authRisk.hint'),
-                          defaultMessage:
-                            "Hitpass is disabled but keys.useAuth is not set, so one caller's response can be served to another.",
-                        })}
+                        label={
+                          // Name the routes when the server says which they
+                          // are. "Hitpass is disabled" is wrong for a content
+                          // type whose own hitpass is enabled and whose
+                          // listed route disables it, and it sends the admin
+                          // to a setting that is already right. The old text
+                          // stays for the fallback, where the badge came
+                          // from exactly those content type settings.
+                          contentType.unkeyedAuthenticatedRoutes
+                            ? formatMessage(
+                                {
+                                  id: getTranslation('contentTypes.authRisk.routesHint'),
+                                  defaultMessage:
+                                    "{count, plural, one {Route {routes} caches} other {Routes {routes} cache}} authenticated requests without keys.useAuth, so one caller's response can be served to another.",
+                                },
+                                {
+                                  count: contentType.unkeyedAuthenticatedRoutes.length,
+                                  routes: contentType.unkeyedAuthenticatedRoutes.join(', '),
+                                }
+                              )
+                            : formatMessage({
+                                id: getTranslation('contentTypes.authRisk.hint'),
+                                defaultMessage:
+                                  "Hitpass is disabled but keys.useAuth is not set, so one caller's response can be served to another.",
+                              })
+                        }
                       >
                         {/* Themed, not a hardcoded hex: the badge has to stay
                             legible in dark mode and in every locale. Wrapped for

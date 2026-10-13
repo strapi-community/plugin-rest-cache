@@ -45,8 +45,9 @@ A row may carry a badge:
   can be served to another. It is judged per route, on what each route
   actually resolved to, exactly as the boot warning is. So a listed route that
   turns `hitpass` off itself is flagged, and a content type whose listed routes
-  keep the strategy's bypass is not. The server also warns about this at boot;
-  the badge is here because nobody reads boot logs.
+  keep the strategy's bypass is not. Hover the badge for the routes at fault.
+  The server also warns about this at boot; the badge is here because nobody
+  reads boot logs.
 
 The **Purge** button clears every entry for that content type, and for the
 content types related to it when `clearRelatedCache` is on. The counts update

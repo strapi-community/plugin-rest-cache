@@ -5,6 +5,15 @@ const BADGE = 'Shared across callers';
 
 const rowFor = (page: Page, uid: string) => page.getByRole('row').filter({ hasText: uid });
 
+/** The badge's tooltip text for a row: what an admin reads to act on it. */
+async function tooltipFor(page: Page, uid: string) {
+  await rowFor(page, uid).getByText(BADGE).hover();
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toBeVisible();
+
+  return tooltip;
+}
+
 interface StatsRow {
   uid: string;
   hitpass: boolean;
@@ -53,6 +62,14 @@ test.describe('"Shared across callers" badge', () => {
     await page.goto(DASHBOARD);
 
     await expect(rowFor(page, 'api::writer.editor')).toContainText(BADGE);
+
+    // This content type's own hitpass is enabled, so "Hitpass is disabled"
+    // would send the admin to a setting that is already right. The tooltip
+    // has to name the route that is actually at fault.
+    const tooltip = await tooltipFor(page, 'api::writer.editor');
+    await expect(tooltip).toContainText('Route /api/editors/:id caches authenticated requests');
+    await expect(tooltip).toContainText('keys.useAuth');
+    await expect(tooltip).not.toContainText('Hitpass is disabled');
   });
 
   /**
@@ -88,5 +105,10 @@ test.describe('"Shared across callers" badge', () => {
 
     await expect(rowFor(page, 'api::page.page')).toContainText(BADGE);
     await expect(rowFor(page, 'api::article.article')).not.toContainText(BADGE);
+
+    // Without the list, the badge was raised from the content type's own
+    // settings, which this sentence describes exactly.
+    const tooltip = await tooltipFor(page, 'api::page.page');
+    await expect(tooltip).toContainText('Hitpass is disabled but keys.useAuth is not set');
   });
 });
