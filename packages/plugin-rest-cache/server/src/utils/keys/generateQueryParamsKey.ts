@@ -1,5 +1,5 @@
 import type { Context } from 'koa';
-import { escapeKeyJson, escapeKeyName, escapeKeyValue } from './escapeKeyPart';
+import { KEY_NULL, escapeKeyJson, escapeKeyName, escapeKeyValue } from './escapeKeyPart';
 
 export const generateQueryParamsKey = function (
   ctx: Context,
@@ -27,6 +27,12 @@ export const generateQueryParamsKey = function (
   return keys
     .map((k) => {
       const value = ctx.query[k];
+
+      // null is tested first: `typeof null` is "object", and as JSON it would
+      // key as `null`, the same as the string `?q=null`.
+      if (value === null) {
+        return `${escapeKeyName(k)}=${KEY_NULL}`;
+      }
 
       return `${escapeKeyName(k)}=${
         typeof value === 'object'

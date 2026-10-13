@@ -96,6 +96,53 @@ describe("cache key separators", () => {
       expect(literal.get("x-cache")).toBe("MISS");
       expect(literal.body.q).toBe("x%2Cy%3D1");
     });
+
+    // Strapi's query middleware parses with qs `strictNullHandling: true`, so
+    // a bare `?q` arrives as null, not "". `typeof null` is "object", which
+    // used to send it through JSON.stringify and out as `q=null` - the key of
+    // the literal string `?q=null`.
+    it("does not let a bare parameter collide with the string 'null'", async () => {
+      const bare = await agent().get(`${VARY}?q`);
+      expect(bare.body.q).toBeNull();
+
+      const literal = await agent().get(`${VARY}?q=null`);
+
+      expect(literal.get("x-cache")).toBe("MISS");
+      expect(literal.body.q).toBe("null");
+    });
+
+    it("does not let the string 'null' collide with a bare parameter", async () => {
+      const literal = await agent().get(`${VARY}?q=null`);
+      expect(literal.body.q).toBe("null");
+
+      const bare = await agent().get(`${VARY}?q`);
+
+      expect(bare.get("x-cache")).toBe("MISS");
+      expect(bare.body.q).toBeNull();
+    });
+
+    // Inside JSON a string is quoted and null is not, so these never shared a
+    // key. Pinned so that changing how null is keyed cannot change that.
+    it("does not let a nested null collide with a nested 'null'", async () => {
+      const bare = await agent().get(`${VARY}?q[a]`);
+      expect(bare.body.q).toEqual({ a: null });
+
+      const literal = await agent().get(`${VARY}?q[a]=null`);
+
+      expect(literal.get("x-cache")).toBe("MISS");
+      expect(literal.body.q).toEqual({ a: "null" });
+    });
+
+    it("does not let a JSON-looking string collide with an array holding null", async () => {
+      // `?q[]` parses to [null], which keys as the JSON `[null]`.
+      const poison = await agent().get(VARY).query({ q: "[null]" });
+      expect(poison.body.q).toBe("[null]");
+
+      const victim = await agent().get(`${VARY}?q[]`);
+
+      expect(victim.get("x-cache")).toBe("MISS");
+      expect(victim.body.q).toEqual([null]);
+    });
   });
 
   describe("headers", () => {
@@ -185,8 +232,22 @@ describe("cache key separators", () => {
         { "accept-encoding": "gzip, deflate, br" },
         "/api/categories?&accept-encoding=gzip, deflate, br&up:public",
       ],
+      // qs only ever yields strings, arrays, objects and null, so a value that
+      // reads as a JSON literal is still just a string and keeps its key.
+      ["the string 'null'", `${VARY}?q=null`, {}, `${VARY}?q=null&&up:public`],
+      ["the string 'true'", `${VARY}?q=true`, {}, `${VARY}?q=true&&up:public`],
+      ["a number", `${VARY}?q=1`, {}, `${VARY}?q=1&&up:public`],
+      ["an empty value", `${VARY}?q=`, {}, `${VARY}?q=&&up:public`],
     ])("is unchanged for %s", async (_name, path, headers, expected) => {
       expect(await keyFor(path, headers)).toEqual([expected]);
+    });
+
+    // A bare parameter is the one key the null fix moves: it keyed as
+    // `q=null` and now keys as `q=%`. A lone "%" is something no raw value
+    // (which never holds "%") and no encoded value (where "%" always starts
+    // a %XX escape) can be.
+    it("keys a bare parameter apart from every string", async () => {
+      expect(await keyFor(`${VARY}?q`)).toEqual([`${VARY}?q=%&&up:public`]);
     });
 
     // A value containing "=" is encoded, because values never carrying "=" is
