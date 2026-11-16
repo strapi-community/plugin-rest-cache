@@ -45,7 +45,7 @@
   "devDependencies": {
     "0x": "^6.0.0",
     "@playwright/test": "^1.62.1",
-    "autocannon": "^8.0.0",
+    "autocannon": "^9.0.0",
     "copyfiles": "^2.4.1",
     "cpy-cli": "^7.0.0",
     "lint-staged": "^17.3.0",
