@@ -12,12 +12,12 @@
     "test:e2e": "jest --forceExit"
   },
   "dependencies": {
-    "@strapi/plugin-users-permissions": "5.57.0",
-    "@strapi/strapi": "5.57.0",
+    "@strapi/plugin-users-permissions": "5.62.0",
+    "@strapi/strapi": "5.62.0",
     "@strapi-community/plugin-redis": "^2.0.0",
     "@strapi-community/plugin-rest-cache": "workspace:*",
     "@strapi-community/provider-rest-cache-redis": "workspace:*",
-    "better-sqlite3": "13.0.3",
+    "better-sqlite3": "13.1.1",
     "mime-types": "^3.0.2",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
